@@ -1,39 +1,52 @@
-# Weekly Meal Plan Generator
+# Project Agents
 
-## Purpose
-This agent generates weekly meal plans from a set of recipes.
-It is designed for a hybrid RAG setup:
+This document describes the conceptual AI agents used in the Meal Planner project. An agent is a logical component that uses a Large Language Model (LLM) to perform a specific reasoning task.
 
-*   Recipe content is normalized and embedded locally.
-*   The LLM (Gemini) generates the meal plan using retrieved recipes.
+---
 
-The agent must only use recipes provided and follow user preferences and constraints.
+## 1. Normalization Agent
 
-## System Prompt / Instructions
+### Purpose
+To convert unstructured recipe HTML content from the Ghost CMS into a consistent, structured JSON format. This ensures that the data is clean and reliable for all downstream tasks, like meal planning and embedding.
 
-*   Use only the recipes provided in the input.
-*   Do not create new recipes.
-*   Respect dietary constraints, number of meals, and repetition rules.
-*   Output must be structured JSON.
-*   Include an aggregated shopping list if requested.
-*   Keep output concise, practical, and readable.
+### Input
+A single string containing the raw HTML of a recipe post.
 
-## Input Format
-The agent expects normalized JSON for recipes and user preferences:
+### Output
+A single, clean JSON object matching the following schema. The agent must not produce any other text or formatting outside of the JSON object.
+
+```json
+{
+  "title": "Recipe Name",
+  "ingredients": ["ingredient 1", "ingredient 2", ...],
+  "instructions": "Step-by-step instructions",
+  "tags": ["tag1", "tag2"]
+}
+```
+
+---
+
+## 2. Meal Plan Agent
+
+### Purpose
+To generate a weekly meal plan based on a provided list of structured recipes and a set of user preferences.
+
+### Input
+A JSON object containing a list of `recipes` (in the normalized format) and `user_preferences`.
 
 ```json
 {
   "recipes": [
     {
       "title": "Spaghetti Carbonara",
-      "ingredients": ["Spaghetti: 200g", "Eggs: 2", "Pancetta: 100g", "Parmesan: 50g", "Black pepper: 1 tsp"],
-      "instructions": "Boil spaghetti until al dente. Fry pancetta until crisp. Mix eggs and parmesan in a bowl. Combine pasta, pancetta, and egg mixture off the heat. Season with black pepper.",
+      "ingredients": ["..."],
+      "instructions": "...",
       "tags": ["pasta", "dinner"]
     },
     {
       "title": "Chickpea & Avocado Salad",
-      "ingredients": ["Chickpeas: 1 can (400g)", "Avocado: 1", "Cherry tomatoes: 150g", "Red onion: 1 small", "Olive oil: 2 tbsp", "Lemon juice: 1 tbsp"],
-      "instructions": "Drain and rinse chickpeas. Dice avocado and tomatoes. Mix all ingredients with olive oil and lemon juice. Serve chilled.",
+      "ingredients": ["..."],
+      "instructions": "...",
       "tags": ["salad", "vegetarian", "lunch"]
     }
   ],
@@ -45,49 +58,19 @@ The agent expects normalized JSON for recipes and user preferences:
   }
 }
 ```
-This JSON is the output of your Ghost HTML → LLM normalization step.
 
-## Output Format
-The agent must return JSON with the weekly meal plan and optional shopping list:
+### Output
+A JSON object containing the `meal_plan` and an optional aggregated `shopping_list`.
 
 ```json
 {
   "meal_plan": {
-    "Monday": "Chickpea & Avocado Salad",
-    "Tuesday": "Spaghetti Carbonara",
-    "Wednesday": "Chickpea & Avocado Salad",
-    "Thursday": "Spaghetti Carbonara",
-    "Friday": "Chickpea & Avocado Salad",
-    "Saturday": "Spaghetti Carbonara",
-    "Sunday": "Chickpea & Avocado Salad"
+    "Monday": "Recipe Name",
+    "Tuesday": "Another Recipe"
   },
   "shopping_list": {
-    "Spaghetti": "200g",
-    "Eggs": "2",
-    "Pancetta": "100g",
-    "Parmesan": "50g",
-    "Black pepper": "1 tsp",
-    "Chickpeas": "1 can (400g)",
-    "Avocado": "1",
-    "Cherry tomatoes": "150g",
-    "Red onion": "1 small",
-    "Olive oil": "2 tbsp",
-    "Lemon juice": "1 tbsp"
+    "Ingredient A": "Total Amount",
+    "Ingredient B": "Total Amount"
   }
 }
 ```
-
-## Guidelines for the LLM
-
-*   Use only recipes provided in `recipes`.
-*   Generate a weekly meal plan according to `number_of_meals`.
-*   Respect dietary constraints and repetition rules.
-*   Aggregate ingredients into `shopping_list` if requested.
-*   Keep output structured, clean, and ready for automated parsing.
-
-## Notes
-
-*   `AGENT.MD` is generic and reusable across projects.
-*   Input JSON comes from Ghost → LLM normalization pipeline.
-*   LLM provider can be Gemini or another capable model.
-*   Version this file independently from project-specific instructions (`PROJECT.MD`).

@@ -20,22 +20,27 @@ type PostsResponse struct {
 	Posts []Post `json:"posts"`
 }
 
-// Client is a client for the Ghost Content API.
-type Client struct {
+// Client is an interface for a Ghost Content API client.
+type Client interface {
+	FetchRecipes() ([]Post, error)
+}
+
+// ghostClient is the concrete implementation of the Ghost API client.
+type ghostClient struct {
 	httpClient *http.Client
 	config     *config.Config
 }
 
 // NewClient creates a new Ghost API client.
-func NewClient(cfg *config.Config) *Client {
-	return &Client{
+func NewClient(cfg *config.Config) Client {
+	return &ghostClient{
 		httpClient: &http.Client{},
 		config:     cfg,
 	}
 }
 
 // FetchRecipes fetches all posts (recipes) from the Ghost API.
-func (c *Client) FetchRecipes() ([]Post, error) {
+func (c *ghostClient) FetchRecipes() ([]Post, error) {
 	// Construct the request URL
 	url := fmt.Sprintf("%s/ghost/api/v3/content/posts/?key=%s", c.config.GhostURL, c.config.GhostAPIKey)
 
