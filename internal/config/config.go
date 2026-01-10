@@ -9,6 +9,7 @@ import (
 type Config struct {
 	GhostURL    string
 	GhostAPIKey string
+	GeminiAPIKey string // New field for Gemini API Key
 }
 
 // NewFromEnv creates a new Config object from environment variables.
@@ -23,8 +24,14 @@ func NewFromEnv() (*Config, error) {
 		return nil, fmt.Errorf("GHOST_CONTENT_API_KEY environment variable not set")
 	}
 
+	geminiAPIKey := os.Getenv("GEMINI_API_KEY") // Load Gemini API Key
+	if geminiAPIKey == "" {
+		return nil, fmt.Errorf("GEMINI_API_KEY environment variable not set")
+	}
+
 	return &Config{
 		GhostURL:    ghostURL,
 		GhostAPIKey: ghostAPIKey,
+		GeminiAPIKey: geminiAPIKey, // Assign new field
 	}, nil
 }
