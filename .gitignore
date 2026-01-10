@@ -19,6 +19,7 @@ profile.cov
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+TODO.md
 
 # Go workspace file
 go.work
