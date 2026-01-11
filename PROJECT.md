@@ -87,3 +87,33 @@ It uses a **hybrid RAG pipeline**: semantic search + external LLM (Gemini) for m
   - Placed in `acceptance_tests/`.
   - Focus on end-to-end user workflows (e.g., "Generate a meal plan from scratch").
   - Should run against a local environment or staged inputs.
+
+---
+
+## Future Roadmap: User Interfaces
+
+### WhatsApp Integration
+**Goal:** Allow users to request meal plans via WhatsApp messages (text or audio).
+
+**Architecture:**
+1.  **User** sends message to WhatsApp Business Number.
+2.  **WhatsApp API (Meta/Twilio)** sends Webhook (POST) to Go Service.
+3.  **Go Service:**
+    *   Exposes HTTP webhook endpoint.
+    *   Parses intent.
+    *   Calls `Planner.GeneratePlan()`.
+    *   Formats response as text or rich message.
+    *   Replies via WhatsApp API.
+
+**Feasibility & Tools:**
+*   **Twilio for WhatsApp:** Recommended for ease of use and Go SDK support. Handles Meta verification complexity.
+*   **Direct Meta API:** Cheaper (free tier) but more complex setup.
+*   **Audio Notes:** Can use Gemini 1.5 Pro to process voice notes directly (Multimodal).
+
+**Cost Estimate (Personal Use ~30 interactions/month):**
+*   **Meta:** $0 (First 1,000 conversations/month free).
+*   **Twilio (Optional Wrapper):** ~$1.50/month ($1.00 number rental + usage).
+
+### Alternative: Telegram
+*   **Cost:** $0.00.
+*   **Pros:** Simpler API, no verification required, excellent Go libraries (`telebot`).
