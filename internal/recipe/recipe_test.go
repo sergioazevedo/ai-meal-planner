@@ -39,7 +39,9 @@ func TestNormalizeRecipeHTML(t *testing.T) {
 				"title": "Test Recipe",
 				"ingredients": ["Ingredient 1", "Ingredient 2"],
 				"instructions": "Step 1. Do something.",
-				"tags": ["test", "recipe"]
+				"tags": ["test", "recipe"],
+				"prep_time": "30 mins",
+				"servings": "4"
 			}`,
 		}
 
@@ -59,6 +61,12 @@ func TestNormalizeRecipeHTML(t *testing.T) {
 		}
 		if len(normalizedRecipe.Tags) != 2 {
 			t.Errorf("Expected 2 tags, got %d", len(normalizedRecipe.Tags))
+		}
+		if normalizedRecipe.PrepTime != "30 mins" {
+			t.Errorf("Expected PrepTime '30 mins', got '%s'", normalizedRecipe.PrepTime)
+		}
+		if normalizedRecipe.Servings != "4" {
+			t.Errorf("Expected Servings '4', got '%s'", normalizedRecipe.Servings)
 		}
 	})
 

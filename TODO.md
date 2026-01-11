@@ -5,6 +5,10 @@
 - [x] Normalize HTML to JSON using Gemini (`internal/recipe`)
 - [x] Store normalized recipes locally (`internal/storage`)
 - [x] Basic CLI entry point to run ingestion (`cmd/ai-meal-planner`)
+- [ ] **Enhance Normalization (High Priority)**
+  - Add `PrepTime` and `Servings` fields to `NormalizedRecipe` struct.
+  - Update LLM prompt to extract/estimate these values from the full HTML.
+  - Update unit and acceptance tests to verify these new fields.
 
 ## Phase 2: RAG Pipeline (Embeddings & Search)
 - [ ] **Implement Embeddings Generation**
