@@ -10,9 +10,10 @@ import (
 
 // Post represents a single recipe post from the Ghost API.
 type Post struct {
-	ID    string `json:"id"`
-	Title string `json:"title"`
-	HTML  string `json:"html"`
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	HTML      string `json:"html"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 // PostsResponse is the top-level structure of the Ghost API response for posts.

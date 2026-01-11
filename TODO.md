@@ -1,18 +1,36 @@
-# Project Todo List: AI-Assisted Recipe Meal Planner
+# Project Todo List
 
-This document outlines the steps for building the AI-Assisted Recipe Meal Planner.
+## Phase 1: Ingestion & Normalization (Current Status: Mostly Complete)
+- [x] Fetch recipes from Ghost CMS (`internal/ghost`)
+- [x] Normalize HTML to JSON using Gemini (`internal/recipe`)
+- [x] Store normalized recipes locally (`internal/storage`)
+- [x] Basic CLI entry point to run ingestion (`cmd/ai-meal-planner`)
 
-## Current Progress:
+## Phase 2: RAG Pipeline (Embeddings & Search)
+- [ ] **Implement Embeddings Generation**
+  - Add functionality to generate vector embeddings for normalized recipes (using Gemini Embedding API or local model).
+  - Update `NormalizedRecipe` or create a new structure to hold embeddings.
+- [ ] **Implement Vector Storage & Retrieval**
+  - Choose and implement a vector store (e.g., SQLite with vector extension, or a simple in-memory store if scale permits, or `pgvector`).
+  - Implement "Semantic Search" to find recipes matching user queries/preferences.
 
-1.  [completed] Set up the Go project structure for `ai-meal-planner`
-2.  [completed] Implement Ghost CMS data fetching
-3.  [completed] Implement HTML to JSON normalization using an LLM
-4.  [completed] Add unit tests for existing features
-5.  [completed] Implement local storage for normalized recipes
-6.  [pending] Implement embedding generation for recipes
-7.  [pending] Set up a vector database for recipe embeddings
-8.  [pending] Implement the meal plan generation service
-9.  [pending] Build the main application logic in `cmd/ai-meal-planner/main.go`
-10. [pending] Add unit and integration tests
-11. [pending] Containerize the application with Docker
-12. [pending] Document deployment and setup process
+## Phase 3: Meal Planning Logic
+- [ ] **Implement Planner Logic** (`internal/planner`)
+  - Create the logic to accept user constraints (e.g., "low carb", "vegetarian").
+  - Retrieve relevant recipes using the vector search.
+  - Construct the context-rich prompt for Gemini.
+- [ ] **Generate Meal Plan**
+  - specific function to parse Gemini's response into a structured Weekly Meal Plan.
+
+## Phase 4: Application Polish & CLI
+- [ ] **CLI Improvements**
+  - Refactor `main.go`/`app.go` to support subcommands (e.g., `ingest` vs `plan`).
+  - Add flags for user preferences (e.g., `--diet vegetarian`).
+- [ ] **Shopping List (Optional)**
+  - Aggregate ingredients from the generated plan.
+
+## Phase 5: Testing & Deployment
+- [ ] **Acceptance Tests**
+  - Expand `acceptance_tests/` to cover the full "Generate Plan" flow.
+- [ ] **CI/CD & Deployment**
+  - Setup build/release scripts.

@@ -20,8 +20,8 @@ func TestFetchRecipes(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprintln(w, `{
 				"posts": [
-					{"id": "1", "title": "Recipe 1", "html": "<h1>Recipe 1</h1>"},
-					{"id": "2", "title": "Recipe 2", "html": "<h1>Recipe 2</h1>"}
+					{"id": "1", "title": "Recipe 1", "html": "<h1>Recipe 1</h1>", "updated_at": "2023-10-27T10:00:00Z"},
+					{"id": "2", "title": "Recipe 2", "html": "<h1>Recipe 2</h1>", "updated_at": "2023-10-28T10:00:00Z"}
 				]
 			}`)
 		}))
@@ -44,6 +44,9 @@ func TestFetchRecipes(t *testing.T) {
 		}
 		if posts[0].Title != "Recipe 1" {
 			t.Errorf("Expected post 1 title to be 'Recipe 1', got '%s'", posts[0].Title)
+		}
+		if posts[0].UpdatedAt != "2023-10-27T10:00:00Z" {
+			t.Errorf("Expected post 1 updated_at to be '2023-10-27T10:00:00Z', got '%s'", posts[0].UpdatedAt)
 		}
 		if posts[1].HTML != "<h1>Recipe 2</h1>" {
 			t.Errorf("Expected post 2 HTML to be '<h1>Recipe 2</h1>', got '%s'", posts[1].HTML)

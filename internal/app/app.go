@@ -56,9 +56,16 @@ func (a *App) Run(ctx context.Context) error {
 
 	fmt.Printf("Successfully fetched %d recipe posts from Ghost.\n", len(posts))
 	for _, post := range posts {
-		if a.RecipeStore.Exists(post.ID) {
-			log.Printf("Recipe '%s' (ID: %s) already normalized. Loading from cache.", post.Title, post.ID)
+		// Check if the specific version already exists
+		if a.RecipeStore.Exists(post.ID, post.UpdatedAt) {
+			log.Printf("Recipe '%s' (ID: %s) up-to-date (Version: %s). Skipping.", post.Title, post.ID, post.UpdatedAt)
 			continue
+		}
+
+		// New version found or recipe not present. Clean up old versions first.
+		if err := a.RecipeStore.RemoveStaleVersions(post.ID); err != nil {
+			log.Printf("Warning: failed to clean up stale versions for recipe '%s': %v", post.Title, err)
+			// Proceeding anyway as this is non-fatal, though ideally we want a clean state
 		}
 
 		log.Printf("Normalizing recipe '%s' (ID: %s)...", post.Title, post.ID)
@@ -68,7 +75,10 @@ func (a *App) Run(ctx context.Context) error {
 			continue
 		}
 
-		if err := a.RecipeStore.Save(post.ID, *normalizedRecipe); err != nil {
+		// Set the version metadata
+		normalizedRecipe.SourceUpdatedAt = post.UpdatedAt
+
+		if err := a.RecipeStore.Save(post.ID, post.UpdatedAt, *normalizedRecipe); err != nil {
 			log.Printf("Failed to save normalized recipe '%s': %v", post.Title, err)
 			continue
 		}

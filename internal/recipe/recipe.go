@@ -11,10 +11,11 @@ import (
 
 // NormalizedRecipe represents a recipe after being normalized by the LLM.
 type NormalizedRecipe struct {
-	Title        string   `json:"title"`
-	Ingredients  []string `json:"ingredients"`
-	Instructions string   `json:"instructions"`
-	Tags         []string `json:"tags"`
+	Title           string   `json:"title"`
+	Ingredients     []string `json:"ingredients"`
+	Instructions    string   `json:"instructions"`
+	Tags            []string `json:"tags"`
+	SourceUpdatedAt string   `json:"source_updated_at"`
 }
 
 // NormalizeRecipeHTML takes HTML content and uses an LLM to normalize it into a structured Recipe.

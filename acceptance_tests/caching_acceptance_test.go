@@ -18,7 +18,7 @@ type mockGhostClient struct {
 func (m *mockGhostClient) FetchRecipes() ([]ghost.Post, error) {
 	m.fetchRecipesCalls++
 	return []ghost.Post{
-		{ID: "1", Title: "Test Recipe", HTML: "<h1>Test</h1>"},
+		{ID: "1", Title: "Test Recipe", HTML: "<h1>Test</h1>", UpdatedAt: "2023-10-27T10:00:00Z"},
 	}, nil
 }
 
@@ -80,8 +80,10 @@ func TestCachingWorkflow(t *testing.T) {
 	if llmClient.generateContentCalls != 1 {
 		t.Errorf("Expected GenerateContent to be called 1 time, got %d", llmClient.generateContentCalls)
 	}
-	if !recipeStore.Exists("1") {
-		t.Errorf("Expected recipe with ID '1' to be cached, but it wasn't")
+	
+	updatedAt := "2023-10-27T10:00:00Z"
+	if !recipeStore.Exists("1", updatedAt) {
+		t.Errorf("Expected recipe with ID '1' and version '%s' to be cached, but it wasn't", updatedAt)
 	}
 
 	// --- 5. Second Run: Loading from Cache ---
