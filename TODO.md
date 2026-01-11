@@ -19,11 +19,11 @@
   - Implement "Semantic Search" to find recipes matching user queries/preferences.
 
 ## Phase 3: Meal Planning Logic
-- [ ] **Implement Planner Logic** (`internal/planner`)
+- [x] **Implement Planner Logic** (`internal/planner`)
   - Create the logic to accept user constraints (e.g., "low carb", "vegetarian").
   - Retrieve relevant recipes using the vector search.
   - Construct the context-rich prompt for Gemini.
-- [ ] **Generate Meal Plan**
+- [x] **Generate Meal Plan**
   - specific function to parse Gemini's response into a structured Weekly Meal Plan.
 
 ## Phase 4: Application Polish & CLI
