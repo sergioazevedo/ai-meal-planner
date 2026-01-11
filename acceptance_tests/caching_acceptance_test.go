@@ -37,6 +37,10 @@ func (m *mockLLMClient) GenerateContent(ctx context.Context, prompt string) (str
 	}`, nil
 }
 
+func (m *mockLLMClient) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
+	return []float32{0.0, 0.0}, nil
+}
+
 func (m *mockLLMClient) Close() error {
 	return nil
 }

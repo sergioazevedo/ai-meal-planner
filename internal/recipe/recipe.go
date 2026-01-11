@@ -14,10 +14,11 @@ type NormalizedRecipe struct {
 	Title           string   `json:"title"`
 	Ingredients     []string `json:"ingredients"`
 	Instructions    string   `json:"instructions"`
-	Tags            []string `json:"tags"`
-	PrepTime        string   `json:"prep_time"`
-	Servings        string   `json:"servings"`
-	SourceUpdatedAt string   `json:"source_updated_at"`
+	Tags            []string  `json:"tags"`
+	PrepTime        string    `json:"prep_time"`
+	Servings        string    `json:"servings"`
+	SourceUpdatedAt string    `json:"source_updated_at"`
+	Embedding       []float32 `json:"embedding"`
 }
 
 // NormalizeRecipeHTML takes HTML content and uses an LLM to normalize it into a structured Recipe.
@@ -52,6 +53,17 @@ func NormalizeRecipeHTML(ctx context.Context, llmClient llm.LLMClient, post ghos
 	if err := json.Unmarshal([]byte(llmResponse), &normalizedRecipe); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal LLM response into NormalizedRecipe: %w. LLM Response: %s", err, llmResponse)
 	}
+
+	// Generate Embedding
+	// We create a semantic string representation of the recipe for the embedding model.
+	embeddingText := fmt.Sprintf("Title: %s\nTags: %v\nIngredients: %v\nPrep Time: %s",
+		normalizedRecipe.Title, normalizedRecipe.Tags, normalizedRecipe.Ingredients, normalizedRecipe.PrepTime)
+
+	embedding, err := llmClient.GenerateEmbedding(ctx, embeddingText)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate embedding: %w", err)
+	}
+	normalizedRecipe.Embedding = embedding
 
 	return &normalizedRecipe, nil
 }

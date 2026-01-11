@@ -96,4 +96,48 @@ func TestRecipeStore(t *testing.T) {
 			t.Error("Expected old version to be removed")
 		}
 	})
+
+	t.Run("FindSimilar", func(t *testing.T) {
+		// Clear directory
+		files, _ := filepath.Glob(filepath.Join(tempDir, "*"))
+		for _, f := range files {
+			os.Remove(f)
+		}
+
+		// Save 3 recipes with mocked embeddings
+		// Vector A: [1, 0]
+		// Vector B: [1, 0] (Identical to A)
+		// Vector C: [0, 1] (Orthogonal to A)
+		
+		recA := recipe.NormalizedRecipe{Title: "Recipe A", Embedding: []float32{1.0, 0.0}}
+		recB := recipe.NormalizedRecipe{Title: "Recipe B", Embedding: []float32{1.0, 0.0}}
+		recC := recipe.NormalizedRecipe{Title: "Recipe C", Embedding: []float32{0.0, 1.0}}
+
+		_ = store.Save("A", "2023-01-01T00:00:00Z", recA)
+		_ = store.Save("B", "2023-01-01T00:00:00Z", recB)
+		_ = store.Save("C", "2023-01-01T00:00:00Z", recC)
+
+		// Search for something similar to A ([1, 0])
+		results, err := store.FindSimilar([]float32{1.0, 0.0}, 2)
+		if err != nil {
+			t.Fatalf("FindSimilar failed: %v", err)
+		}
+
+		if len(results) != 2 {
+			t.Errorf("Expected 2 results, got %d", len(results))
+		}
+		
+		// A and B should be top results (order might vary between equal scores, but C should not be there)
+		foundA := false
+		foundB := false
+		for _, r := range results {
+			if r.Title == "Recipe A" { foundA = true }
+			if r.Title == "Recipe B" { foundB = true }
+			if r.Title == "Recipe C" { t.Error("Recipe C should not be in top 2") }
+		}
+
+		if !foundA || !foundB {
+			t.Error("Expected to find both Recipe A and Recipe B")
+		}
+	})
 }

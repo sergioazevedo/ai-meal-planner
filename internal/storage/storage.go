@@ -3,8 +3,10 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"ai-meal-planner/internal/recipe"
@@ -85,4 +87,78 @@ func (s *RecipeStore) RemoveStaleVersions(recipeID string) error {
 		}
 	}
 	return nil
+}
+
+// ScoredRecipe holds a recipe and its similarity score.
+type ScoredRecipe struct {
+	Recipe recipe.NormalizedRecipe
+	Score  float64
+}
+
+// cosineSimilarity calculates the cosine similarity between two vectors.
+func cosineSimilarity(a, b []float32) float64 {
+	if len(a) != len(b) || len(a) == 0 {
+		return 0.0
+	}
+
+	var dotProduct, normA, normB float64
+	for i := range a {
+		dotProduct += float64(a[i] * b[i])
+		normA += float64(a[i] * a[i])
+		normB += float64(b[i] * b[i])
+	}
+
+	if normA == 0 || normB == 0 {
+		return 0.0
+	}
+
+	return dotProduct / (math.Sqrt(normA) * math.Sqrt(normB))
+}
+
+// FindSimilar searches for recipes with embeddings similar to the query.
+// It currently scans all files on disk, which is acceptable for small datasets.
+func (s *RecipeStore) FindSimilar(queryEmbedding []float32, limit int) ([]recipe.NormalizedRecipe, error) {
+	matches, err := filepath.Glob(filepath.Join(s.basePath, "*.json"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to glob recipe files: %w", err)
+	}
+
+	var scoredRecipes []ScoredRecipe
+
+	for _, match := range matches {
+		data, err := os.ReadFile(match)
+		if err != nil {
+			// Log error but continue? For now, we return error to be safe.
+			return nil, fmt.Errorf("failed to read file %s: %w", match, err)
+		}
+
+		var rec recipe.NormalizedRecipe
+		if err := json.Unmarshal(data, &rec); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal file %s: %w", match, err)
+		}
+
+		if len(rec.Embedding) == 0 {
+			continue
+		}
+
+		score := cosineSimilarity(queryEmbedding, rec.Embedding)
+		scoredRecipes = append(scoredRecipes, ScoredRecipe{Recipe: rec, Score: score})
+	}
+
+	// Sort by score descending
+	sort.Slice(scoredRecipes, func(i, j int) bool {
+		return scoredRecipes[i].Score > scoredRecipes[j].Score
+	})
+
+	// Take top K
+	if limit > len(scoredRecipes) {
+		limit = len(scoredRecipes)
+	}
+
+	result := make([]recipe.NormalizedRecipe, limit)
+	for i := 0; i < limit; i++ {
+		result[i] = scoredRecipes[i].Recipe
+	}
+
+	return result, nil
 }

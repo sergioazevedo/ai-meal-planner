@@ -13,13 +13,15 @@ import (
 // LLMClient is an interface for a client that can interact with a large language model.
 type LLMClient interface {
 	GenerateContent(ctx context.Context, prompt string) (string, error)
+	GenerateEmbedding(ctx context.Context, text string) ([]float32, error)
 	Close() error
 }
 
 // geminiClient is a client for the Google Gemini API.
 type geminiClient struct {
-	client *genai.Client
-	model  *genai.GenerativeModel
+	client         *genai.Client
+	model          *genai.GenerativeModel
+	embeddingModel *genai.EmbeddingModel
 }
 
 // NewGeminiClient creates a new Gemini API client.
@@ -30,7 +32,9 @@ func NewGeminiClient(ctx context.Context, cfg *config.Config) (LLMClient, error)
 	}
 	// For text-only input, use the gemini-pro model
 	model := client.GenerativeModel("gemini-pro")
-	return &geminiClient{client: client, model: model}, nil
+	// For embeddings, use embedding-001
+	embeddingModel := client.EmbeddingModel("embedding-001")
+	return &geminiClient{client: client, model: model, embeddingModel: embeddingModel}, nil
 }
 
 // GenerateContent sends a prompt to the Gemini model and returns the generated text.
@@ -51,6 +55,20 @@ func (c *geminiClient) GenerateContent(ctx context.Context, prompt string) (stri
 	}
 
 	return string(text), nil
+}
+
+// GenerateEmbedding generates a vector embedding for the given text.
+func (c *geminiClient) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
+	resp, err := c.embeddingModel.EmbedContent(ctx, genai.Text(text))
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate embedding: %w", err)
+	}
+	
+	if resp.Embedding == nil {
+		return nil, fmt.Errorf("no embedding generated")
+	}
+
+	return resp.Embedding.Values, nil
 }
 
 // Close closes the underlying Gemini client.

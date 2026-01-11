@@ -21,6 +21,13 @@ func (m *mockLLMClient) GenerateContent(ctx context.Context, prompt string) (str
 	return m.response, nil
 }
 
+func (m *mockLLMClient) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
+	if m.shouldError {
+		return nil, errors.New("LLM error")
+	}
+	return []float32{0.1, 0.2, 0.3}, nil
+}
+
 func (m *mockLLMClient) Close() error {
 	return nil
 }
@@ -67,6 +74,9 @@ func TestNormalizeRecipeHTML(t *testing.T) {
 		}
 		if normalizedRecipe.Servings != "4" {
 			t.Errorf("Expected Servings '4', got '%s'", normalizedRecipe.Servings)
+		}
+		if len(normalizedRecipe.Embedding) != 3 {
+			t.Errorf("Expected embedding of length 3, got %d", len(normalizedRecipe.Embedding))
 		}
 	})
 
