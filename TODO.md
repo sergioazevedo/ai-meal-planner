@@ -36,5 +36,6 @@
 ## Phase 5: Testing & Deployment
 - [x] **Acceptance Tests**
   - Expand `acceptance_tests/` to cover the full "Generate Plan" flow.
-- [ ] **CI/CD & Deployment**
-  - Setup build/release scripts.
+- [x] **CI/CD & Deployment**
+  - Setup build/release scripts. (Dockerfile created)
+
