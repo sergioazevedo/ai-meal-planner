@@ -38,4 +38,5 @@
   - Expand `acceptance_tests/` to cover the full "Generate Plan" flow.
 - [x] **CI/CD & Deployment**
   - Setup build/release scripts. (Dockerfile created)
+  - Create deployment documentation (`DEPLOY.md`).
 
