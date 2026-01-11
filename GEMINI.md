@@ -48,8 +48,8 @@ func main() {
 }
 ```
 
-### Generating Content
-To generate content, use the `GenerateContent` method. It takes a `context` and the `prompt` string.
+### Generating Content (Text)
+To generate content using **Gemini 1.5 Pro**, use the `GenerateContent` method.
 
 ```go
 prompt := "Tell me a joke about a programmer."
@@ -58,6 +58,20 @@ if err != nil {
     log.Printf("Failed to generate content: %v", err)
 } else {
     fmt.Println(response)
+}
+```
+
+### Generating Embeddings (Vectors)
+To generate vector embeddings for semantic search using the **embedding-001** model, use the `GenerateEmbedding` method.
+
+```go
+text := "Spaghetti Carbonara with eggs and bacon"
+vector, err := geminiClient.GenerateEmbedding(ctx, text)
+if err != nil {
+    log.Printf("Failed to generate embedding: %v", err)
+} else {
+    // vector is []float32
+    fmt.Printf("Generated vector of length: %d\n", len(vector))
 }
 ```
 
@@ -84,3 +98,5 @@ Input data:
 ` ` `
 
 This direct instruction helps constrain the model's output to exactly what our application can parse.
+
+```

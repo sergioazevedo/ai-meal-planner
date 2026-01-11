@@ -20,7 +20,9 @@ A single, clean JSON object matching the following schema. The agent must not pr
   "title": "Recipe Name",
   "ingredients": ["ingredient 1", "ingredient 2", ...],
   "instructions": "Step-by-step instructions",
-  "tags": ["tag1", "tag2"]
+  "tags": ["tag1", "tag2"],
+  "prep_time": "30 mins",
+  "servings": "4 people"
 }
 ```
 
@@ -32,45 +34,31 @@ A single, clean JSON object matching the following schema. The agent must not pr
 To generate a weekly meal plan based on a provided list of structured recipes and a set of user preferences.
 
 ### Input
-A JSON object containing a list of `recipes` (in the normalized format) and `user_preferences`.
+A text prompt containing the User's Request and a context block of relevant recipes retrieved via semantic search.
 
-```json
-{
-  "recipes": [
-    {
-      "title": "Spaghetti Carbonara",
-      "ingredients": ["..."],
-      "instructions": "...",
-      "tags": ["pasta", "dinner"]
-    },
-    {
-      "title": "Chickpea & Avocado Salad",
-      "ingredients": ["..."],
-      "instructions": "...",
-      "tags": ["salad", "vegetarian", "lunch"]
-    }
-  ],
-  "user_preferences": {
-    "diet": "Vegetarian",
-    "number_of_meals": 7,
-    "avoid_repeating_recipes": true,
-    "include_shopping_list": true
-  }
-}
+```text
+User Request: "Healthy vegetarian dinners"
+
+Available Recipes:
+Recipe 1:
+Title: ...
+...
 ```
 
 ### Output
-A JSON object containing the `meal_plan` and an optional aggregated `shopping_list`.
+A JSON object containing the `plan` (list of daily assignments) and an aggregated `shopping_list`.
 
 ```json
 {
-  "meal_plan": {
-    "Monday": "Recipe Name",
-    "Tuesday": "Another Recipe"
-  },
-  "shopping_list": {
-    "Ingredient A": "Total Amount",
-    "Ingredient B": "Total Amount"
-  }
+  "plan": [
+    {
+      "day": "Monday",
+      "recipe_title": "Recipe Name",
+      "note": "Chosen because it is quick to make"
+    },
+    ...
+  ],
+  "shopping_list": ["Ingredient 1", "Ingredient 2"],
+  "total_prep_estimate": "3 hours"
 }
 ```

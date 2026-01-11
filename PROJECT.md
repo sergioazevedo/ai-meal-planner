@@ -76,6 +76,12 @@ It uses a **hybrid RAG pipeline**: semantic search + external LLM (Gemini) for m
 - Always keep the performance and security as a first priority.
 - Ask for any clarification rather just guessing things if you are not clear about anything.
 
+### Workflow Standard
+To ensure high quality and alignment, follow this cycle for all complex tasks:
+1.  **Plan Mode:** Discuss the approach, architecture, and potential trade-offs (e.g., storage strategy) *before* writing code.
+2.  **Review:** Present the plan to the user for confirmation.
+3.  **Code Mode:** Execute the approved plan, updating tests and documentation as you go.
+
 ### Testing Strategy
 
 - **Unit Tests:**
