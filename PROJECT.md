@@ -69,3 +69,21 @@ It uses a **hybrid RAG pipeline**: semantic search + external LLM (Gemini) for m
 - AGENT.MD contains the **LLM system prompt and generic agent instructions**.
 - PROJECT.MD contains **project-specific implementation workflow**.
 - Both files are version-controlled and updated independently.
+
+## Implementation standard
+
+- DO NOT over engineer things. Start with the simplest implementation.
+- Always keep the performance and security as a first priority.
+- Ask for any clarification rather just guessing things if you are not clear about anything.
+
+### Testing Strategy
+
+- **Unit Tests:**
+  - Required for all business logic (packages in `internal/`).
+  - Must use standard Go testing patterns (table-driven tests preferred).
+  - Mock external dependencies (like the Gemini API) to ensure speed and reliability.
+
+- **Acceptance Tests:**
+  - Placed in `acceptance_tests/`.
+  - Focus on end-to-end user workflows (e.g., "Generate a meal plan from scratch").
+  - Should run against a local environment or staged inputs.
