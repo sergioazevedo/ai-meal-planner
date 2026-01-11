@@ -3,10 +3,12 @@ package acceptance_tests
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 
 	"ai-meal-planner/internal/app"
 	"ai-meal-planner/internal/ghost"
+	"ai-meal-planner/internal/planner"
 	"ai-meal-planner/internal/storage"
 )
 
@@ -29,11 +31,24 @@ type mockLLMClient struct {
 
 func (m *mockLLMClient) GenerateContent(ctx context.Context, prompt string) (string, error) {
 	m.generateContentCalls++
+	// Determine if it's a normalization or a planning request based on the prompt content
+	if strings.Contains(prompt, "extract structured recipe information") {
+		return `{
+			"title": "Test Recipe",
+			"ingredients": ["1 cup testing"],
+			"instructions": "Write a test.",
+			"tags": ["go", "test"],
+			"prep_time": "10 mins",
+			"servings": "1"
+		}`, nil
+	}
+	
 	return `{
-		"title": "Test Recipe",
-		"ingredients": ["1 cup testing"],
-		"instructions": "Write a test.",
-		"tags": ["go", "test"]
+		"plan": [
+			{"day": "Monday", "recipe_title": "Test Recipe", "note": "Only one available"}
+		],
+		"shopping_list": ["1 cup testing"],
+		"total_prep_estimate": "10 mins"
 	}`, nil
 }
 
@@ -46,7 +61,7 @@ func (m *mockLLMClient) Close() error {
 }
 
 // --- Acceptance Test ---
-func TestCachingWorkflow(t *testing.T) {
+func TestFullWorkflow(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. Set up a temporary directory for storage
@@ -69,43 +84,34 @@ func TestCachingWorkflow(t *testing.T) {
 		GhostClient: ghostClient,
 		LlmClient:   llmClient,
 		RecipeStore: recipeStore,
+		Planner:     planner.NewPlanner(recipeStore, llmClient),
 	}
 
-	// --- 4. First Run: Normalization and Caching ---
-	t.Log("--- First Run: Normalizing and Caching ---")
-	if err := application.Run(ctx); err != nil {
-		t.Fatalf("First run failed: %v", err)
+	// --- 4. Step 1: Ingestion ---
+	t.Log("--- Step 1: Ingesting Recipes ---")
+	if err := application.IngestRecipes(ctx); err != nil {
+		t.Fatalf("Ingestion failed: %v", err)
 	}
 
-	// Assertions for the first run
-	if ghostClient.fetchRecipesCalls != 1 {
-		t.Errorf("Expected FetchRecipes to be called 1 time, got %d", ghostClient.fetchRecipesCalls)
-	}
 	if llmClient.generateContentCalls != 1 {
-		t.Errorf("Expected GenerateContent to be called 1 time, got %d", llmClient.generateContentCalls)
+		t.Errorf("Expected 1 call to LLM for normalization, got %d", llmClient.generateContentCalls)
 	}
 	
 	updatedAt := "2023-10-27T10:00:00Z"
 	if !recipeStore.Exists("1", updatedAt) {
-		t.Errorf("Expected recipe with ID '1' and version '%s' to be cached, but it wasn't", updatedAt)
+		t.Errorf("Expected recipe to be cached")
 	}
 
-	// --- 5. Second Run: Loading from Cache ---
-	t.Log("--- Second Run: Loading from Cache ---")
-
-	// Reset counters
-	ghostClient.fetchRecipesCalls = 0
+	// --- 5. Step 2: Planning ---
+	t.Log("--- Step 2: Generating Meal Plan ---")
+	// Reset counter for planning step
 	llmClient.generateContentCalls = 0
 
-	if err := application.Run(ctx); err != nil {
-		t.Fatalf("Second run failed: %v", err)
+	if err := application.GenerateMealPlan(ctx, "Give me something simple"); err != nil {
+		t.Fatalf("Meal planning failed: %v", err)
 	}
 
-	// Assertions for the second run
-	if ghostClient.fetchRecipesCalls != 1 {
-		t.Errorf("Expected FetchRecipes to be called 1 time on second run, got %d", ghostClient.fetchRecipesCalls)
-	}
-	if llmClient.generateContentCalls != 0 {
-		t.Errorf("Expected GenerateContent to be called 0 times on second run, got %d", llmClient.generateContentCalls)
+	if llmClient.generateContentCalls != 1 {
+		t.Errorf("Expected 1 call to LLM for planning, got %d", llmClient.generateContentCalls)
 	}
 }

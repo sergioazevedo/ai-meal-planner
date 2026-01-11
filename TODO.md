@@ -27,14 +27,14 @@
   - specific function to parse Gemini's response into a structured Weekly Meal Plan.
 
 ## Phase 4: Application Polish & CLI
-- [ ] **CLI Improvements**
+- [x] **CLI Improvements**
   - Refactor `main.go`/`app.go` to support subcommands (e.g., `ingest` vs `plan`).
   - Add flags for user preferences (e.g., `--diet vegetarian`).
 - [ ] **Shopping List (Optional)**
-  - Aggregate ingredients from the generated plan.
+  - Aggregate ingredients from the generated plan. (Already partially implemented in the JSON response)
 
 ## Phase 5: Testing & Deployment
-- [ ] **Acceptance Tests**
+- [x] **Acceptance Tests**
   - Expand `acceptance_tests/` to cover the full "Generate Plan" flow.
 - [ ] **CI/CD & Deployment**
   - Setup build/release scripts.
