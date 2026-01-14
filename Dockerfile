@@ -33,7 +33,7 @@ RUN mkdir -p data/recipes
 
 # Set environment variable defaults (override these at runtime)
 ENV GHOST_API_URL=""
-ENV GHOST_CONTENT_KEY=""
+ENV GHOST_CONTENT_API_KEY=""
 ENV GEMINI_API_KEY=""
 
 # Default command (can be overridden, e.g., "ingest" or "plan")

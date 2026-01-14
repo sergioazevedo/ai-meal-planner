@@ -45,13 +45,13 @@ You need to provide the API keys. You can run it inline:
 ```bash
 # Ingest (Update Cache)
 export GHOST_URL="https://your-blog.com"
-export GHOST_API_KEY="your_ghost_key"
+export GHOST_CONTENT_API_KEY="your_ghost_key"
 export GEMINI_API_KEY="your_gemini_key"
 ./ai-meal-planner-linux ingest
 
 # Generate Plan
 export GHOST_URL="https://your-blog.com"
-export GHOST_API_KEY="your_ghost_key"
+export GHOST_CONTENT_API_KEY="your_ghost_key"
 export GEMINI_API_KEY="your_gemini_key"
 ./ai-meal-planner-linux plan -request "Vegetarian dinner for 2"
 ```
@@ -96,7 +96,7 @@ Add one of the following lines to the end of the file to sync every hour at minu
 
 **If using Binary:**
 ```bash
-0 * * * * cd /home/ubuntu && GHOST_URL="..." GHOST_API_KEY="..." GEMINI_API_KEY="..." ./ai-meal-planner-linux ingest >> /home/ubuntu/ingest.log 2>&1
+0 * * * * cd /home/ubuntu && GHOST_URL="..." GHOST_CONTENT_API_KEY="..." GEMINI_API_KEY="..." ./ai-meal-planner-linux ingest >> /home/ubuntu/ingest.log 2>&1
 ```
 
 **If using Docker:**
