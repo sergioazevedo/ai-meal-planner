@@ -8,55 +8,46 @@ This guide covers two methods to deploy the AI Meal Planner:
 
 ## Method 1: Direct Binary (Recommended)
 
-Since Go compiles into a single static binary, you can simply copy the file to your server.
+Since Go compiles into a single static binary, you can use the provided scripts to build and upload it to your server.
 
-### 1. Build for Linux
-Run this command on your local machine (macOS/Windows) to cross-compile for Linux:
-
-```bash
-# For standard Intel/AMD servers (e.g., most Lightsail instances)
-GOOS=linux GOARCH=amd64 go build -o ai-meal-planner-linux ./cmd/ai-meal-planner
-
-# For ARM servers (e.g., AWS Graviton)
-# GOOS=linux GOARCH=arm64 go build -o ai-meal-planner-linux ./cmd/ai-meal-planner
-```
-
-### 2. Copy to Server
-Use `scp` to upload the binary. Replace `your-key.pem` and the IP address with your own.
+### 1. Initial Setup on Server
+SSH into your server once to set up your keys:
 
 ```bash
-scp -i /path/to/your-key.pem ai-meal-planner-linux ubuntu@your-lightsail-ip:/home/ubuntu/
-```
-
-### 3. Setup on Server
-SSH into your server and run these commands once:
-
-```bash
-# Make the binary executable
-chmod +x ai-meal-planner-linux
-
-# Create the local data directory for recipes
+ssh your-server-alias
+# Create the local data directory
 mkdir -p data/recipes
+
+# Create a secure .env file with your API keys
+cat << 'EOF' > .env
+GHOST_API_URL="https://your-blog.com"
+GHOST_CONTENT_API_KEY="your_key"
+GEMINI_API_KEY="your_key"
+EOF
+chmod 600 .env
 ```
 
-### 4. Run the Application
-You need to provide the API keys. You can run it inline:
+### 2. Build and Deploy
+From your **local machine**, use the deployment script:
+
+```bash
+# Using an IP and PEM key
+./scripts/deploy.sh <REMOTE_IP> /path/to/key.pem
+
+# OR Using an SSH config alias
+./scripts/deploy.sh your-server-alias
+```
+
+### 3. Remote Management
+Use the remote control scripts to manage the app without manually SSHing in:
 
 ```bash
 # Ingest (Update Cache)
-export GHOST_URL="https://your-blog.com"
-export GHOST_CONTENT_API_KEY="your_ghost_key"
-export GEMINI_API_KEY="your_gemini_key"
-./ai-meal-planner-linux ingest
+./scripts/remote-ingest.sh your-server-alias
 
 # Generate Plan
-export GHOST_URL="https://your-blog.com"
-export GHOST_CONTENT_API_KEY="your_ghost_key"
-export GEMINI_API_KEY="your_gemini_key"
-./ai-meal-planner-linux plan -request "Vegetarian dinner for 2"
+./scripts/remote-plan.sh your-server-alias "Vegetarian dinner for 2"
 ```
-
-*Tip: Add the `export VAR="..."` lines to your `~/.bashrc` file so you don't have to type them every time.
 
 ---
 
