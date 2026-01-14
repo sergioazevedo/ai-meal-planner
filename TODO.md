@@ -44,3 +44,11 @@
   - Add error alerts if ingestion fails.
   - Implement smarter skipping for unchanged recipes (validate timestamp logic).
 
+## Phase 6: Interfaces (Next Steps)
+- [ ] **Telegram Bot Integration**
+  - Create a new `cmd/telegram-bot` entry point.
+  - Implement a simple loop that checks for messages (Long Polling) or Webhooks.
+  - Map user messages to the `Planner.GeneratePlan` function.
+  - Render the output as formatted Markdown messages back to the user.
+  - **Security:** Whitelist only your specific Telegram User ID.
+
