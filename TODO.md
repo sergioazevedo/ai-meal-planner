@@ -5,10 +5,18 @@
 - [x] Normalize HTML to JSON using Gemini (`internal/recipe`)
 - [x] Store normalized recipes locally (`internal/storage`)
 - [x] Basic CLI entry point to run ingestion (`cmd/ai-meal-planner`)
-- [ ] **Enhance Normalization (High Priority)**
+
+## Phase 1.5: Reliable LLM Inference (High Priority)
+- [ ] **Switch to Hybrid LLM Stack (Groq + Gemini)**
+  - Implement Groq API client for text generation (Normalization & Planning).
+  - Use Llama 3 (70B) or Mixtral for reliable, high-speed inference.
+  - Keep Gemini strictly for `text-embedding-004` (Embeddings) to bypass text rate limits.
+  - Update `.env` and `config` to support `GROQ_API_KEY`.
+- [ ] **Enhance Normalization**
   - Add `PrepTime` and `Servings` fields to `NormalizedRecipe` struct.
   - Update LLM prompt to extract/estimate these values from the full HTML.
   - Update unit and acceptance tests to verify these new fields.
+
 
 ## Phase 2: RAG Pipeline (Embeddings & Search)
 - [x] **Implement Embeddings Generation**
