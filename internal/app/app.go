@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/ghost"
@@ -70,7 +71,7 @@ func (a *App) IngestRecipes(ctx context.Context) error {
 			log.Printf("Warning: failed to clean up stale versions for '%s': %v", post.Title, err)
 		}
 
-		log.Printf("Normalizing '%s'வைக்...", post.Title)
+		log.Printf("Normalizing '%s'...", post.Title)
 		normalizedRecipe, err := recipe.NormalizeRecipeHTML(ctx, a.LlmClient, post)
 		if err != nil {
 			log.Printf("Failed to normalize '%s': %v", post.Title, err)
@@ -82,6 +83,9 @@ func (a *App) IngestRecipes(ctx context.Context) error {
 			continue
 		}
 		log.Printf("Successfully processed '%s'.", normalizedRecipe.Title)
+
+		// Wait 5 seconds to stay under Gemini Free Tier Rate Limits (15 RPM)
+		time.Sleep(5 * time.Second)
 	}
 	fmt.Println("Ingestion complete.")
 	return nil

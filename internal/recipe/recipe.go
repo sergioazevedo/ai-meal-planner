@@ -39,6 +39,7 @@ func NormalizeRecipeHTML(ctx context.Context, llmClient llm.LLMClient, post ghos
 	}
 	
 	Ensure the output is valid JSON. Do not include any other text in your response.
+	Return ONLY the raw JSON string. Do not wrap the response in markdown code blocks.
 
 	HTML Content for "%s":
 	%s

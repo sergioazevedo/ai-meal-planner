@@ -39,4 +39,8 @@
 - [x] **CI/CD & Deployment**
   - Setup build/release scripts. (Dockerfile created)
   - Create deployment documentation (`DEPLOY.md`).
+- [ ] **Automation & Monitoring**
+  - Setup hourly cron job for ingestion on VPS.
+  - Add error alerts if ingestion fails.
+  - Implement smarter skipping for unchanged recipes (validate timestamp logic).
 
