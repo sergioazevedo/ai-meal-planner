@@ -51,4 +51,9 @@
   - Map user messages to the `Planner.GeneratePlan` function.
   - Render the output as formatted Markdown messages back to the user.
   - **Security:** Whitelist only your specific Telegram User ID.
+  - **Feature: Recipe Clipper / Importer**
+    - Accept a URL sent by the user.
+    - Fetch the HTML content of the URL.
+    - Use Gemini to extract the recipe and format it as a Ghost Post (Title, HTML Body, Tags).
+    - **Upgrade:** Implement Ghost Admin API (Write Access) to create a new "Draft" post on the blog.
 
