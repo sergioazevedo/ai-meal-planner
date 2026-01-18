@@ -17,7 +17,8 @@ import (
 // App holds the application's dependencies.
 type App struct {
 	GhostClient ghost.Client
-	LlmClient   llm.LLMClient
+	TextGen     llm.TextGenerator
+	EmbedGen    llm.EmbeddingGenerator
 	RecipeStore *storage.RecipeStore
 	Planner     *planner.Planner
 }
@@ -26,13 +27,18 @@ type App struct {
 func NewApp(ctx context.Context, cfg *config.Config) (*App, func(), error) {
 	ghostClient := ghost.NewClient(cfg)
 
-	llmClient, err := llm.NewGeminiClient(ctx, cfg)
+	// Initialize Gemini for Embeddings
+	geminiClient, err := llm.NewGeminiClient(ctx, cfg)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create llm client: %w", err)
+		return nil, nil, fmt.Errorf("failed to create gemini client: %w", err)
 	}
+
+	// Initialize Groq for Text Generation
+	groqClient := llm.NewGroqClient(cfg)
+
 	cleanup := func() {
-		if err := llmClient.Close(); err != nil {
-			log.Printf("Warning: failed to close llm client: %v", err)
+		if err := geminiClient.Close(); err != nil {
+			log.Printf("Warning: failed to close gemini client: %v", err)
 		}
 	}
 
@@ -41,11 +47,12 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, func(), error) {
 		return nil, nil, fmt.Errorf("failed to create recipe store: %w", err)
 	}
 
-	mealPlanner := planner.NewPlanner(recipeStore, llmClient)
+	mealPlanner := planner.NewPlanner(recipeStore, groqClient, geminiClient)
 
 	return &App{
 		GhostClient: ghostClient,
-		LlmClient:   llmClient,
+		TextGen:     groqClient,
+		EmbedGen:    geminiClient,
 		RecipeStore: recipeStore,
 		Planner:     mealPlanner,
 	}, cleanup, nil
@@ -72,7 +79,7 @@ func (a *App) IngestRecipes(ctx context.Context) error {
 		}
 
 		log.Printf("Normalizing '%s'...", post.Title)
-		normalizedRecipe, err := recipe.NormalizeRecipeHTML(ctx, a.LlmClient, post)
+		normalizedRecipe, err := recipe.NormalizeRecipeHTML(ctx, a.TextGen, a.EmbedGen, post)
 		if err != nil {
 			log.Printf("Failed to normalize '%s': %v", post.Title, err)
 			continue

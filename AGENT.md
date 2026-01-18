@@ -4,6 +4,12 @@ This document describes the conceptual AI agents used in the Meal Planner projec
 
 ---
 
+## CLI Agent Operational Rules
+- **Code Execution:** Never start writing code or executing file modification commands without explicit confirmation or instruction from the user. Always propose the plan first and wait for approval.
+- **Code Architecture Review:** Before introducing any new types, interfaces, or abstractions to solve a problem, propose the idea to the user for review.
+
+---
+
 ## 1. Normalization Agent
 
 ### Purpose

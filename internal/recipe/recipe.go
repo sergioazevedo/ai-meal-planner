@@ -22,7 +22,7 @@ type NormalizedRecipe struct {
 }
 
 // NormalizeRecipeHTML takes HTML content and uses an LLM to normalize it into a structured Recipe.
-func NormalizeRecipeHTML(ctx context.Context, llmClient llm.LLMClient, post ghost.Post) (*NormalizedRecipe, error) {
+func NormalizeRecipeHTML(ctx context.Context, textGen llm.TextGenerator, embedGen llm.EmbeddingGenerator, post ghost.Post) (*NormalizedRecipe, error) {
 	prompt := fmt.Sprintf(`
 	You are a helpful assistant that extracts structured recipe information from HTML content.
 	Please extract the recipe title, ingredients, step-by-step instructions, and relevant tags from the following HTML.
@@ -45,7 +45,7 @@ func NormalizeRecipeHTML(ctx context.Context, llmClient llm.LLMClient, post ghos
 	%s
 	`, post.Title, post.HTML)
 
-	llmResponse, err := llmClient.GenerateContent(ctx, prompt)
+	llmResponse, err := textGen.GenerateContent(ctx, prompt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get LLM response: %w", err)
 	}
@@ -60,7 +60,7 @@ func NormalizeRecipeHTML(ctx context.Context, llmClient llm.LLMClient, post ghos
 	embeddingText := fmt.Sprintf("Title: %s\nTags: %v\nIngredients: %v\nPrep Time: %s",
 		normalizedRecipe.Title, normalizedRecipe.Tags, normalizedRecipe.Ingredients, normalizedRecipe.PrepTime)
 
-	embedding, err := llmClient.GenerateEmbedding(ctx, embeddingText)
+	embedding, err := embedGen.GenerateEmbedding(ctx, embeddingText)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate embedding: %w", err)
 	}

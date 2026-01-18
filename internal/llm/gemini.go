@@ -10,13 +10,6 @@ import (
 	"google.golang.org/api/option"
 )
 
-// LLMClient is an interface for a client that can interact with a large language model.
-type LLMClient interface {
-	GenerateContent(ctx context.Context, prompt string) (string, error)
-	GenerateEmbedding(ctx context.Context, text string) ([]float32, error)
-	Close() error
-}
-
 // geminiClient is a client for the Google Gemini API.
 type geminiClient struct {
 	client         *genai.Client
@@ -25,7 +18,7 @@ type geminiClient struct {
 }
 
 // NewGeminiClient creates a new Gemini API client.
-func NewGeminiClient(ctx context.Context, cfg *config.Config) (LLMClient, error) {
+func NewGeminiClient(ctx context.Context, cfg *config.Config) (Client, error) {
 	client, err := genai.NewClient(ctx, option.WithAPIKey(cfg.GeminiAPIKey))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Gemini client: %w", err)

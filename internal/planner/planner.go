@@ -27,21 +27,23 @@ type MealPlan struct {
 // Planner handles the generation of meal plans.
 type Planner struct {
 	recipeStore *storage.RecipeStore
-	llmClient   llm.LLMClient
+	textGen     llm.TextGenerator
+	embedGen    llm.EmbeddingGenerator
 }
 
 // NewPlanner creates a new Planner instance.
-func NewPlanner(store *storage.RecipeStore, llm llm.LLMClient) *Planner {
+func NewPlanner(store *storage.RecipeStore, textGen llm.TextGenerator, embedGen llm.EmbeddingGenerator) *Planner {
 	return &Planner{
 		recipeStore: store,
-		llmClient:   llm,
+		textGen:     textGen,
+		embedGen:    embedGen,
 	}
 }
 
 // GeneratePlan creates a meal plan based on a user request.
 func (p *Planner) GeneratePlan(ctx context.Context, userRequest string) (*MealPlan, error) {
 	// 1. Generate embedding for the user request to find relevant recipes
-	queryEmbedding, err := p.llmClient.GenerateEmbedding(ctx, userRequest)
+	queryEmbedding, err := p.embedGen.GenerateEmbedding(ctx, userRequest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate embedding for request: %w", err)
 	}
@@ -92,7 +94,7 @@ Do not include any other text or formatting in your response.
 `, userRequest, contextBuilder.String())
 
 	// 4. Call Gemini to generate the plan
-	llmResponse, err := p.llmClient.GenerateContent(ctx, prompt)
+	llmResponse, err := p.textGen.GenerateContent(ctx, prompt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate meal plan from LLM: %w", err)
 	}
