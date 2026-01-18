@@ -5,7 +5,7 @@ A smart CLI tool that connects to your **Ghost CMS** blog, learns your recipes u
 ## 🚀 Features
 
 *   **Ghost CMS Integration**: Automatically fetches and updates recipes from your blog.
-*   **AI Normalization**: Uses Gemini 1.5 Pro to extract structured data (ingredients, steps, prep time, servings) from raw HTML posts.
+*   **AI Normalization**: Uses Gemini 1.5 Pro and Groq Llama3 70b to extract structured data (ingredients, steps, prep time, servings) from raw HTML posts.
 *   **RAG Pipeline**: Generates vector embeddings for every recipe and performs local semantic search to find the best matches for your cravings.
 *   **Smart Planning**: Creates a complete 7-day meal plan with a consolidated shopping list.
 *   **Zero-Database**: Uses a highly efficient flat-file storage system with versioned caching.
@@ -15,6 +15,7 @@ A smart CLI tool that connects to your **Ghost CMS** blog, learns your recipes u
 You need the following API keys:
 1.  **Ghost Content API Key & URL**: To fetch your recipes.
 2.  **Google Gemini API Key**: For LLM processing and embeddings (free tier available).
+3.  **Groq API Key**: For fast LLM responses (free tier available).
 
 ## ⚡ Quick Start
 
@@ -31,6 +32,7 @@ Set the required environment variables. You can export them in your shell or use
 export GHOST_URL="https://your-blog.com"
 export GHOST_API_KEY="your_ghost_content_key"
 export GEMINI_API_KEY="your_google_gemini_key"
+export GROQ_API_KEY="your_groq_api_key"
 ```
 
 ### 3. Run the CLI

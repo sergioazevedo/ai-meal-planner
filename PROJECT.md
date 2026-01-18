@@ -8,6 +8,8 @@ It uses a **hybrid RAG pipeline**: semantic search + external LLM (Gemini) for m
 
 ## Architecture & Workflow
 
+**Note on LLM Providers**: The project initially used the Google Gemini API. However, due to the free tier's rate limit of 20 requests per day, Groq was added as a second LLM provider for text generation tasks to increase throughput and reduce latency.
+
 ### Step 1: Fetch & Normalize Recipes
 1. Fetch posts from **Ghost CMS** using the Content API.
 2. Send each post’s **HTML content** to an LLM parser:

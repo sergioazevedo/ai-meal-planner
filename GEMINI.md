@@ -6,13 +6,23 @@ This document provides technical details on how our Go application interacts wit
 
 ## Configuration
 
-To use the Gemini API, you must set the following environment variable:
+To use the available LLMs, you must set the following environment variables:
+
+### Gemini
 
 ```bash
 export GEMINI_API_KEY="your_api_key_here"
 ```
 
-The application will fail to start if this key is not provided.
+See the [Groq API Integration Guide](GROQ.md) for details on the Groq API.
+
+### Groq
+
+```bash
+export GROQ_API_KEY="your_api_key_here"
+```
+
+The application will fail to start if the required keys are not provided.
 
 ---
 
