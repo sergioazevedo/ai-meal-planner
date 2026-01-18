@@ -1,35 +1,34 @@
 package recipe
 
 import (
+	"ai-meal-planner/internal/ghost"
 	"context"
 	"errors"
 	"strings"
 	"testing"
-	"ai-meal-planner/internal/ghost"
 )
 
-// mockLLMClient is a mock implementation of the llm.LLMClient interface for testing.
-type mockLLMClient struct {
-	response    string
+type MockEmbedingGenerator struct {
 	shouldError bool
 }
 
-func (m *mockLLMClient) GenerateContent(ctx context.Context, prompt string) (string, error) {
+type MockTextGenerator struct {
+	shouldError bool
+	response    string
+}
+
+func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (string, error) {
 	if m.shouldError {
 		return "", errors.New("LLM error")
 	}
 	return m.response, nil
 }
 
-func (m *mockLLMClient) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
+func (m *MockEmbedingGenerator) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
 	if m.shouldError {
 		return nil, errors.New("LLM error")
 	}
 	return []float32{0.1, 0.2, 0.3}, nil
-}
-
-func (m *mockLLMClient) Close() error {
-	return nil
 }
 
 func TestNormalizeRecipeHTML(t *testing.T) {
@@ -41,7 +40,7 @@ func TestNormalizeRecipeHTML(t *testing.T) {
 	}
 
 	t.Run("Success", func(t *testing.T) {
-		mockClient := &mockLLMClient{
+		mockTextGeneration := &MockTextGenerator{
 			response: `{
 				"title": "Test Recipe",
 				"ingredients": ["Ingredient 1", "Ingredient 2"],
@@ -51,8 +50,9 @@ func TestNormalizeRecipeHTML(t *testing.T) {
 				"servings": "4"
 			}`,
 		}
+		mockEmbedingGenerator := &MockEmbedingGenerator{}
 
-		normalizedRecipe, err := NormalizeRecipeHTML(ctx, mockClient, post)
+		normalizedRecipe, err := NormalizeRecipeHTML(ctx, mockTextGeneration, mockEmbedingGenerator, post)
 		if err != nil {
 			t.Fatalf("Expected no error, got %v", err)
 		}
@@ -81,9 +81,10 @@ func TestNormalizeRecipeHTML(t *testing.T) {
 	})
 
 	t.Run("LLMError", func(t *testing.T) {
-		mockClient := &mockLLMClient{shouldError: true}
+		mockClient := &MockTextGenerator{shouldError: true}
+		mockEmbedingGenerator := &MockEmbedingGenerator{}
 
-		_, err := NormalizeRecipeHTML(ctx, mockClient, post)
+		_, err := NormalizeRecipeHTML(ctx, mockClient, mockEmbedingGenerator, post)
 		if err == nil {
 			t.Fatal("Expected an error from the LLM client, got nil")
 		}
@@ -94,9 +95,10 @@ func TestNormalizeRecipeHTML(t *testing.T) {
 	})
 
 	t.Run("InvalidJSON", func(t *testing.T) {
-		mockClient := &mockLLMClient{response: "this is not json"}
+		mockTextGeneration := &MockTextGenerator{response: "this is not json"}
+		mockEmbedingGenerator := &MockEmbedingGenerator{}
 
-		_, err := NormalizeRecipeHTML(ctx, mockClient, post)
+		_, err := NormalizeRecipeHTML(ctx, mockTextGeneration, mockEmbedingGenerator, post)
 		if err == nil {
 			t.Fatal("Expected an error for invalid JSON, got nil")
 		}

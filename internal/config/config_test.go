@@ -16,6 +16,7 @@ func TestNewFromEnv(t *testing.T) {
 		setEnv("GHOST_API_URL", "http://ghost.test")
 		setEnv("GHOST_CONTENT_API_KEY", "ghost_key")
 		setEnv("GEMINI_API_KEY", "gemini_key")
+		setEnv("GROQ_API_KEY", "groq_key")
 
 		cfg, err := NewFromEnv()
 		if err != nil {
@@ -30,11 +31,15 @@ func TestNewFromEnv(t *testing.T) {
 		if cfg.GeminiAPIKey != "gemini_key" {
 			t.Errorf("Expected GeminiAPIKey to be 'gemini_key', got '%s'", cfg.GeminiAPIKey)
 		}
+		if cfg.GroqAPIKey != "groq_key" {
+			t.Errorf("Expected GroqAPIKey to be 'groq_key', got '%s'", cfg.GroqAPIKey)
+		}
 	})
 
 	t.Run("MissingGhostURL", func(t *testing.T) {
 		setEnv("GHOST_CONTENT_API_KEY", "ghost_key")
 		setEnv("GEMINI_API_KEY", "gemini_key")
+		setEnv("GROQ_API_KEY", "groq_key")
 
 		// Unset GHOST_API_URL specifically for this test
 		os.Unsetenv("GHOST_API_URL")
@@ -52,6 +57,7 @@ func TestNewFromEnv(t *testing.T) {
 	t.Run("MissingGhostAPIKey", func(t *testing.T) {
 		setEnv("GHOST_API_URL", "http://ghost.test")
 		setEnv("GEMINI_API_KEY", "gemini_key")
+		setEnv("GROQ_API_KEY", "groq_key")
 
 		os.Unsetenv("GHOST_CONTENT_API_KEY")
 
@@ -68,6 +74,7 @@ func TestNewFromEnv(t *testing.T) {
 	t.Run("MissingGeminiAPIKey", func(t *testing.T) {
 		setEnv("GHOST_API_URL", "http://ghost.test")
 		setEnv("GHOST_CONTENT_API_KEY", "ghost_key")
+		setEnv("GROQ_API_KEY", "groq_key")
 
 		os.Unsetenv("GEMINI_API_KEY")
 
@@ -76,6 +83,23 @@ func TestNewFromEnv(t *testing.T) {
 			t.Fatal("Expected an error for missing GEMINI_API_KEY, got nil")
 		}
 		expectedError := "GEMINI_API_KEY environment variable not set"
+		if err.Error() != expectedError {
+			t.Errorf("Expected error '%s', got '%s'", expectedError, err.Error())
+		}
+	})
+
+	t.Run("MissingGroqAPIKey", func(t *testing.T) {
+		setEnv("GHOST_API_URL", "http://ghost.test")
+		setEnv("GHOST_CONTENT_API_KEY", "ghost_key")
+		setEnv("GEMINI_API_KEY", "gemini_key")
+
+		os.Unsetenv("GROQ_API_KEY")
+
+		_, err := NewFromEnv()
+		if err == nil {
+			t.Fatal("Expected an error for missing GROQ_API_KEY, got nil")
+		}
+		expectedError := "GROQ_API_KEY environment variable not set"
 		if err.Error() != expectedError {
 			t.Errorf("Expected error '%s', got '%s'", expectedError, err.Error())
 		}

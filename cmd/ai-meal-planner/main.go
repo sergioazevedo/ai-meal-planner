@@ -9,6 +9,10 @@ import (
 
 	"ai-meal-planner/internal/app"
 	"ai-meal-planner/internal/config"
+	"ai-meal-planner/internal/ghost"
+	"ai-meal-planner/internal/llm"
+	"ai-meal-planner/internal/planner"
+	"ai-meal-planner/internal/storage"
 )
 
 func main() {
@@ -19,11 +23,24 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	application, cleanup, err := app.NewApp(ctx, cfg)
+	ghostClient := ghost.NewClient(cfg)
+
+	geminiClient, err := llm.NewGeminiClient(ctx, cfg)
 	if err != nil {
-		log.Fatalf("Failed to initialize application: %v", err)
+		log.Fatalf("Failed to initialize Gemini client: %v", err)
 	}
-	defer cleanup()
+	defer geminiClient.Close()
+
+	groqClient := llm.NewGroqClient(cfg)
+
+	recipeStore, err := storage.NewRecipeStore("data/recipes")
+	if err != nil {
+		log.Fatalf("Failed to initialize recipe store: %v", err)
+	}
+
+	mealPlanner := planner.NewPlanner(recipeStore, groqClient, geminiClient)
+
+	application := app.NewApp(ghostClient, groqClient, geminiClient, recipeStore, mealPlanner)
 
 	if len(os.Args) < 2 {
 		printUsage()

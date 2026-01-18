@@ -9,20 +9,23 @@ import (
 	"ai-meal-planner/internal/storage"
 )
 
-type mockPlannerLLM struct {
-	embeddingResponse []float32
-	contentResponse   string
+type MockEmbedingGenerator struct{}
+
+func (m *MockEmbedingGenerator) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
+	return []float32{1.0, 0.0}, nil // Matches Pasta
 }
 
-func (m *mockPlannerLLM) GenerateContent(ctx context.Context, prompt string) (string, error) {
-	return m.contentResponse, nil
-}
+type MockTextGenerator struct{}
 
-func (m *mockPlannerLLM) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
-	return m.embeddingResponse, nil
+func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (string, error) {
+	return `{
+			"plan": [
+				{"day": "Monday", "recipe_title": "Pasta", "note": "Yum"}
+			],
+			"shopping_list": ["Pasta", "Tomato"],
+			"total_prep_estimate": "30 mins"
+		}`, nil
 }
-
-func (m *mockPlannerLLM) Close() error { return nil }
 
 func TestGeneratePlan(t *testing.T) {
 	ctx := context.Background()
@@ -38,19 +41,7 @@ func TestGeneratePlan(t *testing.T) {
 	_ = store.Save("1", "2023-01-01T00:00:00Z", rec1)
 	_ = store.Save("2", "2023-01-01T00:00:00Z", rec2)
 
-	// 3. Mock LLM
-	mockLLM := &mockPlannerLLM{
-		embeddingResponse: []float32{1.0, 0.0}, // Matches Pasta
-		contentResponse: `{
-			"plan": [
-				{"day": "Monday", "recipe_title": "Pasta", "note": "Yum"}
-			],
-			"shopping_list": ["Pasta", "Tomato"],
-			"total_prep_estimate": "30 mins"
-		}`,
-	}
-
-	planner := NewPlanner(store, mockLLM)
+	planner := NewPlanner(store, &MockTextGenerator{}, &MockEmbedingGenerator{})
 
 	// 4. Run GeneratePlan
 	plan, err := planner.GeneratePlan(ctx, "I want pasta")

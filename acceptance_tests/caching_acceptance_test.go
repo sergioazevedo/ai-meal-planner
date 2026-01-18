@@ -26,10 +26,13 @@ func (m *mockGhostClient) FetchRecipes() ([]ghost.Post, error) {
 
 // --- Mock LLM Client ---
 type mockLLMClient struct {
+}
+
+type MockTextGenerator struct {
 	generateContentCalls int
 }
 
-func (m *mockLLMClient) GenerateContent(ctx context.Context, prompt string) (string, error) {
+func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (string, error) {
 	m.generateContentCalls++
 	// Determine if it's a normalization or a planning request based on the prompt content
 	if strings.Contains(prompt, "extract structured recipe information") {
@@ -42,7 +45,7 @@ func (m *mockLLMClient) GenerateContent(ctx context.Context, prompt string) (str
 			"servings": "1"
 		}`, nil
 	}
-	
+
 	return `{
 		"plan": [
 			{"day": "Monday", "recipe_title": "Test Recipe", "note": "Only one available"}
@@ -52,12 +55,12 @@ func (m *mockLLMClient) GenerateContent(ctx context.Context, prompt string) (str
 	}`, nil
 }
 
-func (m *mockLLMClient) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
-	return []float32{0.0, 0.0}, nil
+type MockEmbedingGenerator struct {
+	shouldError bool
 }
 
-func (m *mockLLMClient) Close() error {
-	return nil
+func (m *MockEmbedingGenerator) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
+	return []float32{0.0, 0.0}, nil
 }
 
 // --- Acceptance Test ---
@@ -73,19 +76,16 @@ func TestFullWorkflow(t *testing.T) {
 
 	// 2. Initialize mocks and real store
 	ghostClient := &mockGhostClient{}
-	llmClient := &mockLLMClient{}
+	mockTextGenerator := &MockTextGenerator{}
+	mockEmbedingGenerator := &MockEmbedingGenerator{}
 	recipeStore, err := storage.NewRecipeStore(tempDir)
 	if err != nil {
 		t.Fatalf("Failed to create RecipeStore: %v", err)
 	}
 
 	// 3. Create the application instance with mocks
-	application := &app.App{
-		GhostClient: ghostClient,
-		LlmClient:   llmClient,
-		RecipeStore: recipeStore,
-		Planner:     planner.NewPlanner(recipeStore, llmClient),
-	}
+	mealPlanner := planner.NewPlanner(recipeStore, mockTextGenerator, mockEmbedingGenerator)
+	application := app.NewApp(ghostClient, mockTextGenerator, mockEmbedingGenerator, recipeStore, mealPlanner)
 
 	// --- 4. Step 1: Ingestion ---
 	t.Log("--- Step 1: Ingesting Recipes ---")
@@ -93,10 +93,10 @@ func TestFullWorkflow(t *testing.T) {
 		t.Fatalf("Ingestion failed: %v", err)
 	}
 
-	if llmClient.generateContentCalls != 1 {
-		t.Errorf("Expected 1 call to LLM for normalization, got %d", llmClient.generateContentCalls)
+	if mockTextGenerator.generateContentCalls != 1 {
+		t.Errorf("Expected 1 call to LLM for normalization, got %d", mockTextGenerator.generateContentCalls)
 	}
-	
+
 	updatedAt := "2023-10-27T10:00:00Z"
 	if !recipeStore.Exists("1", updatedAt) {
 		t.Errorf("Expected recipe to be cached")
@@ -105,13 +105,13 @@ func TestFullWorkflow(t *testing.T) {
 	// --- 5. Step 2: Planning ---
 	t.Log("--- Step 2: Generating Meal Plan ---")
 	// Reset counter for planning step
-	llmClient.generateContentCalls = 0
+	mockTextGenerator.generateContentCalls = 0
 
 	if err := application.GenerateMealPlan(ctx, "Give me something simple"); err != nil {
 		t.Fatalf("Meal planning failed: %v", err)
 	}
 
-	if llmClient.generateContentCalls != 1 {
-		t.Errorf("Expected 1 call to LLM for planning, got %d", llmClient.generateContentCalls)
+	if mockTextGenerator.generateContentCalls != 1 {
+		t.Errorf("Expected 1 call to LLM for planning, got %d", mockTextGenerator.generateContentCalls)
 	}
 }
