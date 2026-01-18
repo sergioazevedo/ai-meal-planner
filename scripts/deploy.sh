@@ -27,5 +27,11 @@ else
     scp "$BINARY_NAME" "$REMOTE_USER@$REMOTE_HOST:/home/$REMOTE_USER/"
 fi
 
-echo "Deploy complete. Binary is at /home/$REMOTE_USER/$BINARY_NAME"
-echo "Don't forget to run: ssh $REMOTE_HOST 'chmod +x /home/$REMOTE_USER/$BINARY_NAME'"
+echo "Making the binary executable on $REMOTE_HOST..."
+if [ -n "$PEM_KEY" ]; then
+    ssh -i "$PEM_KEY" "$REMOTE_USER@$REMOTE_HOST" "chmod +x /home/$REMOTE_USER/$BINARY_NAME"
+else
+    ssh "$REMOTE_USER@$REMOTE_HOST" "chmod +x /home/$REMOTE_USER/$BINARY_NAME"
+fi
+
+echo "Deploy complete. Binary is now executable at /home/$REMOTE_USER/$BINARY_NAME"

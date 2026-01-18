@@ -17,7 +17,6 @@
   - Update LLM prompt to extract/estimate these values from the full HTML.
   - Update unit and acceptance tests to verify these new fields.
 
-
 ## Phase 2: RAG Pipeline (Embeddings & Search)
 - [x] **Implement Embeddings Generation**
   - Add functionality to generate vector embeddings for normalized recipes (using Gemini Embedding API or local model).
