@@ -7,15 +7,15 @@
 - [x] Basic CLI entry point to run ingestion (`cmd/ai-meal-planner`)
 
 ## Phase 1.5: Reliable LLM Inference (High Priority)
-- [ ] **Switch to Hybrid LLM Stack (Groq + Gemini)**
-  - Implement Groq API client for text generation (Normalization & Planning).
-  - Use Llama 3 (70B) or Mixtral for reliable, high-speed inference.
-  - Keep Gemini strictly for `text-embedding-004` (Embeddings) to bypass text rate limits.
-  - Update `.env` and `config` to support `GROQ_API_KEY`.
-- [ ] **Enhance Normalization**
-  - Add `PrepTime` and `Servings` fields to `NormalizedRecipe` struct.
-  - Update LLM prompt to extract/estimate these values from the full HTML.
-  - Update unit and acceptance tests to verify these new fields.
+- [x] **Switch to Hybrid LLM Stack (Groq + Gemini)**
+  - [x] Implement Groq API client for text generation (Normalization & Planning).
+  - [x] Use Llama 3 (70B) or Mixtral for reliable, high-speed inference.
+  - [x] Keep Gemini strictly for `text-embedding-004` (Embeddings) to bypass text rate limits.
+  - [x] Update `.env` and `config` to support `GROQ_API_KEY`.
+- [x] **Enhance Normalization**
+  - [x] Add `PrepTime` and `Servings` fields to `NormalizedRecipe` struct.
+  - [x] Update LLM prompt to extract/estimate these values from the full HTML.
+  - [x] Update unit and acceptance tests to verify these new fields.
 
 ## Phase 2: RAG Pipeline (Embeddings & Search)
 - [x] **Implement Embeddings Generation**
