@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"ai-meal-planner/internal/app"
+	"ai-meal-planner/internal/clipper"
 	"ai-meal-planner/internal/ghost"
 	"ai-meal-planner/internal/planner"
 	"ai-meal-planner/internal/storage"
@@ -24,6 +25,10 @@ func (m *mockGhostClient) FetchRecipes() ([]ghost.Post, error) {
 	}, nil
 }
 
+func (m *mockGhostClient) CreatePost(title, html string, publish bool) (*ghost.Post, error) {
+	return &ghost.Post{ID: "new-id", Title: title, HTML: html}, nil
+}
+
 // --- Mock LLM Client ---
 type mockLLMClient struct {
 }
@@ -34,7 +39,6 @@ type MockTextGenerator struct {
 
 func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (string, error) {
 	m.generateContentCalls++
-	// Determine if it's a normalization or a planning request based on the prompt content
 	if strings.Contains(prompt, "extract structured recipe information") {
 		return `{
 			"title": "Test Recipe",
@@ -85,7 +89,8 @@ func TestFullWorkflow(t *testing.T) {
 
 	// 3. Create the application instance with mocks
 	mealPlanner := planner.NewPlanner(recipeStore, mockTextGenerator, mockEmbedingGenerator)
-	application := app.NewApp(ghostClient, mockTextGenerator, mockEmbedingGenerator, recipeStore, mealPlanner)
+	recipeClipper := clipper.NewClipper(ghostClient, mockTextGenerator)
+	application := app.NewApp(ghostClient, mockTextGenerator, mockEmbedingGenerator, recipeStore, mealPlanner, recipeClipper)
 
 	// --- 4. Step 1: Ingestion ---
 	t.Log("--- Step 1: Ingesting Recipes ---")
