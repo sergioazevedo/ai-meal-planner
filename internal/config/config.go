@@ -17,6 +17,8 @@ type Config struct {
 	TelegramBotToken    string
 	TelegramWebhookURL  string
 	TelegramAllowUserID int64
+
+	RecipeStoragePath string
 }
 
 // NewFromEnv creates a new Config object from environment variables.
@@ -56,6 +58,11 @@ func NewFromEnv() (*Config, error) {
 		fmt.Sscanf(telegramAllowUserIDStr, "%d", &telegramAllowUserID)
 	}
 
+	recipeStoragePath := os.Getenv("RECIPE_STORAGE_PATH")
+	if recipeStoragePath == "" {
+		recipeStoragePath = "data/recipes"
+	}
+
 	return &Config{
 		GhostURL:            ghostURL,
 		GhostContentKey:     ghostContentKey,
@@ -65,5 +72,6 @@ func NewFromEnv() (*Config, error) {
 		TelegramBotToken:    telegramBotToken,
 		TelegramWebhookURL:  telegramWebhookURL,
 		TelegramAllowUserID: telegramAllowUserID,
+		RecipeStoragePath:   recipeStoragePath,
 	}, nil
 }

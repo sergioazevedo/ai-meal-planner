@@ -39,7 +39,7 @@ func main() {
 	ghostClient := ghost.NewClient(cfg)
 
 	// 4. Initialize Storage
-	store, err := storage.NewRecipeStore("recipes_data")
+	store, err := storage.NewRecipeStore(cfg.RecipeStoragePath)
 	if err != nil {
 		log.Fatalf("Failed to initialize recipe store: %v", err)
 	}

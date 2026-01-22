@@ -34,7 +34,7 @@ func main() {
 
 	groqClient := llm.NewGroqClient(cfg)
 
-	recipeStore, err := storage.NewRecipeStore("data/recipes")
+	recipeStore, err := storage.NewRecipeStore(cfg.RecipeStoragePath)
 	if err != nil {
 		log.Fatalf("Failed to initialize recipe store: %v", err)
 	}
