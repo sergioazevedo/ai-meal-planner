@@ -66,8 +66,15 @@ HTML Content:
 		return nil, fmt.Errorf("ai extraction failed: %w", err)
 	}
 
+	// Sanitize LLM response (remove markdown code blocks if present)
+	jsonContent := strings.TrimSpace(llmResponse)
+	jsonContent = strings.TrimPrefix(jsonContent, "```json")
+	jsonContent = strings.TrimPrefix(jsonContent, "```")
+	jsonContent = strings.TrimSuffix(jsonContent, "```")
+	jsonContent = strings.TrimSpace(jsonContent)
+
 	var extracted ExtractedRecipe
-	if err := json.Unmarshal([]byte(llmResponse), &extracted); err != nil {
+	if err := json.Unmarshal([]byte(jsonContent), &extracted); err != nil {
 		return nil, fmt.Errorf("failed to parse AI response: %w. Response: %s", err, llmResponse)
 	}
 

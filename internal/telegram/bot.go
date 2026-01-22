@@ -117,40 +117,53 @@ func (b *Bot) processMessage(msg *tgbotapi.Message) {
 	ctx := context.Background()
 	var finalText string
 
-	if isURL {
+		if isURL {
 
-		// --- Clipper Flow ---
+			// --- Clipper Flow ---
 
-		post, err := b.clipper.ClipURL(ctx, msg.Text)
-		if err != nil {
-			log.Printf("Error clipping recipe: %v", err)
-			finalText = fmt.Sprintf("❌ *Error clipping recipe:*\n`%v`", err)
+			post, err := b.clipper.ClipURL(ctx, msg.Text)
 
-		} else {
+			if err != nil {
 
-			finalText = fmt.Sprintf("✅ *Recipe Saved & Published!*\n\n*Title:* %s\n*URL:* %s/%s", post.Title, b.cfg.GhostURL, post.ID)
+				log.Printf("Error clipping recipe: %v", err)
 
-		}
+				// Sanitize error for Markdown
 
-	} else {
+				safeErr := strings.ReplaceAll(err.Error(), "`", "'")
 
-		// --- Planner Flow ---
+				finalText = fmt.Sprintf("❌ *Error clipping recipe:*\n```\n%v\n```", safeErr)
 
-		log.Printf("Generating plan for request: %s", msg.Text)
+			} else {
 
-		plan, err := b.planner.GeneratePlan(ctx, msg.Text)
+				finalText = fmt.Sprintf("✅ *Recipe Saved & Published!*\n\n*Title:* %s\n*URL:* %s/%s", post.Title, b.cfg.GhostURL, post.ID)
 
-		if err != nil {
-			log.Printf("Error generating plan: %v", err)
-			finalText = fmt.Sprintf("❌ *Error generating plan:*\n`%v`", err)
+			}
 
 		} else {
 
-			finalText = formatPlanMarkdown(plan)
+			// --- Planner Flow ---
+
+			log.Printf("Generating plan for request: %s", msg.Text)
+
+			plan, err := b.planner.GeneratePlan(ctx, msg.Text)
+
+			if err != nil {
+
+				log.Printf("Error generating plan: %v", err)
+
+				safeErr := strings.ReplaceAll(err.Error(), "`", "'")
+
+				finalText = fmt.Sprintf("❌ *Error generating plan:*\n```\n%v\n```", safeErr)
+
+			} else {
+
+				finalText = formatPlanMarkdown(plan)
+
+			}
 
 		}
 
-	}
+	
 
 	// 2. Edit the original message with the result
 
