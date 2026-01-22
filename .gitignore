@@ -30,6 +30,10 @@ go.work.sum
 # Binaries directory
 bin/
 
+# Data directories
+data/
+recipes_data/
+
 # Editor/IDE
 # .idea/
 # .vscode/
