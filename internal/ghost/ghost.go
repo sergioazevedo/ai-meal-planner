@@ -41,8 +41,10 @@ type ghostClient struct {
 // NewClient creates a new Ghost API client.
 func NewClient(cfg *config.Config) Client {
 	return &ghostClient{
-		httpClient: &http.Client{},
-		config:     cfg,
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+		},
+		config: cfg,
 	}
 }
 
