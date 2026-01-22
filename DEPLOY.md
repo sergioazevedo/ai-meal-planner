@@ -96,3 +96,95 @@ Add one of the following lines to the end of the file to sync every hour at minu
 ```
 
 *Note: The `>> ingest.log 2>&1` part saves all output (and errors) to a log file so you can check if it's working.
+
+---
+
+## 🤖 Setting up the Telegram Bot (VPS)
+
+Unlike the CLI, the bot needs to run continuously to listen for messages.
+
+### 1. Update Environment Variables
+SSH into your server and add the new Telegram variables to your `.env` file:
+
+```bash
+nano .env
+
+# Add these lines:
+TELEGRAM_BOT_TOKEN="your_token"
+TELEGRAM_ALLOW_USER_ID="12345678"
+# This must match your domain and the path in Nginx below
+TELEGRAM_WEBHOOK_URL="https://your-blog.com/webhook"
+```
+
+### 2. Configure Systemd
+Create a service file to keep the bot running 24/7 and restart it if it crashes.
+
+```bash
+sudo nano /etc/systemd/system/meal-planner-bot.service
+```
+
+Paste this content (adjust paths if needed):
+
+```ini
+[Unit]
+Description=AI Meal Planner Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu
+# Load environment variables from the file we created
+EnvironmentFile=/home/ubuntu/.env
+# Run the binary
+ExecStart=/home/ubuntu/telegram-bot-linux
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start the service:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable meal-planner-bot
+sudo systemctl start meal-planner-bot
+```
+
+### 3. Configure Nginx (Reverse Proxy)
+You need to pass the HTTPS request from Telegram to your local bot.
+
+**Important:** If you run multiple blogs, ensure this block is added to the specific server configuration for the subdomain used in your `TELEGRAM_WEBHOOK_URL` (e.g., `/etc/nginx/sites-available/youtblog.me`).
+
+```nginx
+server {
+    server_name yourblog.me; # Your specific subdomain
+
+    # ... existing ghost configuration ...
+
+    # Add this location block for the bot
+    location /webhook {
+        proxy_pass http://127.0.0.1:8080/webhook;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+**Verify and Reload Nginx:**
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+### 4. Deploy Updates
+The `./scripts/deploy.sh` script is now configured to build both binaries, upload them, and automatically restart the `meal-planner-bot` service.
+
+```bash
+./scripts/deploy.sh your-server-alias
+```
+
+*Note: The very first time you deploy, you must manually create the systemd service file as described in Step 2 above.*

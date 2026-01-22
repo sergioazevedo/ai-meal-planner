@@ -5,9 +5,10 @@ A smart CLI tool that connects to your **Ghost CMS** blog, learns your recipes u
 ## 🚀 Features
 
 *   **Ghost CMS Integration**: Automatically fetches and updates recipes from your blog.
-*   **AI Normalization**: Uses Gemini 1.5 Pro and Groq Llama3 70b to extract structured data (ingredients, steps, prep time, servings) from raw HTML posts.
+*   **AI Normalization**: Uses Gemini 1.5 Pro and Groq Llama3 7b to extract structured data (ingredients, steps, prep time, servings) from raw HTML posts.
 *   **RAG Pipeline**: Generates vector embeddings for every recipe and performs local semantic search to find the best matches for your cravings.
 *   **Smart Planning**: Creates a complete 7-day meal plan with a consolidated shopping list.
+*   **Telegram Bot Interface**: Chat with your planner, request meals, and get instant markdown plans on your phone.
 *   **Zero-Database**: Uses a highly efficient flat-file storage system with versioned caching.
 
 ## 🛠️ Prerequisites
@@ -49,6 +50,31 @@ Ask for a plan using natural language.
 go run ./cmd/ai-meal-planner plan -request "I want healthy vegetarian dinners, quick to make"
 ```
 
+## 🤖 Telegram Bot (Optional)
+
+You can interact with your meal planner directly via Telegram.
+
+### 1. Create a Bot
+Message [@BotFather](https://t.me/BotFather) on Telegram to create a new bot and get your **API Token**.
+
+### 2. Local Development with Localtunnel
+Since Telegram uses webhooks, your local server must be accessible from the internet. We recommend `localtunnel` for quick setup (no signup required):
+
+```bash
+# 1. Start your local tunnel in a separate terminal
+npx localtunnel --port 8080
+
+# 2. Copy the generated URL (e.g., https://fresh-apple-move.loca.lt)
+
+# 3. Export the required variables
+export TELEGRAM_BOT_TOKEN="your_bot_token"
+export TELEGRAM_ALLOW_USER_ID="your_numeric_id"
+export TELEGRAM_WEBHOOK_URL="https://fresh-apple-move.loca.lt/webhook"
+
+# 4. Run the bot
+go run ./cmd/telegram-bot
+```
+
 ## 📦 Deployment
 
 This application compiles to a single static binary, making it perfect for low-cost servers like **AWS Lightsail**.
@@ -68,8 +94,9 @@ This application compiles to a single static binary, making it perfect for low-c
 ## 🔮 Roadmap
 
 *   [x] Core CLI & RAG Pipeline
+*   [x] Telegram Bot Integration
 *   [ ] Shopping List Export (PDF/Email)
-*   [ ] WhatsApp Interface (Chat with your planner)
+*   [ ] Recipe Clipper (Import from any URL)
 *   [ ] User Accounts (Multi-user support)
 
 ## 📄 License

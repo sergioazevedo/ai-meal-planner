@@ -2,7 +2,8 @@
 set -e
 
 # Configuration
-BINARY_NAME="ai-meal-planner-linux"
+CLI_BINARY="ai-meal-planner-linux"
+BOT_BINARY="telegram-bot-linux"
 REMOTE_USER="ubuntu"
 REMOTE_HOST="${1}"
 PEM_KEY="${2}"
@@ -14,24 +15,40 @@ if [ -z "$REMOTE_HOST" ]; then
     exit 1
 fi
 
-echo "Building for Linux..."
-GOOS=linux GOARCH=amd64 go build -o "$BINARY_NAME" ./cmd/ai-meal-planner
+echo "Building binaries for Linux..."
+mkdir -p bin
+GOOS=linux GOARCH=amd64 go build -o "bin/$CLI_BINARY" ./cmd/ai-meal-planner
+GOOS=linux GOARCH=amd64 go build -o "bin/$BOT_BINARY" ./cmd/telegram-bot
 
 echo "Uploading to $REMOTE_HOST..."
 
 if [ -n "$PEM_KEY" ]; then
     # Use provided key
-    scp -i "$PEM_KEY" "$BINARY_NAME" "$REMOTE_USER@$REMOTE_HOST:/home/$REMOTE_USER/"
+    scp -i "$PEM_KEY" "bin/$CLI_BINARY" "bin/$BOT_BINARY" "$REMOTE_USER@$REMOTE_HOST:/home/$REMOTE_USER/"
 else
     # Use SSH config or agent
-    scp "$BINARY_NAME" "$REMOTE_USER@$REMOTE_HOST:/home/$REMOTE_USER/"
+    scp "bin/$CLI_BINARY" "bin/$BOT_BINARY" "$REMOTE_USER@$REMOTE_HOST:/home/$REMOTE_USER/"
 fi
 
-echo "Making the binary executable on $REMOTE_HOST..."
+echo "Making binaries executable on $REMOTE_HOST..."
+CMD="chmod +x /home/$REMOTE_USER/$CLI_BINARY /home/$REMOTE_USER/$BOT_BINARY"
+
 if [ -n "$PEM_KEY" ]; then
-    ssh -i "$PEM_KEY" "$REMOTE_USER@$REMOTE_HOST" "chmod +x /home/$REMOTE_USER/$BINARY_NAME"
+    ssh -i "$PEM_KEY" "$REMOTE_USER@$REMOTE_HOST" "$CMD"
 else
-    ssh "$REMOTE_USER@$REMOTE_HOST" "chmod +x /home/$REMOTE_USER/$BINARY_NAME"
+    ssh "$REMOTE_USER@$REMOTE_HOST" "$CMD"
 fi
 
-echo "Deploy complete. Binary is now executable at /home/$REMOTE_USER/$BINARY_NAME"
+echo "Deploy complete."
+echo "CLI: /home/$REMOTE_USER/$CLI_BINARY"
+echo "BOT: /home/$REMOTE_USER/$BOT_BINARY"
+echo ""
+echo "Restarting the meal-planner-bot service..."
+
+if [ -n "$PEM_KEY" ]; then
+    ssh -i "$PEM_KEY" "$REMOTE_USER@$REMOTE_HOST" "sudo systemctl restart meal-planner-bot"
+else
+    ssh "$REMOTE_USER@$REMOTE_HOST" "sudo systemctl restart meal-planner-bot"
+fi
+
+echo "Service restarted successfully."

@@ -11,6 +11,11 @@ type Config struct {
 	GhostAPIKey string
 	GeminiAPIKey string // New field for Gemini API Key
 	GroqAPIKey   string
+	
+	// Telegram Config
+	TelegramBotToken   string
+	TelegramWebhookURL string
+	TelegramAllowUserID int64
 }
 
 // NewFromEnv creates a new Config object from environment variables.
@@ -35,10 +40,22 @@ func NewFromEnv() (*Config, error) {
 		return nil, fmt.Errorf("GROQ_API_KEY environment variable not set")
 	}
 
+	// Telegram Config (Optional for CLI, required for Bot)
+	telegramBotToken := os.Getenv("TELEGRAM_BOT_TOKEN")
+	telegramWebhookURL := os.Getenv("TELEGRAM_WEBHOOK_URL")
+	telegramAllowUserIDStr := os.Getenv("TELEGRAM_ALLOW_USER_ID")
+	var telegramAllowUserID int64
+	if telegramAllowUserIDStr != "" {
+		fmt.Sscanf(telegramAllowUserIDStr, "%d", &telegramAllowUserID)
+	}
+
 	return &Config{
-		GhostURL:     ghostURL,
-		GhostAPIKey:  ghostAPIKey,
-		GeminiAPIKey: geminiAPIKey,
-		GroqAPIKey:   groqAPIKey,
+		GhostURL:           ghostURL,
+		GhostAPIKey:        ghostAPIKey,
+		GeminiAPIKey:       geminiAPIKey,
+		GroqAPIKey:         groqAPIKey,
+		TelegramBotToken:   telegramBotToken,
+		TelegramWebhookURL: telegramWebhookURL,
+		TelegramAllowUserID: telegramAllowUserID,
 	}, nil
 }

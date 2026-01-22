@@ -52,14 +52,15 @@
   - Implement smarter skipping for unchanged recipes (validate timestamp logic).
 
 ## Phase 6: Interfaces (Next Steps)
-- [ ] **Telegram Bot Integration**
-  - Create a new `cmd/telegram-bot` entry point.
-  - Implement a simple loop that checks for messages (Long Polling) or Webhooks.
-  - Map user messages to the `Planner.GeneratePlan` function.
-  - Render the output as formatted Markdown messages back to the user.
-  - **Security:** Whitelist only your specific Telegram User ID.
+- [x] **Telegram Bot Integration (Webhook-based)**
+  - [x] Create a new `cmd/telegram-bot` entry point.
+  - [x] Implement a lightweight web app (HTTP server) to handle incoming webhooks from Telegram.
+  - [x] Add logic to set the Telegram webhook URL during application startup.
+  - [x] Map user messages from webhooks to the `Planner.GeneratePlan` function.
+  - [x] Render the output as formatted Markdown messages back to the user.
+  - [x] **Security:** Whitelist only your specific Telegram User ID in the webhook handler.
   - **Feature: Recipe Clipper / Importer**
-    - Accept a URL sent by the user.
+    - [ ] Accept a URL sent by the user.
     - Fetch the HTML content of the URL.
     - Use Gemini to extract the recipe and format it as a Ghost Post (Title, HTML Body, Tags).
     - **Upgrade:** Implement Ghost Admin API (Write Access) to create a new "Draft" post on the blog.
