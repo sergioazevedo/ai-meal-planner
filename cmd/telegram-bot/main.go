@@ -3,7 +3,11 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/llm"
@@ -23,7 +27,6 @@ func main() {
 
 	// 2. Initialize Infrastructure (LLMs)
 	// Text Generation (Groq)
-	// NewGroqClient takes cfg and returns the interface (no error return)
 	textGen := llm.NewGroqClient(cfg)
 
 	// Embeddings (Gemini)
@@ -34,12 +37,11 @@ func main() {
 	defer geminiClient.Close()
 
 	// 3. Initialize Storage
-	// The bot needs to know about existing recipes to plan with them.
 	store, err := storage.NewRecipeStore("recipes_data")
 	if err != nil {
 		log.Fatalf("Failed to initialize recipe store: %v", err)
 	}
-	log.Println("Recipe store initialized (reads from 'recipes_data' directory).")
+	log.Println("Recipe store initialized.")
 
 	// 4. Initialize Planner
 	mealPlanner := planner.NewPlanner(store, textGen, geminiClient)
@@ -50,14 +52,37 @@ func main() {
 		log.Fatalf("Failed to initialize Telegram Bot: %v", err)
 	}
 
-	// 6. Start Server
+	// 6. Start Server with Graceful Shutdown
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	log.Println("Starting Telegram Bot...")
-	if err := bot.StartServer(port); err != nil {
-		log.Fatalf("Server failed: %v", err)
+	bot.RegisterHandlers()
+
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: nil,
 	}
+
+	go func() {
+		log.Printf("Telegram Bot Server listening on port %s", port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutting down server...")
+
+	ctxShutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctxShutdown); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+
+	log.Println("Server exiting")
 }
