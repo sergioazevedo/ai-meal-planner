@@ -2,26 +2,39 @@ package telegram
 
 import (
 	"context"
+
 	"fmt"
+
 	"log"
+
 	"net/http"
+
 	"strings"
 
+	"ai-meal-planner/internal/clipper"
+
 	"ai-meal-planner/internal/config"
+
 	"ai-meal-planner/internal/planner"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-// Bot wraps the Telegram API and our Meal Planner.
+// Bot wraps the Telegram API, Meal Planner, and Clipper.
+
 type Bot struct {
-	api     *tgbotapi.BotAPI
+	api *tgbotapi.BotAPI
+
 	planner *planner.Planner
-	cfg     *config.Config
+
+	clipper *clipper.Clipper
+
+	cfg *config.Config
 }
 
 // NewBot initializes the Telegram Bot and sets the Webhook.
-func NewBot(cfg *config.Config, planner *planner.Planner) (*Bot, error) {
+
+func NewBot(cfg *config.Config, planner *planner.Planner, clipper *clipper.Clipper) (*Bot, error) {
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramBotToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init telegram api: %w", err)
@@ -38,14 +51,16 @@ func NewBot(cfg *config.Config, planner *planner.Planner) (*Bot, error) {
 	log.Printf("Webhook set response: %s", resp.Description)
 
 	return &Bot{
-		api:     bot,
-		planner: planner,
-		cfg:     cfg,
-	},
-	nil
+			api:     bot,
+			planner: planner,
+			clipper: clipper,
+			cfg:     cfg,
+		},
+		nil
 }
 
 // RegisterHandlers registers the webhook handler with the default HTTP mux.
+
 func (b *Bot) RegisterHandlers() {
 	http.HandleFunc("/webhook", b.handleWebhook)
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -74,7 +89,24 @@ func (b *Bot) handleWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func (b *Bot) processMessage(msg *tgbotapi.Message) {
-	replyMsg := tgbotapi.NewMessage(msg.Chat.ID, "🧑‍🍳 *Thinking...* \n(Analyzing recipes and generating your plan)")
+
+	// 1. Detect if it's a URL (Clipper mode) or a request (Planner mode)
+
+	isURL := strings.HasPrefix(msg.Text, "http://") || strings.HasPrefix(msg.Text, "https://")
+
+	var statusText string
+
+	if isURL {
+
+		statusText = "✂️ *Clipping recipe...* \n(Extracting and saving to your blog)"
+
+	} else {
+
+		statusText = "🧑‍🍳 *Thinking...* \n(Analyzing recipes and generating your plan)"
+
+	}
+
+	replyMsg := tgbotapi.NewMessage(msg.Chat.ID, statusText)
 	replyMsg.ParseMode = "Markdown"
 	sentMsg, err := b.api.Send(replyMsg)
 	if err != nil {
@@ -83,44 +115,81 @@ func (b *Bot) processMessage(msg *tgbotapi.Message) {
 	}
 
 	ctx := context.Background()
-	log.Printf("Generating plan for request: %s", msg.Text)
-	plan, err := b.planner.GeneratePlan(ctx, msg.Text)
-
 	var finalText string
-	if err != nil {
-		log.Printf("Error generating plan: %v", err)
-		finalText = fmt.Sprintf("❌ *Error generating plan:*
-`%v`", err)
+
+	if isURL {
+
+		// --- Clipper Flow ---
+
+		post, err := b.clipper.ClipURL(ctx, msg.Text)
+		if err != nil {
+			log.Printf("Error clipping recipe: %v", err)
+			finalText = fmt.Sprintf("❌ *Error clipping recipe:*\n`%v`", err)
+
+		} else {
+
+			finalText = fmt.Sprintf("✅ *Recipe Saved & Published!*\n\n*Title:* %s\n*URL:* %s/%s", post.Title, b.cfg.GhostURL, post.ID)
+
+		}
+
 	} else {
-		finalText = formatPlanMarkdown(plan)
+
+		// --- Planner Flow ---
+
+		log.Printf("Generating plan for request: %s", msg.Text)
+
+		plan, err := b.planner.GeneratePlan(ctx, msg.Text)
+
+		if err != nil {
+			log.Printf("Error generating plan: %v", err)
+			finalText = fmt.Sprintf("❌ *Error generating plan:*\n`%v`", err)
+
+		} else {
+
+			finalText = formatPlanMarkdown(plan)
+
+		}
+
 	}
+
+	// 2. Edit the original message with the result
 
 	edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, finalText)
 	edit.ParseMode = "Markdown"
-	
+
 	if _, err := b.api.Send(edit); err != nil {
 		log.Printf("Failed to edit message: %v", err)
 		newMsg := tgbotapi.NewMessage(msg.Chat.ID, finalText)
 		newMsg.ParseMode = "Markdown"
 		b.api.Send(newMsg)
 	}
+
 }
 
 func formatPlanMarkdown(plan *planner.MealPlan) string {
+
 	var sb strings.Builder
 	sb.WriteString("📅 *Weekly Meal Plan*\n\n")
 
 	for _, dp := range plan.Plan {
+
 		sb.WriteString(fmt.Sprintf("*%s*: %s\n", dp.Day, dp.RecipeTitle))
+
 		if dp.Note != "" {
+
 			sb.WriteString(fmt.Sprintf("_%s_\n", dp.Note))
+
 		}
+
 		sb.WriteString("\n")
+
 	}
 
 	sb.WriteString("🛒 *Shopping List*\n")
 	for _, item := range plan.ShoppingList {
+
 		sb.WriteString(fmt.Sprintf("• %s\n", item))
+
 	}
 
 	sb.WriteString(fmt.Sprintf("\n⏱ *Total Prep:* %s", plan.TotalPrep))

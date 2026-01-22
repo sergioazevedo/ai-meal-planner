@@ -9,7 +9,9 @@ import (
 	"syscall"
 	"time"
 
+	"ai-meal-planner/internal/clipper"
 	"ai-meal-planner/internal/config"
+	"ai-meal-planner/internal/ghost"
 	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/planner"
 	"ai-meal-planner/internal/storage"
@@ -26,33 +28,33 @@ func main() {
 	ctx := context.Background()
 
 	// 2. Initialize Infrastructure (LLMs)
-	// Text Generation (Groq)
 	textGen := llm.NewGroqClient(cfg)
-
-	// Embeddings (Gemini)
 	geminiClient, err := llm.NewGeminiClient(ctx, cfg)
 	if err != nil {
 		log.Fatalf("Failed to create Gemini client: %v", err)
 	}
 	defer geminiClient.Close()
 
-	// 3. Initialize Storage
+	// 3. Initialize Ghost Client
+	ghostClient := ghost.NewClient(cfg)
+
+	// 4. Initialize Storage
 	store, err := storage.NewRecipeStore("recipes_data")
 	if err != nil {
 		log.Fatalf("Failed to initialize recipe store: %v", err)
 	}
-	log.Println("Recipe store initialized.")
 
-	// 4. Initialize Planner
+	// 5. Initialize Services
 	mealPlanner := planner.NewPlanner(store, textGen, geminiClient)
+	recipeClipper := clipper.NewClipper(ghostClient, textGen)
 
-	// 5. Initialize Telegram Bot
-	bot, err := telegram.NewBot(cfg, mealPlanner)
+	// 6. Initialize Telegram Bot
+	bot, err := telegram.NewBot(cfg, mealPlanner, recipeClipper)
 	if err != nil {
 		log.Fatalf("Failed to initialize Telegram Bot: %v", err)
 	}
 
-	// 6. Start Server with Graceful Shutdown
+	// 7. Start Server with Graceful Shutdown
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"

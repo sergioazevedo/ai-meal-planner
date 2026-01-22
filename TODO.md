@@ -59,9 +59,9 @@
   - [x] Map user messages from webhooks to the `Planner.GeneratePlan` function.
   - [x] Render the output as formatted Markdown messages back to the user.
   - [x] **Security:** Whitelist only your specific Telegram User ID in the webhook handler.
-  - **Feature: Recipe Clipper / Importer**
-    - [ ] Accept a URL sent by the user.
-    - Fetch the HTML content of the URL.
-    - Use Gemini to extract the recipe and format it as a Ghost Post (Title, HTML Body, Tags).
-    - **Upgrade:** Implement Ghost Admin API (Write Access) to create a new "Draft" post on the blog.
+  - [x] **Feature: Recipe Clipper / Importer**
+    - [x] Accept a URL sent by the user.
+    - [x] Fetch the HTML content of the URL.
+    - [x] Use Groq to extract the recipe and format it as a Ghost Post (Title, HTML Body, Tags).
+    - [x] **Upgrade:** Implement Ghost Admin API (Write Access) to create and publish a new post on the blog.
 

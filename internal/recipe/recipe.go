@@ -11,9 +11,9 @@ import (
 
 // NormalizedRecipe represents a recipe after being normalized by the LLM.
 type NormalizedRecipe struct {
-	Title           string   `json:"title"`
-	Ingredients     []string `json:"ingredients"`
-	Instructions    string   `json:"instructions"`
+	Title           string    `json:"title"`
+	Ingredients     []string  `json:"ingredients"`
+	Instructions    string    `json:"instructions"`
 	Tags            []string  `json:"tags"`
 	PrepTime        string    `json:"prep_time"`
 	Servings        string    `json:"servings"`

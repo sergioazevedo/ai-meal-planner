@@ -1,11 +1,11 @@
 package storage
 
 import (
+	"ai-meal-planner/internal/recipe"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
-	"ai-meal-planner/internal/recipe"
 )
 
 func TestRecipeStore(t *testing.T) {
@@ -77,7 +77,7 @@ func TestRecipeStore(t *testing.T) {
 		if err := store.Save(recipeID, oldVersion, rec); err != nil {
 			t.Fatalf("Failed to save old version: %v", err)
 		}
-		
+
 		// Ensure both exist
 		if !store.Exists(recipeID, updatedAt) || !store.Exists(recipeID, oldVersion) {
 			t.Fatal("Setup failed: expected both versions to exist")
@@ -108,7 +108,7 @@ func TestRecipeStore(t *testing.T) {
 		// Vector A: [1, 0]
 		// Vector B: [1, 0] (Identical to A)
 		// Vector C: [0, 1] (Orthogonal to A)
-		
+
 		recA := recipe.NormalizedRecipe{Title: "Recipe A", Embedding: []float32{1.0, 0.0}}
 		recB := recipe.NormalizedRecipe{Title: "Recipe B", Embedding: []float32{1.0, 0.0}}
 		recC := recipe.NormalizedRecipe{Title: "Recipe C", Embedding: []float32{0.0, 1.0}}
@@ -126,14 +126,20 @@ func TestRecipeStore(t *testing.T) {
 		if len(results) != 2 {
 			t.Errorf("Expected 2 results, got %d", len(results))
 		}
-		
+
 		// A and B should be top results (order might vary between equal scores, but C should not be there)
 		foundA := false
 		foundB := false
 		for _, r := range results {
-			if r.Title == "Recipe A" { foundA = true }
-			if r.Title == "Recipe B" { foundB = true }
-			if r.Title == "Recipe C" { t.Error("Recipe C should not be in top 2") }
+			if r.Title == "Recipe A" {
+				foundA = true
+			}
+			if r.Title == "Recipe B" {
+				foundB = true
+			}
+			if r.Title == "Recipe C" {
+				t.Error("Recipe C should not be in top 2")
+			}
 		}
 
 		if !foundA || !foundB {

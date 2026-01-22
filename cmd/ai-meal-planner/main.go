@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"ai-meal-planner/internal/app"
+	"ai-meal-planner/internal/clipper"
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/ghost"
 	"ai-meal-planner/internal/llm"
@@ -39,8 +40,9 @@ func main() {
 	}
 
 	mealPlanner := planner.NewPlanner(recipeStore, groqClient, geminiClient)
+	recipeClipper := clipper.NewClipper(ghostClient, groqClient)
 
-	application := app.NewApp(ghostClient, groqClient, geminiClient, recipeStore, mealPlanner)
+	application := app.NewApp(ghostClient, groqClient, geminiClient, recipeStore, mealPlanner, recipeClipper)
 
 	if len(os.Args) < 2 {
 		printUsage()

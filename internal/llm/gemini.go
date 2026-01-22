@@ -56,7 +56,7 @@ func (c *geminiClient) GenerateEmbedding(ctx context.Context, text string) ([]fl
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate embedding: %w", err)
 	}
-	
+
 	if resp.Embedding == nil {
 		return nil, fmt.Errorf("no embedding generated")
 	}

@@ -77,17 +77,19 @@ Available Recipes:
 %s
 
 Instructions:
-1. Select one recipe for each of the 7 days (Monday to Sunday).
-2. It's okay to repeat a recipe if it fits the user's request or if there aren't enough unique recipes.
-3. Aggregate all ingredients into a consolidated shopping list.
-4. Return the result strictly as a JSON object with this structure:
+1. **Language Detection**: Analyze the language of the "User Request" (e.g., English, Portuguese, Danish). 
+2. **Response Language**: Generate the 'note' fields and the 'shopping_list' strictly in the **same language** as the User Request. The 'recipe_title' must remain in its original language as found in the context.
+3. Select one recipe for each of the 7 days (Monday to Sunday).
+4. It's okay to repeat a recipe if it fits the user's request or if there aren't enough unique recipes.
+5. Aggregate all ingredients into a consolidated shopping list.
+6. Return the result strictly as a JSON object with this structure:
 {
   "plan": [
-    {"day": "Monday", "recipe_title": "Recipe Name", "note": "Why this was chosen"},
+    {"day": "Monday", "recipe_title": "Recipe Name", "note": "Why this was chosen (in user's language)"},
     ...
   ],
-  "shopping_list": ["item 1", "item 2", ...],
-  "total_prep_estimate": "Summary of prep time for the week"
+  "shopping_list": ["item 1 (in user's language)", "item 2", ...],
+  "total_prep_estimate": "Summary of prep time for the week (in user's language)"
 }
 
 Do not include any other text or formatting in your response.

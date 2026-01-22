@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"ai-meal-planner/internal/clipper"
 	"ai-meal-planner/internal/ghost"
 	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/planner"
@@ -20,6 +21,7 @@ type App struct {
 	embedGen    llm.EmbeddingGenerator
 	recipeStore *storage.RecipeStore
 	planner     *planner.Planner
+	clipper     *clipper.Clipper
 }
 
 // NewApp creates and initializes a new App instance.
@@ -29,6 +31,7 @@ func NewApp(
 	embedGen llm.EmbeddingGenerator,
 	recipeStore *storage.RecipeStore,
 	mealPlanner *planner.Planner,
+	recipeClipper *clipper.Clipper,
 ) *App {
 	return &App{
 		ghostClient: ghostClient,
@@ -36,6 +39,7 @@ func NewApp(
 		embedGen:    embedGen,
 		recipeStore: recipeStore,
 		planner:     mealPlanner,
+		clipper:     recipeClipper,
 	}
 }
 

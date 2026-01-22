@@ -7,14 +7,15 @@ import (
 
 // Config holds the configuration for the application.
 type Config struct {
-	GhostURL    string
-	GhostAPIKey string
-	GeminiAPIKey string // New field for Gemini API Key
-	GroqAPIKey   string
-	
+	GhostURL        string
+	GhostContentKey string
+	GhostAdminKey   string
+	GeminiAPIKey    string
+	GroqAPIKey      string
+
 	// Telegram Config
-	TelegramBotToken   string
-	TelegramWebhookURL string
+	TelegramBotToken    string
+	TelegramWebhookURL  string
 	TelegramAllowUserID int64
 }
 
@@ -25,12 +26,18 @@ func NewFromEnv() (*Config, error) {
 		return nil, fmt.Errorf("GHOST_API_URL environment variable not set")
 	}
 
-	ghostAPIKey := os.Getenv("GHOST_CONTENT_API_KEY")
-	if ghostAPIKey == "" {
+	ghostContentKey := os.Getenv("GHOST_CONTENT_API_KEY")
+	if ghostContentKey == "" {
 		return nil, fmt.Errorf("GHOST_CONTENT_API_KEY environment variable not set")
 	}
 
-	geminiAPIKey := os.Getenv("GEMINI_API_KEY") // Load Gemini API Key
+	ghostAdminKey := os.Getenv("GHOST_ADMIN_API_KEY")
+	if ghostAdminKey == "" {
+		// Fallback to content key if only one is provided
+		ghostAdminKey = ghostContentKey
+	}
+
+	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
 	if geminiAPIKey == "" {
 		return nil, fmt.Errorf("GEMINI_API_KEY environment variable not set")
 	}
@@ -50,12 +57,13 @@ func NewFromEnv() (*Config, error) {
 	}
 
 	return &Config{
-		GhostURL:           ghostURL,
-		GhostAPIKey:        ghostAPIKey,
-		GeminiAPIKey:       geminiAPIKey,
-		GroqAPIKey:         groqAPIKey,
-		TelegramBotToken:   telegramBotToken,
-		TelegramWebhookURL: telegramWebhookURL,
+		GhostURL:            ghostURL,
+		GhostContentKey:     ghostContentKey,
+		GhostAdminKey:       ghostAdminKey,
+		GeminiAPIKey:        geminiAPIKey,
+		GroqAPIKey:          groqAPIKey,
+		TelegramBotToken:    telegramBotToken,
+		TelegramWebhookURL:  telegramWebhookURL,
 		TelegramAllowUserID: telegramAllowUserID,
 	}, nil
 }
