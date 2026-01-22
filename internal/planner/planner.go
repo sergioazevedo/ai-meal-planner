@@ -14,6 +14,7 @@ import (
 type DayPlan struct {
 	Day         string `json:"day"`
 	RecipeTitle string `json:"recipe_title"`
+	PrepTime    string `json:"prep_time"`
 	Note        string `json:"note"`
 }
 
@@ -85,7 +86,12 @@ Instructions:
 6. Return the result strictly as a JSON object with this structure:
 {
   "plan": [
-    {"day": "Monday", "recipe_title": "Recipe Name", "note": "Why this was chosen (in user's language)"},
+    {
+      "day": "Monday", 
+      "recipe_title": "Recipe Name", 
+      "prep_time": "30 mins",
+      "note": "Why this was chosen (in user's language)"
+    },
     ...
   ],
   "shopping_list": ["item 1 (in user's language)", "item 2", ...],

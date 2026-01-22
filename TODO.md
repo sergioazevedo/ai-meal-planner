@@ -64,4 +64,10 @@
     - [x] Fetch the HTML content of the URL.
     - [x] Use Groq to extract the recipe and format it as a Ghost Post (Title, HTML Body, Tags).
     - [x] **Upgrade:** Implement Ghost Admin API (Write Access) to create and publish a new post on the blog.
+- [ ] **Feature: Advanced Planning Options**
+    - [x] Support multiple Telegram IDs for access control.
+    - [x] Improve message formatting (split Menu and Shopping List).
+    - [ ] Support "Cooking Frequency" (e.g., cook 3 times for 7 days of food) by adjusting portions/leftovers.
+    - [ ] Support "Household Composition" (Number of adults, children, and ages) for precise ingredient scaling.
+    - [ ] Update LLM prompts to incorporate these household and frequency constraints.
 

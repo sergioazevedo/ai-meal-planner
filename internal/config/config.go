@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 // Config holds the configuration for the application.
@@ -14,9 +15,9 @@ type Config struct {
 	GroqAPIKey      string
 
 	// Telegram Config
-	TelegramBotToken    string
-	TelegramWebhookURL  string
-	TelegramAllowUserID int64
+	TelegramBotToken     string
+	TelegramWebhookURL   string
+	TelegramAllowedUserIDs []int64
 
 	RecipeStoragePath string
 }
@@ -52,10 +53,22 @@ func NewFromEnv() (*Config, error) {
 	// Telegram Config (Optional for CLI, required for Bot)
 	telegramBotToken := os.Getenv("TELEGRAM_BOT_TOKEN")
 	telegramWebhookURL := os.Getenv("TELEGRAM_WEBHOOK_URL")
-	telegramAllowUserIDStr := os.Getenv("TELEGRAM_ALLOW_USER_ID")
-	var telegramAllowUserID int64
-	if telegramAllowUserIDStr != "" {
-		fmt.Sscanf(telegramAllowUserIDStr, "%d", &telegramAllowUserID)
+
+	var allowedIDs []int64
+	idsStr := os.Getenv("TELEGRAM_ALLOWED_USER_IDS")
+	if idsStr == "" {
+		// Backward compatibility for the old single ID variable
+		idsStr = os.Getenv("TELEGRAM_ALLOW_USER_ID")
+	}
+
+	if idsStr != "" {
+		parts := strings.Split(idsStr, ",")
+		for _, p := range parts {
+			var id int64
+			if _, err := fmt.Sscanf(strings.TrimSpace(p), "%d", &id); err == nil {
+				allowedIDs = append(allowedIDs, id)
+			}
+		}
 	}
 
 	recipeStoragePath := os.Getenv("RECIPE_STORAGE_PATH")
@@ -64,14 +77,14 @@ func NewFromEnv() (*Config, error) {
 	}
 
 	return &Config{
-		GhostURL:            ghostURL,
-		GhostContentKey:     ghostContentKey,
-		GhostAdminKey:       ghostAdminKey,
-		GeminiAPIKey:        geminiAPIKey,
-		GroqAPIKey:          groqAPIKey,
-		TelegramBotToken:    telegramBotToken,
-		TelegramWebhookURL:  telegramWebhookURL,
-		TelegramAllowUserID: telegramAllowUserID,
-		RecipeStoragePath:   recipeStoragePath,
+		GhostURL:               ghostURL,
+		GhostContentKey:        ghostContentKey,
+		GhostAdminKey:          ghostAdminKey,
+		GeminiAPIKey:           geminiAPIKey,
+		GroqAPIKey:             groqAPIKey,
+		TelegramBotToken:       telegramBotToken,
+		TelegramWebhookURL:     telegramWebhookURL,
+		TelegramAllowedUserIDs: allowedIDs,
+		RecipeStoragePath:      recipeStoragePath,
 	}, nil
 }

@@ -80,7 +80,15 @@ func (b *Bot) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if update.Message.From.ID != b.cfg.TelegramAllowUserID {
+	isAllowed := false
+	for _, id := range b.cfg.TelegramAllowedUserIDs {
+		if update.Message.From.ID == id {
+			isAllowed = true
+			break
+		}
+	}
+
+	if !isAllowed {
 		log.Printf("⚠️ Unauthorized access attempt from UserID: %d (@%s)", update.Message.From.ID, update.Message.From.UserName)
 		return
 	}
@@ -89,21 +97,14 @@ func (b *Bot) handleWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func (b *Bot) processMessage(msg *tgbotapi.Message) {
-
 	// 1. Detect if it's a URL (Clipper mode) or a request (Planner mode)
-
 	isURL := strings.HasPrefix(msg.Text, "http://") || strings.HasPrefix(msg.Text, "https://")
 
 	var statusText string
-
 	if isURL {
-
 		statusText = "✂️ *Clipping recipe...* \n(Extracting and saving to your blog)"
-
 	} else {
-
 		statusText = "🧑‍🍳 *Thinking...* \n(Analyzing recipes and generating your plan)"
-
 	}
 
 	replyMsg := tgbotapi.NewMessage(msg.Chat.ID, statusText)
@@ -115,96 +116,71 @@ func (b *Bot) processMessage(msg *tgbotapi.Message) {
 	}
 
 	ctx := context.Background()
-	var finalText string
 
-		if isURL {
-
-			// --- Clipper Flow ---
-
-			post, err := b.clipper.ClipURL(ctx, msg.Text)
-
-			if err != nil {
-
-				log.Printf("Error clipping recipe: %v", err)
-
-				// Sanitize error for Markdown
-
-				safeErr := strings.ReplaceAll(err.Error(), "`", "'")
-
-				finalText = fmt.Sprintf("❌ *Error clipping recipe:*\n```\n%v\n```", safeErr)
-
-			} else {
-
-				finalText = fmt.Sprintf("✅ *Recipe Saved & Published!*\n\n*Title:* %s\n*URL:* %s/%s", post.Title, b.cfg.GhostURL, post.ID)
-
-			}
-
+	if isURL {
+		// --- Clipper Flow ---
+		post, err := b.clipper.ClipURL(ctx, msg.Text)
+		var finalText string
+		if err != nil {
+			log.Printf("Error clipping recipe: %v", err)
+			safeErr := strings.ReplaceAll(err.Error(), "`", "'")
+			finalText = fmt.Sprintf("❌ *Error clipping recipe:*\n```\n%v\n```", safeErr)
 		} else {
-
-			// --- Planner Flow ---
-
-			log.Printf("Generating plan for request: %s", msg.Text)
-
-			plan, err := b.planner.GeneratePlan(ctx, msg.Text)
-
-			if err != nil {
-
-				log.Printf("Error generating plan: %v", err)
-
-				safeErr := strings.ReplaceAll(err.Error(), "`", "'")
-
-				finalText = fmt.Sprintf("❌ *Error generating plan:*\n```\n%v\n```", safeErr)
-
-			} else {
-
-				finalText = formatPlanMarkdown(plan)
-
-			}
-
+			finalText = fmt.Sprintf("✅ *Recipe Saved & Published!*\n\n*Title:* %s\n*URL:* %s/%s", post.Title, b.cfg.GhostURL, post.ID)
 		}
+		edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, finalText)
+		edit.ParseMode = "Markdown"
+		b.api.Send(edit)
+	} else {
+		// --- Planner Flow ---
+		log.Printf("Generating plan for request: %s", msg.Text)
+		plan, err := b.planner.GeneratePlan(ctx, msg.Text)
 
-	
+		if err != nil {
+			log.Printf("Error generating plan: %v", err)
+			safeErr := strings.ReplaceAll(err.Error(), "`", "'")
+			finalText := fmt.Sprintf("❌ *Error generating plan:*\n```\n%v\n```", safeErr)
+			edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, finalText)
+			edit.ParseMode = "Markdown"
+			b.api.Send(edit)
+		} else {
+			planText, shoppingListText := formatPlanMarkdownParts(plan)
 
-	// 2. Edit the original message with the result
+			// Edit first message with the Plan
+			edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, planText)
+			edit.ParseMode = "Markdown"
+			b.api.Send(edit)
 
-	edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, finalText)
-	edit.ParseMode = "Markdown"
-
-	if _, err := b.api.Send(edit); err != nil {
-		log.Printf("Failed to edit message: %v", err)
-		newMsg := tgbotapi.NewMessage(msg.Chat.ID, finalText)
-		newMsg.ParseMode = "Markdown"
-		b.api.Send(newMsg)
+			// Send second message with the Shopping List
+			shoppingMsg := tgbotapi.NewMessage(msg.Chat.ID, shoppingListText)
+			shoppingMsg.ParseMode = "Markdown"
+			b.api.Send(shoppingMsg)
+		}
 	}
-
 }
 
-func formatPlanMarkdown(plan *planner.MealPlan) string {
-
-	var sb strings.Builder
-	sb.WriteString("📅 *Weekly Meal Plan*\n\n")
+func formatPlanMarkdownParts(plan *planner.MealPlan) (string, string) {
+	var pb strings.Builder
+	pb.WriteString("📅 *Weekly Meal Plan*\n\n")
 
 	for _, dp := range plan.Plan {
-
-		sb.WriteString(fmt.Sprintf("*%s*: %s\n", dp.Day, dp.RecipeTitle))
-
-		if dp.Note != "" {
-
-			sb.WriteString(fmt.Sprintf("_%s_\n", dp.Note))
-
+		pb.WriteString(fmt.Sprintf("*%s*: %s", dp.Day, dp.RecipeTitle))
+		if dp.PrepTime != "" {
+			pb.WriteString(fmt.Sprintf(" (%s)", dp.PrepTime))
 		}
-
-		sb.WriteString("\n")
-
+		pb.WriteString("\n")
+		if dp.Note != "" {
+			pb.WriteString(fmt.Sprintf("_%s_\n", dp.Note))
+		}
+		pb.WriteString("\n")
 	}
+	pb.WriteString(fmt.Sprintf("⏱ *Total Prep:* %s", plan.TotalPrep))
 
-	sb.WriteString("🛒 *Shopping List*\n")
+	var sb strings.Builder
+	sb.WriteString("🛒 *Shopping List*\n\n")
 	for _, item := range plan.ShoppingList {
-
 		sb.WriteString(fmt.Sprintf("• %s\n", item))
-
 	}
 
-	sb.WriteString(fmt.Sprintf("\n⏱ *Total Prep:* %s", plan.TotalPrep))
-	return sb.String()
+	return pb.String(), sb.String()
 }
