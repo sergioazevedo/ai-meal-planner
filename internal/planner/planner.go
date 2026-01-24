@@ -85,9 +85,14 @@ Household Composition:
 - Adults: %d
 - Children: %d (Ages: %v)
 
+Weekly Schedule:
+- Monday to Friday: Dinner only (5 meals).
+- Saturday and Sunday: Lunch AND Dinner (4 meals).
+- Total meals to plan: 9.
+
 Cooking Constraints:
 - Target cooking frequency: %d times per week. 
-- Strategy: Typically 3 times during weekdays and 1-2 times on weekends.
+- Strategy: Typically 3 cooking sessions during weekdays, and 1-2 sessions on weekends.
 - On non-cooking days, the plan MUST utilize leftovers.
 
 Available Recipes:
@@ -96,13 +101,16 @@ Available Recipes:
 ### Rules
 1. **Portion Scaling**: 
    - Adult = 1.0, Child (0-10) = 0.5.
-   - Calculate total portions for the week and scale ingredient quantities accordingly.
-2. **Leftover Optimization**:
-   - If cooking frequency < 7, select recipes that store well.
+   - Calculate total portions for the 9 meals and scale ingredient quantities accordingly.
+2. **Leftover & Weekend Strategy**:
+   - **DO NOT** repeat Friday's dinner during the weekend.
+   - **Saturday Dinner** leftovers SHOULD be used for **Sunday Lunch**.
+   - **Sunday Dinner** MUST be a **Light Meal** (e.g., salad, soup, omelet, or something quick).
+   - If cooking frequency < 7, select recipes that store well for gaps.
    - Mark days clearly as "Cook: [Recipe Name]" or "Leftovers: [Recipe Name]".
 3. **Output Format**: 
    - Return ONLY a valid JSON object. 
-   - No markdown formatting, no backticks, no explanatory text.
+   - The "plan" array must contain 9 entries.
 4. **Language**: 
    - Use the same language as the User Request for 'note', 'prep_time', and 'shopping_list'.
    - 'recipe_title' must match the original title from the context.
@@ -110,15 +118,14 @@ Available Recipes:
 ### JSON Structure Example
 {
   "plan": [
-    {
-      "day": "Monday", 
-      "recipe_title": "Cook: Recipe Name", 
-      "prep_time": "45 mins",
-      "note": "Notes about selection and portions."
-    },
+    { "day": "Monday", "recipe_title": "Cook: [Name]", "prep_time": "45 mins", "note": "Notes..." },
     ...
+    { "day": "Saturday (Lunch)", "recipe_title": "Cook: [Name]", "prep_time": "30 mins", "note": "Notes..." },
+    { "day": "Saturday (Dinner)", "recipe_title": "Cook: [Name]", "prep_time": "40 mins", "note": "Notes..." },
+    { "day": "Sunday (Lunch)", "recipe_title": "Leftovers: [Name]", "prep_time": "5 mins", "note": "From Sat Dinner." },
+    { "day": "Sunday (Dinner)", "recipe_title": "Cook: [Name]", "prep_time": "15 mins", "note": "Light meal." }
   ],
-  "shopping_list": ["Item 1 (quantity)", "Item 2 (quantity)"],
+  "shopping_list": ["Item (quantity)", ...],
   "total_prep_estimate": "Estimated total time"
 }
 `, userRequest, pCtx.Adults, pCtx.Children, pCtx.ChildrenAges, pCtx.CookingFrequency, contextBuilder.String())
