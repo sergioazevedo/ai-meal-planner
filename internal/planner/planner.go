@@ -92,25 +92,26 @@ Weekly Schedule:
 
 Cooking Constraints:
 - Target cooking frequency: %d times per week. 
-- Strategy: Typically 3 cooking sessions during weekdays, and 1-2 sessions on weekends.
+- Weekday Strategy: Prefer 3 cooking sessions (e.g., Monday, Wednesday, Friday). Avoid cooking on consecutive weekdays.
+- Weekend Strategy: Typically 2 cooking sessions (e.g., Saturday Dinner and Sunday Dinner). 
 - On non-cooking days, the plan MUST utilize leftovers.
 
 Available Recipes:
 %s
 
 ### Rules
-1. **Portion Scaling**: 
+1. **Portion Scaling & Batch Cooking**: 
    - Adult = 1.0, Child (0-10) = 0.5.
-   - Calculate total portions for the 9 meals and scale ingredient quantities accordingly.
+   - **MANDATORY**: On Weekdays, use a "Cook for 2 days" strategy (e.g., Cook Monday to cover Tuesday).
 2. **Leftover & Weekend Strategy**:
-   - **DO NOT** repeat Friday's dinner during the weekend.
+   - **DO NOT** cook on consecutive weekdays (e.g., if you cook Monday, Tuesday MUST be leftovers).
    - **Saturday Dinner** leftovers SHOULD be used for **Sunday Lunch**.
-   - **Sunday Dinner** MUST be a **Light Meal** (e.g., salad, soup, omelet, or something quick).
-   - If cooking frequency < 7, select recipes that store well for gaps.
+   - **Sunday Dinner** MUST be a **Light Meal**.
+   - If cooking frequency < 9, select recipes that store well.
    - Mark days clearly as "Cook: [Recipe Name]" or "Leftovers: [Recipe Name]".
 3. **Output Format**: 
    - Return ONLY a valid JSON object. 
-   - The "plan" array must contain 9 entries.
+   - The "plan" array must contain 9 entries starting from Monday.
 4. **Language**: 
    - Use the same language as the User Request for 'note', 'prep_time', and 'shopping_list'.
    - 'recipe_title' must match the original title from the context.

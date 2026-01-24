@@ -108,7 +108,7 @@ type Config struct {
 					}
 				}
 			
-				defaultFreq := 4
+				defaultFreq := 5
 	if val := os.Getenv("DEFAULT_COOKING_FREQUENCY"); val != "" {
 		fmt.Sscanf(val, "%d", &defaultFreq)
 	}	
