@@ -8,15 +8,38 @@ A smart CLI tool that connects to your **Ghost CMS** blog, learns your recipes u
 *   **AI Normalization**: Uses Gemini 1.5 Pro and Groq Llama3 7b to extract structured data (ingredients, steps, prep time, servings) from raw HTML posts.
 *   **RAG Pipeline**: Generates vector embeddings for every recipe and performs local semantic search to find the best matches for your cravings.
 *   **Smart Planning**: Creates a complete 7-day meal plan with a consolidated shopping list.
+*   **Recipe Clipper**: Send any recipe URL to the Telegram bot; it extracts the details, publishes them to your Ghost blog, and immediately indexes them for planning.
+*   **Batch Cooking & Leftovers**: Smart scheduling that understands you might only want to cook 3-4 times a week, automatically filling gaps with leftovers.
+*   **Household Scaling**: Automatically adjusts ingredient quantities based on your household composition (Adults vs. Children).
+*   **Multi-User Support**: Whitelist multiple Telegram IDs for shared household planning.
 *   **Telegram Bot Interface**: Chat with your planner, request meals, and get instant markdown plans on your phone.
 *   **Zero-Database**: Uses a highly efficient flat-file storage system with versioned caching.
 
 ## 🛠️ Prerequisites
 
 You need the following API keys:
-1.  **Ghost Content API Key & URL**: To fetch your recipes.
-2.  **Google Gemini API Key**: For LLM processing and embeddings (free tier available).
-3.  **Groq API Key**: For fast LLM responses (free tier available).
+1.  **Ghost Content & Admin API Keys**: To fetch and publish recipes.
+2.  **Google Gemini API Key**: For embeddings (free tier available).
+3.  **Groq API Key**: For high-speed LLM inference (free tier available).
+
+## ⚙️ Configuration
+
+Set these variables in your `.env` file or environment:
+
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `GHOST_URL` | Your Ghost blog base URL | Required |
+| `GHOST_CONTENT_API_KEY` | Ghost Content API Key | Required |
+| `GHOST_ADMIN_API_KEY` | Ghost Admin API Key (for Clipper) | Required |
+| `GEMINI_API_KEY` | Google Gemini API Key | Required |
+| `GROQ_API_KEY` | Groq API Key | Required |
+| `TELEGRAM_BOT_TOKEN` | Token from @BotFather | Optional (Bot) |
+| `TELEGRAM_ALLOWED_USER_IDS`| Comma-separated list of allowed IDs | Optional (Bot) |
+| `DEFAULT_ADULTS` | Number of adults for scaling | `2` |
+| `DEFAULT_CHILDREN` | Number of children for scaling | `1` |
+| `DEFAULT_CHILDREN_AGES` | Comma-separated ages (e.g., `5,8`) | `5` |
+| `DEFAULT_COOKING_FREQUENCY`| How many times per week to cook | `4` |
+| `RECIPE_STORAGE_PATH` | Where to store normalized JSONs | `data/recipes` |
 
 ## ⚡ Quick Start
 
@@ -95,9 +118,11 @@ This application compiles to a single static binary, making it perfect for low-c
 
 *   [x] Core CLI & RAG Pipeline
 *   [x] Telegram Bot Integration
+*   [x] Recipe Clipper / Importer
+*   [x] Batch Cooking & Household Scaling
+*   [x] Multi-user support
 *   [ ] Shopping List Export (PDF/Email)
-*   [ ] Recipe Clipper (Import from any URL)
-*   [ ] User Accounts (Multi-user support)
+*   [ ] User Accounts (Web Interface)
 
 ## 📄 License
 MIT

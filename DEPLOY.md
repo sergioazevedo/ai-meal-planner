@@ -22,9 +22,26 @@ mkdir -p data/recipes
 cat << 'EOF' > .env
 GHOST_API_URL="https://your-blog.com"
 GHOST_CONTENT_API_KEY="your_key"
+GHOST_ADMIN_API_KEY="your_admin_key"
 GEMINI_API_KEY="your_key"
+GROQ_API_KEY="your_key"
+
+# Household Settings
+DEFAULT_ADULTS=2
+DEFAULT_CHILDREN=1
+DEFAULT_COOKING_FREQUENCY=4
+
+# Access
+TELEGRAM_ALLOWED_USER_IDS="12345678,87654321"
 EOF
 chmod 600 .env
+
+### 💡 Migration Tip (v1.1)
+If you are upgrading from an older version that used `recipes_data/`, move your files to the new unified path:
+```bash
+mkdir -p data/recipes
+mv recipes_data/*.json data/recipes/ 2>/dev/null || true
+```
 ```
 
 ### 2. Build and Deploy
