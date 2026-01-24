@@ -58,8 +58,8 @@ func (p *Planner) GeneratePlan(ctx context.Context, userRequest string, pCtx Pla
 	}
 
 	// 2. Retrieve top N relevant recipes
-	// We fetch 15 recipes to give the LLM enough variety to choose from
-	recipes, err := p.recipeStore.FindSimilar(queryEmbedding, 15)
+	// We fetch 8 recipes to give the LLM variety while staying within token limits
+	recipes, err := p.recipeStore.FindSimilar(queryEmbedding, 8)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve similar recipes: %w", err)
 	}
@@ -71,7 +71,7 @@ func (p *Planner) GeneratePlan(ctx context.Context, userRequest string, pCtx Pla
 	// 3. Construct the prompt with recipes as context
 	var contextBuilder strings.Builder
 	for i, r := range recipes {
-		fmt.Fprintf(&contextBuilder, "Recipe %d:\nTitle: %s\nTags: %v\nIngredients: %v\nPrep Time: %s\nServings: %s\n\n",
+		fmt.Fprintf(&contextBuilder, "R%d: %s | Tags: %v | Ingr: %v | Time: %s | Serv: %s\n",
 			i+1, r.Title, r.Tags, r.Ingredients, r.PrepTime, r.Servings)
 	}
 
