@@ -43,7 +43,8 @@ func (c *groqClient) GenerateContent(ctx context.Context, prompt string) (string
 				"content": prompt,
 			},
 		},
-		"temperature": 0.7,
+		"temperature":     0.1,
+		"response_format": map[string]string{"type": "json_object"},
 	}
 
 	jsonBody, err := json.Marshal(reqBody)

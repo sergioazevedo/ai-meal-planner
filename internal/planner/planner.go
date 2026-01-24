@@ -76,8 +76,9 @@ func (p *Planner) GeneratePlan(ctx context.Context, userRequest string, pCtx Pla
 	}
 
 	prompt := fmt.Sprintf(`
-You are an expert meal planner. Based on the user's request and the provided list of recipes, create a 7-day meal plan.
+You are a highly structured meal planning assistant. Your goal is to generate a valid JSON meal plan based on the user's request and available recipes.
 
+### Context
 User Request: "%s"
 
 Household Composition:
@@ -92,34 +93,33 @@ Cooking Constraints:
 Available Recipes:
 %s
 
-Instructions:
-1. **Portion Scaling & Batch Cooking**: 
-   - Calculate total portions needed per meal: Adult = 1.0, Child (0-10) = 0.5.
-   - When cooking, cook enough portions to cover the subsequent "Leftover" days. 
-   - Scale the "Ingredients" in the shopping list based on the total portions required for the whole week.
+### Rules
+1. **Portion Scaling**: 
+   - Adult = 1.0, Child (0-10) = 0.5.
+   - Calculate total portions for the week and scale ingredient quantities accordingly.
 2. **Leftover Optimization**:
-   - Prioritize recipes that are "Better the next day" (stews, curries, lasagnas, bakes).
-   - Explicitly mark days as "Cook: [Recipe Name]" or "Leftovers: [Recipe Name]".
-3. **Language Detection**: Analyze the language of the "User Request".
-4. **Response Language**: Generate 'note', 'prep_time', and 'shopping_list' in the same language as the User Request. 'recipe_title' stays in its original language.
-5. **Return Format**: Strictly JSON:
+   - If cooking frequency < 7, select recipes that store well.
+   - Mark days clearly as "Cook: [Recipe Name]" or "Leftovers: [Recipe Name]".
+3. **Output Format**: 
+   - Return ONLY a valid JSON object. 
+   - No markdown formatting, no backticks, no explanatory text.
+4. **Language**: 
+   - Use the same language as the User Request for 'note', 'prep_time', and 'shopping_list'.
+   - 'recipe_title' must match the original title from the context.
+
+### JSON Structure Example
 {
   "plan": [
     {
       "day": "Monday", 
-      "recipe_title": "Cook: [Name]", 
+      "recipe_title": "Cook: Recipe Name", 
       "prep_time": "45 mins",
-      "note": "Cooking 2.5 portions to cover today and tomorrow."
+      "note": "Notes about selection and portions."
     },
-    {
-      "day": "Tuesday", 
-      "recipe_title": "Leftovers: [Name]", 
-      "prep_time": "5 mins",
-      "note": "Enjoying leftovers from Monday."
-    }
+    ...
   ],
-  "shopping_list": ["item 1 (scaled for total week portions)", ...],
-  "total_prep_estimate": "Total time"
+  "shopping_list": ["Item 1 (quantity)", "Item 2 (quantity)"],
+  "total_prep_estimate": "Estimated total time"
 }
 `, userRequest, pCtx.Adults, pCtx.Children, pCtx.ChildrenAges, pCtx.CookingFrequency, contextBuilder.String())
 
