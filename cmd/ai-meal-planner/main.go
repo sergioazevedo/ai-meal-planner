@@ -42,7 +42,7 @@ func main() {
 	mealPlanner := planner.NewPlanner(recipeStore, groqClient, geminiClient)
 	recipeClipper := clipper.NewClipper(ghostClient, groqClient)
 
-	application := app.NewApp(ghostClient, groqClient, geminiClient, recipeStore, mealPlanner, recipeClipper)
+	application := app.NewApp(ghostClient, groqClient, geminiClient, recipeStore, mealPlanner, recipeClipper, cfg)
 
 	if len(os.Args) < 2 {
 		printUsage()

@@ -8,6 +8,7 @@ import (
 
 	"ai-meal-planner/internal/app"
 	"ai-meal-planner/internal/clipper"
+	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/ghost"
 	"ai-meal-planner/internal/planner"
 	"ai-meal-planner/internal/storage"
@@ -52,7 +53,7 @@ func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) 
 
 	return `{
 		"plan": [
-			{"day": "Monday", "recipe_title": "Test Recipe", "note": "Only one available"}
+			{"day": "Monday", "recipe_title": "Test Recipe", "prep_time": "10 mins", "note": "Only one available"}
 		],
 		"shopping_list": ["1 cup testing"],
 		"total_prep_estimate": "10 mins"
@@ -90,7 +91,10 @@ func TestFullWorkflow(t *testing.T) {
 	// 3. Create the application instance with mocks
 	mealPlanner := planner.NewPlanner(recipeStore, mockTextGenerator, mockEmbedingGenerator)
 	recipeClipper := clipper.NewClipper(ghostClient, mockTextGenerator)
-	application := app.NewApp(ghostClient, mockTextGenerator, mockEmbedingGenerator, recipeStore, mealPlanner, recipeClipper)
+	application := app.NewApp(ghostClient, mockTextGenerator, mockEmbedingGenerator, recipeStore, mealPlanner, recipeClipper, &config.Config{
+		DefaultAdults:           2,
+		DefaultCookingFrequency: 7,
+	})
 
 	// --- 4. Step 1: Ingestion ---
 	t.Log("--- Step 1: Ingesting Recipes ---")

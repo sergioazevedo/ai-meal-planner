@@ -134,7 +134,22 @@ func (b *Bot) processMessage(msg *tgbotapi.Message) {
 	} else {
 		// --- Planner Flow ---
 		log.Printf("Generating plan for request: %s", msg.Text)
-		plan, err := b.planner.GeneratePlan(ctx, msg.Text)
+
+		// Simple heuristic to extract context from natural language
+		// In a production app, we might use a dedicated LLM call to extract these parameters.
+		// For now, we'll use defaults and allow simple overrides in text.
+		pCtx := planner.PlanningContext{
+			Adults:           b.cfg.DefaultAdults,
+			Children:         b.cfg.DefaultChildren,
+			CookingFrequency: b.cfg.DefaultCookingFrequency,
+		}
+
+		// Basic extraction for demo purposes
+		if strings.Contains(strings.ToLower(msg.Text), "adults") {
+			fmt.Sscanf(msg.Text, "%d adults", &pCtx.Adults)
+		}
+
+		plan, err := b.planner.GeneratePlan(ctx, msg.Text, pCtx)
 
 		if err != nil {
 			log.Printf("Error generating plan: %v", err)

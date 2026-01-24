@@ -41,8 +41,16 @@ func NewPlanner(store *storage.RecipeStore, textGen llm.TextGenerator, embedGen 
 	}
 }
 
+// PlanningContext holds user-specific constraints for the meal plan.
+type PlanningContext struct {
+	Adults          int
+	Children        int
+	ChildrenAges    []int
+	CookingFrequency int // Times per week they want to cook
+}
+
 // GeneratePlan creates a meal plan based on a user request.
-func (p *Planner) GeneratePlan(ctx context.Context, userRequest string) (*MealPlan, error) {
+func (p *Planner) GeneratePlan(ctx context.Context, userRequest string, pCtx PlanningContext) (*MealPlan, error) {
 	// 1. Generate embedding for the user request to find relevant recipes
 	queryEmbedding, err := p.embedGen.GenerateEmbedding(ctx, userRequest)
 	if err != nil {
@@ -68,38 +76,50 @@ func (p *Planner) GeneratePlan(ctx context.Context, userRequest string) (*MealPl
 	}
 
 	prompt := fmt.Sprintf(`
-
 You are an expert meal planner. Based on the user's request and the provided list of recipes, create a 7-day meal plan.
-Only use the recipes provided in the context below. 
 
 User Request: "%s"
+
+Household Composition:
+- Adults: %d
+- Children: %d (Ages: %v)
+
+Cooking Constraints:
+- Target cooking frequency: %d times per week. 
+- On non-cooking days, the plan must utilize leftovers from previous days.
 
 Available Recipes:
 %s
 
 Instructions:
-1. **Language Detection**: Analyze the language of the "User Request" (e.g., English, Portuguese, Danish). 
-2. **Response Language**: Generate the 'note' fields and the 'shopping_list' strictly in the **same language** as the User Request. The 'recipe_title' must remain in its original language as found in the context.
-3. Select one recipe for each of the 7 days (Monday to Sunday).
-4. It's okay to repeat a recipe if it fits the user's request or if there aren't enough unique recipes.
-5. Aggregate all ingredients into a consolidated shopping list.
-6. Return the result strictly as a JSON object with this structure:
+1. **Portion Scaling**: 
+   - Calculate total portions needed per meal: Adult = 1.0, Child (0-3) = 0.25, Child (4-10) = 0.5, Child (11+) = 1.0.
+   - Scale the "Ingredients" in the shopping list based on the total portions required for the whole week.
+2. **Cooking vs. Leftovers**:
+   - If cooking frequency is less than 7, select recipes that are good for leftovers (stews, bakes, etc.).
+   - Explicitly mark days as "Cook: [Recipe Name]" or "Leftovers: [Recipe Name]".
+3. **Language Detection**: Analyze the language of the "User Request".
+4. **Response Language**: Generate 'note', 'prep_time', and 'shopping_list' in the same language as the User Request. 'recipe_title' stays in its original language.
+5. **Return Format**: Strictly JSON:
 {
   "plan": [
     {
       "day": "Monday", 
-      "recipe_title": "Recipe Name", 
-      "prep_time": "30 mins",
-      "note": "Why this was chosen (in user's language)"
+      "recipe_title": "Cook: Recipe Name", 
+      "prep_time": "45 mins",
+      "note": "Why this was chosen and how many portions were cooked."
     },
-    ...
+    {
+      "day": "Tuesday", 
+      "recipe_title": "Leftovers: Recipe Name", 
+      "prep_time": "5 mins",
+      "note": "Eating leftovers from Monday."
+    }
   ],
-  "shopping_list": ["item 1 (in user's language)", "item 2", ...],
-  "total_prep_estimate": "Summary of prep time for the week (in user's language)"
+  "shopping_list": ["item 1 (scaled quantity)", "item 2", ...],
+  "total_prep_estimate": "Total time for the week"
 }
-
-Do not include any other text or formatting in your response.
-`, userRequest, contextBuilder.String())
+`, userRequest, pCtx.Adults, pCtx.Children, pCtx.ChildrenAges, pCtx.CookingFrequency, contextBuilder.String())
 
 	// 4. Call Gemini to generate the plan
 	llmResponse, err := p.textGen.GenerateContent(ctx, prompt)

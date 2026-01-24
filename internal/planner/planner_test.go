@@ -20,7 +20,7 @@ type MockTextGenerator struct{}
 func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (string, error) {
 	return `{
 			"plan": [
-				{"day": "Monday", "recipe_title": "Pasta", "note": "Yum"}
+				{"day": "Monday", "recipe_title": "Pasta", "prep_time": "15 mins", "note": "Yum"}
 			],
 			"shopping_list": ["Pasta", "Tomato"],
 			"total_prep_estimate": "30 mins"
@@ -44,7 +44,7 @@ func TestGeneratePlan(t *testing.T) {
 	planner := NewPlanner(store, &MockTextGenerator{}, &MockEmbedingGenerator{})
 
 	// 4. Run GeneratePlan
-	plan, err := planner.GeneratePlan(ctx, "I want pasta")
+	plan, err := planner.GeneratePlan(ctx, "I want pasta", PlanningContext{})
 	if err != nil {
 		t.Fatalf("GeneratePlan failed: %v", err)
 	}

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"ai-meal-planner/internal/clipper"
+	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/ghost"
 	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/planner"
@@ -22,6 +23,7 @@ type App struct {
 	recipeStore *storage.RecipeStore
 	planner     *planner.Planner
 	clipper     *clipper.Clipper
+	cfg         *config.Config
 }
 
 // NewApp creates and initializes a new App instance.
@@ -32,6 +34,7 @@ func NewApp(
 	recipeStore *storage.RecipeStore,
 	mealPlanner *planner.Planner,
 	recipeClipper *clipper.Clipper,
+	cfg *config.Config,
 ) *App {
 	return &App{
 		ghostClient: ghostClient,
@@ -40,6 +43,7 @@ func NewApp(
 		recipeStore: recipeStore,
 		planner:     mealPlanner,
 		clipper:     recipeClipper,
+		cfg:         cfg,
 	}
 }
 
@@ -87,7 +91,14 @@ func (a *App) IngestRecipes(ctx context.Context) error {
 func (a *App) GenerateMealPlan(ctx context.Context, request string) error {
 	fmt.Printf("Generating meal plan for: \"%s\"...\n", request)
 
-	plan, err := a.planner.GeneratePlan(ctx, request)
+	// Use defaults from config
+	pCtx := planner.PlanningContext{
+		Adults:           a.cfg.DefaultAdults,
+		Children:         a.cfg.DefaultChildren,
+		CookingFrequency: a.cfg.DefaultCookingFrequency,
+	}
+
+	plan, err := a.planner.GeneratePlan(ctx, request, pCtx)
 	if err != nil {
 		return fmt.Errorf("failed to generate plan: %w", err)
 	}

@@ -67,7 +67,7 @@
 - [ ] **Feature: Advanced Planning Options**
     - [x] Support multiple Telegram IDs for access control.
     - [x] Improve message formatting (split Menu and Shopping List).
-    - [ ] Support "Cooking Frequency" (e.g., cook 3 times for 7 days of food) by adjusting portions/leftovers.
-    - [ ] Support "Household Composition" (Number of adults, children, and ages) for precise ingredient scaling.
-    - [ ] Update LLM prompts to incorporate these household and frequency constraints.
+    - [x] Support "Cooking Frequency" (e.g., cook 3 times for 7 days of food) by adjusting portions/leftovers.
+    - [x] Support "Household Composition" (Number of adults, children, and ages) for precise ingredient scaling.
+    - [x] Update LLM prompts to incorporate these household and frequency constraints.
 
