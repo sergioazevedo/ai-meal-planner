@@ -10,4 +10,4 @@ if [ -z "$TARGET" ]; then
     exit 1
 fi
 
-ssh "$TARGET" "export \$(cat /home/ubuntu/.env | xargs) && /home/ubuntu/ai-meal-planner-linux ingest"
+ssh "$TARGET" "export \$(grep -v '^#' /home/ubuntu/.env | xargs) && /home/ubuntu/ai-meal-planner-linux ingest"
