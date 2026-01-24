@@ -2,39 +2,43 @@ package telegram
 
 import (
 	"context"
-
 	"fmt"
-
 	"log"
-
 	"net/http"
-
 	"strings"
+	"time"
 
 	"ai-meal-planner/internal/clipper"
-
 	"ai-meal-planner/internal/config"
-
+	"ai-meal-planner/internal/ghost"
+	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/planner"
+	"ai-meal-planner/internal/recipe"
+	"ai-meal-planner/internal/storage"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 // Bot wraps the Telegram API, Meal Planner, and Clipper.
-
 type Bot struct {
-	api *tgbotapi.BotAPI
-
-	planner *planner.Planner
-
-	clipper *clipper.Clipper
-
-	cfg *config.Config
+	api         *tgbotapi.BotAPI
+	planner     *planner.Planner
+	clipper     *clipper.Clipper
+	recipeStore *storage.RecipeStore
+	textGen     llm.TextGenerator
+	embedGen    llm.EmbeddingGenerator
+	cfg         *config.Config
 }
 
 // NewBot initializes the Telegram Bot and sets the Webhook.
-
-func NewBot(cfg *config.Config, planner *planner.Planner, clipper *clipper.Clipper) (*Bot, error) {
+func NewBot(
+	cfg *config.Config,
+	planner *planner.Planner,
+	clipper *clipper.Clipper,
+	store *storage.RecipeStore,
+	textGen llm.TextGenerator,
+	embedGen llm.EmbeddingGenerator,
+) (*Bot, error) {
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramBotToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init telegram api: %w", err)
@@ -51,12 +55,14 @@ func NewBot(cfg *config.Config, planner *planner.Planner, clipper *clipper.Clipp
 	log.Printf("Webhook set response: %s", resp.Description)
 
 	return &Bot{
-			api:     bot,
-			planner: planner,
-			clipper: clipper,
-			cfg:     cfg,
-		},
-		nil
+		api:         bot,
+		planner:     planner,
+		clipper:     clipper,
+		recipeStore: store,
+		textGen:     textGen,
+		embedGen:    embedGen,
+		cfg:         cfg,
+	}, nil
 }
 
 // RegisterHandlers registers the webhook handler with the default HTTP mux.
@@ -126,7 +132,9 @@ func (b *Bot) processMessage(msg *tgbotapi.Message) {
 			safeErr := strings.ReplaceAll(err.Error(), "`", "'")
 			finalText = fmt.Sprintf("❌ *Error clipping recipe:*\n```\n%v\n```", safeErr)
 		} else {
-			finalText = fmt.Sprintf("✅ *Recipe Saved & Published!*\n\n*Title:* %s\n*URL:* %s/%s", post.Title, b.cfg.GhostURL, post.ID)
+			finalText = fmt.Sprintf("✅ *Recipe Saved!*\n\n*Title:* %s\n*URL:* %s/%s", post.Title, b.cfg.GhostURL, post.ID)
+			// Trigger background ingestion so it becomes searchable for future plans
+			go b.ingestClippedPost(*post)
 		}
 		edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, finalText)
 		edit.ParseMode = "Markdown"
@@ -199,4 +207,24 @@ func formatPlanMarkdownParts(plan *planner.MealPlan) (string, string) {
 	}
 
 	return pb.String(), sb.String()
+}
+
+// ingestClippedPost performs normalization and storage in the background.
+func (b *Bot) ingestClippedPost(post ghost.Post) {
+	log.Printf("Background: Ingesting clipped recipe '%s'...", post.Title)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+
+	normalizedRecipe, err := recipe.NormalizeRecipeHTML(ctx, b.textGen, b.embedGen, post)
+	if err != nil {
+		log.Printf("Background Error: Failed to normalize '%s': %v", post.Title, err)
+		return
+	}
+
+	if err := b.recipeStore.Save(post.ID, post.UpdatedAt, *normalizedRecipe); err != nil {
+		log.Printf("Background Error: Failed to save '%s' to store: %v", post.Title, err)
+		return
+	}
+
+	log.Printf("Background Success: Recipe '%s' is now indexed and searchable.", post.Title)
 }

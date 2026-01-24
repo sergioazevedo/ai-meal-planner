@@ -49,7 +49,7 @@ func main() {
 	recipeClipper := clipper.NewClipper(ghostClient, textGen)
 
 	// 6. Initialize Telegram Bot
-	bot, err := telegram.NewBot(cfg, mealPlanner, recipeClipper)
+	bot, err := telegram.NewBot(cfg, mealPlanner, recipeClipper, store, textGen, geminiClient)
 	if err != nil {
 		log.Fatalf("Failed to initialize Telegram Bot: %v", err)
 	}
