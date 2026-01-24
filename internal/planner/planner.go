@@ -86,17 +86,19 @@ Household Composition:
 
 Cooking Constraints:
 - Target cooking frequency: %d times per week. 
-- On non-cooking days, the plan must utilize leftovers from previous days.
+- Strategy: Typically 3 times during weekdays and 1-2 times on weekends.
+- On non-cooking days, the plan MUST utilize leftovers.
 
 Available Recipes:
 %s
 
 Instructions:
-1. **Portion Scaling**: 
-   - Calculate total portions needed per meal: Adult = 1.0, Child (0-3) = 0.25, Child (4-10) = 0.5, Child (11+) = 1.0.
+1. **Portion Scaling & Batch Cooking**: 
+   - Calculate total portions needed per meal: Adult = 1.0, Child (0-10) = 0.5.
+   - When cooking, cook enough portions to cover the subsequent "Leftover" days. 
    - Scale the "Ingredients" in the shopping list based on the total portions required for the whole week.
-2. **Cooking vs. Leftovers**:
-   - If cooking frequency is less than 7, select recipes that are good for leftovers (stews, bakes, etc.).
+2. **Leftover Optimization**:
+   - Prioritize recipes that are "Better the next day" (stews, curries, lasagnas, bakes).
    - Explicitly mark days as "Cook: [Recipe Name]" or "Leftovers: [Recipe Name]".
 3. **Language Detection**: Analyze the language of the "User Request".
 4. **Response Language**: Generate 'note', 'prep_time', and 'shopping_list' in the same language as the User Request. 'recipe_title' stays in its original language.
@@ -105,19 +107,19 @@ Instructions:
   "plan": [
     {
       "day": "Monday", 
-      "recipe_title": "Cook: Recipe Name", 
+      "recipe_title": "Cook: [Name]", 
       "prep_time": "45 mins",
-      "note": "Why this was chosen and how many portions were cooked."
+      "note": "Cooking 2.5 portions to cover today and tomorrow."
     },
     {
       "day": "Tuesday", 
-      "recipe_title": "Leftovers: Recipe Name", 
+      "recipe_title": "Leftovers: [Name]", 
       "prep_time": "5 mins",
-      "note": "Eating leftovers from Monday."
+      "note": "Enjoying leftovers from Monday."
     }
   ],
-  "shopping_list": ["item 1 (scaled quantity)", "item 2", ...],
-  "total_prep_estimate": "Total time for the week"
+  "shopping_list": ["item 1 (scaled for total week portions)", ...],
+  "total_prep_estimate": "Total time"
 }
 `, userRequest, pCtx.Adults, pCtx.Children, pCtx.ChildrenAges, pCtx.CookingFrequency, contextBuilder.String())
 

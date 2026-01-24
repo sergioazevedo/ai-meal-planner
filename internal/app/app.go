@@ -95,6 +95,7 @@ func (a *App) GenerateMealPlan(ctx context.Context, request string) error {
 	pCtx := planner.PlanningContext{
 		Adults:           a.cfg.DefaultAdults,
 		Children:         a.cfg.DefaultChildren,
+		ChildrenAges:     a.cfg.DefaultChildrenAges,
 		CookingFrequency: a.cfg.DefaultCookingFrequency,
 	}
 

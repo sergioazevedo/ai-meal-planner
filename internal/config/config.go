@@ -21,12 +21,12 @@ type Config struct {
 
 		RecipeStoragePath string
 	
-		// Defaults for Planning
-		DefaultAdults           int
-		DefaultChildren         int
-		DefaultCookingFrequency int
-	}
-	
+			// Defaults for Planning
+			DefaultAdults           int
+			DefaultChildren         int
+			DefaultChildrenAges     []int
+			DefaultCookingFrequency int
+		}	
 	// NewFromEnv creates a new Config object from environment variables.
 	func NewFromEnv() (*Config, error) {
 		ghostURL := os.Getenv("GHOST_API_URL")
@@ -81,22 +81,37 @@ type Config struct {
 			recipeStoragePath = "data/recipes"
 		}
 	
-		// Default Planning Values
-		defaultAdults := 2
-		if val := os.Getenv("DEFAULT_ADULTS"); val != "" {
-			fmt.Sscanf(val, "%d", &defaultAdults)
-		}
-	
-		defaultChildren := 0
-		if val := os.Getenv("DEFAULT_CHILDREN"); val != "" {
-			fmt.Sscanf(val, "%d", &defaultChildren)
-		}
-	
-		defaultFreq := 7
-		if val := os.Getenv("DEFAULT_COOKING_FREQUENCY"); val != "" {
-			fmt.Sscanf(val, "%d", &defaultFreq)
-		}
-	
+			// Default Planning Values
+			defaultAdults := 2
+			if val := os.Getenv("DEFAULT_ADULTS"); val != "" {
+				fmt.Sscanf(val, "%d", &defaultAdults)
+			}
+		
+				defaultChildren := 1
+				if val := os.Getenv("DEFAULT_CHILDREN"); val != "" {
+					fmt.Sscanf(val, "%d", &defaultChildren)
+				}
+			
+				var defaultAges []int
+				if val := os.Getenv("DEFAULT_CHILDREN_AGES"); val != "" {
+					parts := strings.Split(val, ",")
+					for _, p := range parts {
+						var age int
+						if _, err := fmt.Sscanf(strings.TrimSpace(p), "%d", &age); err == nil {
+							defaultAges = append(defaultAges, age)
+						}
+					}
+				} else if defaultChildren > 0 {
+					// Default to 5-year olds if children are present but no ages given
+					for i := 0; i < defaultChildren; i++ {
+						defaultAges = append(defaultAges, 5)
+					}
+				}
+			
+				defaultFreq := 4
+	if val := os.Getenv("DEFAULT_COOKING_FREQUENCY"); val != "" {
+		fmt.Sscanf(val, "%d", &defaultFreq)
+	}	
 		return &Config{
 			GhostURL:               ghostURL,
 			GhostContentKey:        ghostContentKey,
@@ -105,10 +120,11 @@ type Config struct {
 			GroqAPIKey:             groqAPIKey,
 			TelegramBotToken:       telegramBotToken,
 			TelegramWebhookURL:     telegramWebhookURL,
-			TelegramAllowedUserIDs: allowedIDs,
-			RecipeStoragePath:      recipeStoragePath,
-			DefaultAdults:          defaultAdults,
-			DefaultChildren:        defaultChildren,
-			DefaultCookingFrequency: defaultFreq,
-		}, nil
-	}
+					TelegramAllowedUserIDs: allowedIDs,
+					RecipeStoragePath:      recipeStoragePath,
+					DefaultAdults:          defaultAdults,
+					DefaultChildren:        defaultChildren,
+					DefaultChildrenAges:    defaultAges,
+					DefaultCookingFrequency: defaultFreq,
+				}, nil
+			}

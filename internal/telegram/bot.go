@@ -141,6 +141,7 @@ func (b *Bot) processMessage(msg *tgbotapi.Message) {
 		pCtx := planner.PlanningContext{
 			Adults:           b.cfg.DefaultAdults,
 			Children:         b.cfg.DefaultChildren,
+			ChildrenAges:     b.cfg.DefaultChildrenAges,
 			CookingFrequency: b.cfg.DefaultCookingFrequency,
 		}
 
