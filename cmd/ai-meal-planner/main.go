@@ -12,6 +12,7 @@ import (
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/ghost"
 	"ai-meal-planner/internal/llm"
+	"ai-meal-planner/internal/metrics"
 	"ai-meal-planner/internal/planner"
 	"ai-meal-planner/internal/storage"
 )
@@ -68,6 +69,22 @@ func main() {
 		if err := application.GenerateMealPlan(ctx, *request); err != nil {
 			log.Fatalf("Planning failed: %v", err)
 		}
+	case "metrics-cleanup":
+		cleanupCmd := flag.NewFlagSet("metrics-cleanup", flag.ExitOnError)
+		days := cleanupCmd.Int("days", 30, "Keep records for the last N days")
+		cleanupCmd.Parse(os.Args[2:])
+
+		mStore, err := metrics.NewStore(cfg.MetricsDBPath)
+		if err != nil {
+			log.Fatalf("Failed to open metrics store: %v", err)
+		}
+		defer mStore.Close()
+
+		affected, err := mStore.Cleanup(*days)
+		if err != nil {
+			log.Fatalf("Cleanup failed: %v", err)
+		}
+		fmt.Printf("Successfully removed %d old metric records.\n", affected)
 	default:
 		fmt.Printf("Unknown command: %s\n", os.Args[1])
 		printUsage()
@@ -80,4 +97,5 @@ func printUsage() {
 	fmt.Println("\nCommands:")
 	fmt.Println("  ingest             Fetch and normalize recipes from Ghost")
 	fmt.Println("  plan -request \"...\" Generate a weekly meal plan")
+	fmt.Println("  metrics-cleanup    Remove old metric records")
 }

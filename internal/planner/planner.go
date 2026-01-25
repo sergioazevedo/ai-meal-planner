@@ -3,6 +3,7 @@ package planner
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/storage"
@@ -48,7 +49,8 @@ type PlanningContext struct {
 
 // AgentMeta holds operational metadata for an agent execution.
 type AgentMeta struct {
-	Usage llm.TokenUsage
+	Usage   llm.TokenUsage
+	Latency time.Duration
 }
 
 // GeneratePlan creates a meal plan based on a user request.

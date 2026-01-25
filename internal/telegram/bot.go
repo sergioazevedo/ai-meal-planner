@@ -12,6 +12,7 @@ import (
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/ghost"
 	"ai-meal-planner/internal/llm"
+	"ai-meal-planner/internal/metrics"
 	"ai-meal-planner/internal/planner"
 	"ai-meal-planner/internal/recipe"
 	"ai-meal-planner/internal/storage"
@@ -21,13 +22,14 @@ import (
 
 // Bot wraps the Telegram API, Meal Planner, and Clipper.
 type Bot struct {
-	api         *tgbotapi.BotAPI
-	planner     *planner.Planner
-	clipper     *clipper.Clipper
-	recipeStore *storage.RecipeStore
-	textGen     llm.TextGenerator
-	embedGen    llm.EmbeddingGenerator
-	cfg         *config.Config
+	api          *tgbotapi.BotAPI
+	planner      *planner.Planner
+	clipper      *clipper.Clipper
+	recipeStore  *storage.RecipeStore
+	metricsStore *metrics.Store
+	textGen      llm.TextGenerator
+	embedGen     llm.EmbeddingGenerator
+	cfg          *config.Config
 }
 
 // NewBot initializes the Telegram Bot and sets the Webhook.
@@ -36,6 +38,7 @@ func NewBot(
 	planner *planner.Planner,
 	clipper *clipper.Clipper,
 	store *storage.RecipeStore,
+	metricsStore *metrics.Store,
 	textGen llm.TextGenerator,
 	embedGen llm.EmbeddingGenerator,
 ) (*Bot, error) {
@@ -55,13 +58,14 @@ func NewBot(
 	log.Printf("Webhook set response: %s", resp.Description)
 
 	return &Bot{
-		api:         bot,
-		planner:     planner,
-		clipper:     clipper,
-		recipeStore: store,
-		textGen:     textGen,
-		embedGen:    embedGen,
-		cfg:         cfg,
+		api:          bot,
+		planner:      planner,
+		clipper:      clipper,
+		recipeStore:  store,
+		metricsStore: metricsStore,
+		textGen:      textGen,
+		embedGen:     embedGen,
+		cfg:          cfg,
 	}, nil
 }
 
@@ -103,6 +107,16 @@ func (b *Bot) handleWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func (b *Bot) processMessage(msg *tgbotapi.Message) {
+	// 0. Handle Admin Commands
+	if msg.Text == "/metrics" {
+		if msg.From.ID != b.cfg.AdminTelegramID {
+			b.api.Send(tgbotapi.NewMessage(msg.Chat.ID, "⛔ *Access Denied*: Admin only."))
+			return
+		}
+		b.handleMetricsCommand(msg.Chat.ID)
+		return
+	}
+
 	// 1. Detect if it's a URL (Clipper mode) or a request (Planner mode)
 	isURL := strings.HasPrefix(msg.Text, "http://") || strings.HasPrefix(msg.Text, "https://")
 
@@ -158,7 +172,23 @@ func (b *Bot) processMessage(msg *tgbotapi.Message) {
 			fmt.Sscanf(msg.Text, "%d adults", &pCtx.Adults)
 		}
 
-		plan, _, err := b.planner.GeneratePlan(ctx, msg.Text, pCtx)
+		plan, metas, err := b.planner.GeneratePlan(ctx, msg.Text, pCtx)
+
+		// Record Metrics even if it errored (if we have metas)
+		for _, m := range metas {
+			_ = b.metricsStore.Record(metrics.ExecutionMetric{
+				AgentName:        "Planner",
+				Model:            m.Usage.Model,
+				PromptTokens:     m.Usage.PromptTokens,
+				CompletionTokens: m.Usage.CompletionTokens,
+				LatencyMS:        m.Latency.Milliseconds(),
+			})
+			// Alert on Context Bloat
+			if m.Usage.PromptTokens > 4000 {
+				alert := fmt.Sprintf("⚠️ *Context Bloat Alert*\nAgent: Planner\nModel: %s\nPrompt Tokens: %d", m.Usage.Model, m.Usage.PromptTokens)
+				b.sendAdminAlert(alert)
+			}
+		}
 
 		if err != nil {
 			log.Printf("Error generating plan: %v", err)
@@ -226,4 +256,43 @@ func (b *Bot) ingestClippedPost(post ghost.Post) {
 	}
 
 	log.Printf("Background Success: Recipe '%s' is now indexed and searchable.", post.Title)
+}
+
+func (b *Bot) handleMetricsCommand(chatID int64) {
+	usage, err := b.metricsStore.GetDailyUsage(7)
+	if err != nil {
+		b.api.Send(tgbotapi.NewMessage(chatID, "❌ Error fetching metrics."))
+		return
+	}
+
+	health := metrics.GetSysHealth("data")
+
+	var sb strings.Builder
+	sb.WriteString("📊 *Usage & Health Report*\n\n")
+
+	sb.WriteString("🗓 *Recent LLM Activity*\n")
+	if len(usage) == 0 {
+		sb.WriteString("_No data yet_\n")
+	}
+	for _, d := range usage {
+		sb.WriteString(fmt.Sprintf("• *%s*: %d tokens (%d execs)\n", d.Date, d.TotalPrompt+d.TotalCompletion, d.TotalExecution))
+	}
+
+	sb.WriteString("\n🧠 *System Health*\n")
+	sb.WriteString(fmt.Sprintf("• RAM: %dMB (Alloc) / %dMB (Sys)\n", health.AllocMB, health.SysMB))
+	sb.WriteString(fmt.Sprintf("• Goroutines: %d\n", health.Goroutines))
+	sb.WriteString(fmt.Sprintf("• Disk Data: %s\n", health.DataDiskSize))
+
+	msg := tgbotapi.NewMessage(chatID, sb.String())
+	msg.ParseMode = "Markdown"
+	b.api.Send(msg)
+}
+
+func (b *Bot) sendAdminAlert(text string) {
+	if b.cfg.AdminTelegramID == 0 {
+		return
+	}
+	msg := tgbotapi.NewMessage(b.cfg.AdminTelegramID, text)
+	msg.ParseMode = "Markdown"
+	b.api.Send(msg)
 }

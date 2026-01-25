@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"time"
 )
 
 //go:embed analyst_prompt.md
@@ -55,6 +56,7 @@ func (p *Planner) runAnalyst(
 	planingCtx PlanningContext,
 	recipes []recipe.NormalizedRecipe,
 ) (AnalystResult, error) {
+	start := time.Now()
 	prompt, err := buildAnalystPrompt(analystPromptData{
 		UserRequest:  userRequest,
 		Adults:       planingCtx.Adults,
@@ -106,7 +108,10 @@ func (p *Planner) runAnalyst(
 			PlannedMeals: raw.PlannedMeals,
 			Recipes:      selectedRecipes,
 		},
-		Meta: AgentMeta{Usage: resp.Usage},
+		Meta: AgentMeta{
+			Usage:   resp.Usage,
+			Latency: time.Since(start),
+		},
 	}, nil
 }
 

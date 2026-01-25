@@ -13,6 +13,7 @@ import (
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/ghost"
 	"ai-meal-planner/internal/llm"
+	"ai-meal-planner/internal/metrics"
 	"ai-meal-planner/internal/planner"
 	"ai-meal-planner/internal/storage"
 	"ai-meal-planner/internal/telegram"
@@ -44,12 +45,18 @@ func main() {
 		log.Fatalf("Failed to initialize recipe store: %v", err)
 	}
 
+	metricsStore, err := metrics.NewStore(cfg.MetricsDBPath)
+	if err != nil {
+		log.Fatalf("Failed to initialize metrics store: %v", err)
+	}
+	defer metricsStore.Close()
+
 	// 5. Initialize Services
 	mealPlanner := planner.NewPlanner(store, textGen, geminiClient)
 	recipeClipper := clipper.NewClipper(ghostClient, textGen)
 
 	// 6. Initialize Telegram Bot
-	bot, err := telegram.NewBot(cfg, mealPlanner, recipeClipper, store, textGen, geminiClient)
+	bot, err := telegram.NewBot(cfg, mealPlanner, recipeClipper, store, metricsStore, textGen, geminiClient)
 	if err != nil {
 		log.Fatalf("Failed to initialize Telegram Bot: %v", err)
 	}

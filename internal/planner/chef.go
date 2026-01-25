@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"time"
 )
 
 //go:embed chef_prompt.md
@@ -21,6 +22,7 @@ func (p *Planner) runChef(
 	ctx context.Context,
 	mealSchedule *MealProposal,
 ) (ChefResult, error) {
+	start := time.Now()
 	prompt, err := buildChefPrompt(mealSchedule)
 	if err != nil {
 		return ChefResult{}, err
@@ -38,7 +40,10 @@ func (p *Planner) runChef(
 
 	return ChefResult{
 		Plan: result,
-		Meta: AgentMeta{Usage: resp.Usage},
+		Meta: AgentMeta{
+			Usage:   resp.Usage,
+			Latency: time.Since(start),
+		},
 	}, nil
 }
 

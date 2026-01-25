@@ -10,6 +10,7 @@ help:
 	@echo "  make eval          - Run live LLM evaluation tests (costs money!)"
 	@echo "  make ingest        - Run local ingestion"
 	@echo "  make plan          - Run local planning"
+	@echo "  make metrics-cleanup - Clean up old metrics data (30 days)"
 
 # --- Development ---
 
@@ -31,7 +32,10 @@ ingest:
 
 plan:
 	@read -p "What would you like to eat? " prompt; \
-	go run cmd/ai-meal-planner/main.go plan "$$prompt"
+	go run cmd/ai-meal-planner/main.go plan -request "$$prompt"
+
+metrics-cleanup:
+	go run cmd/ai-meal-planner/main.go metrics-cleanup -days 30
 
 # --- Remote Scripts ---
 
