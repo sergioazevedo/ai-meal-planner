@@ -71,3 +71,14 @@
     - [x] Support "Household Composition" (Number of adults, children, and ages) for precise ingredient scaling.
     - [x] Update LLM prompts to incorporate these household and frequency constraints.
 
+## Phase 7: Multi-Agent Architecture (Evolution)
+- [ ] **Refactor Planner into a Multi-Agent Pipeline**
+    - [ ] **Agent 1: The Analyst** - Responsible for recipe selection and batch-cooking strategy.
+    - [ ] **Agent 2: The Nutritionist** - Basic version to audit balance, variety, and healthy heuristics.
+    - [ ] **Agent 3: The Chef** - Responsible for final scheduling and JSON synthesis.
+    - [ ] **Agent 4: The Grocer** - Responsible for organizing and categorizing the shopping list by supermarket aisle.
+- [ ] **Implement Orchestrator Pattern**
+    - [ ] Create a "Manager" logic in `internal/planner` to coordinate hand-offs and state between agents.
+- [ ] **Enhanced Testing**
+    - [ ] Add unit tests for each agent's specialized prompt and output.
+
