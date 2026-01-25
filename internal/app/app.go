@@ -99,7 +99,7 @@ func (a *App) GenerateMealPlan(ctx context.Context, request string) error {
 		CookingFrequency: a.cfg.DefaultCookingFrequency,
 	}
 
-	plan, err := a.planner.GeneratePlan(ctx, request, pCtx)
+	plan, _, err := a.planner.GeneratePlan(ctx, request, pCtx)
 	if err != nil {
 		return fmt.Errorf("failed to generate plan: %w", err)
 	}

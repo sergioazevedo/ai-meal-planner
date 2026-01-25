@@ -61,13 +61,13 @@ HTML Content:
 %s
 `, content)
 
-	llmResponse, err := c.textGen.GenerateContent(ctx, prompt)
+	resp, err := c.textGen.GenerateContent(ctx, prompt)
 	if err != nil {
 		return nil, fmt.Errorf("ai extraction failed: %w", err)
 	}
 
 	// Sanitize LLM response (remove markdown code blocks if present)
-	jsonContent := strings.TrimSpace(llmResponse)
+	jsonContent := strings.TrimSpace(resp.Content)
 	jsonContent = strings.TrimPrefix(jsonContent, "```json")
 	jsonContent = strings.TrimPrefix(jsonContent, "```")
 	jsonContent = strings.TrimSuffix(jsonContent, "```")
@@ -75,7 +75,7 @@ HTML Content:
 
 	var extracted ExtractedRecipe
 	if err := json.Unmarshal([]byte(jsonContent), &extracted); err != nil {
-		return nil, fmt.Errorf("failed to parse AI response: %w. Response: %s", err, llmResponse)
+		return nil, fmt.Errorf("failed to parse AI response: %w. Response: %s", err, resp.Content)
 	}
 
 	// 3. Format as Ghost HTML

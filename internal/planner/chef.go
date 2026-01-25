@@ -12,26 +12,34 @@ import (
 //go:embed chef_prompt.md
 var chefPrompt string
 
+type ChefResult struct {
+	Plan *MealPlan
+	Meta AgentMeta
+}
+
 func (p *Planner) runChef(
 	ctx context.Context,
 	mealSchedule *MealProposal,
-) (*MealPlan, error) {
+) (ChefResult, error) {
 	prompt, err := buildChefPrompt(mealSchedule)
 	if err != nil {
-		return nil, err
+		return ChefResult{}, err
 	}
 
-	llmResp, err := p.textGen.GenerateContent(ctx, prompt)
+	resp, err := p.textGen.GenerateContent(ctx, prompt)
 	if err != nil {
-		return nil, err
+		return ChefResult{}, err
 	}
 
 	result := &MealPlan{}
-	if err = json.Unmarshal([]byte(llmResp), result); err != nil {
-		return nil, fmt.Errorf("failed to parse MealPlan %w, :%s", err, llmResp)
+	if err = json.Unmarshal([]byte(resp.Content), result); err != nil {
+		return ChefResult{Meta: AgentMeta{Usage: resp.Usage}}, fmt.Errorf("failed to parse MealPlan %w, :%s", err, resp.Content)
 	}
 
-	return result, nil
+	return ChefResult{
+		Plan: result,
+		Meta: AgentMeta{Usage: resp.Usage},
+	}, nil
 }
 
 func buildChefPrompt(data *MealProposal) (string, error) {

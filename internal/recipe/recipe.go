@@ -45,14 +45,14 @@ func NormalizeRecipeHTML(ctx context.Context, textGen llm.TextGenerator, embedGe
 	%s
 	`, post.Title, post.HTML)
 
-	llmResponse, err := textGen.GenerateContent(ctx, prompt)
+	resp, err := textGen.GenerateContent(ctx, prompt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get LLM response: %w", err)
 	}
 
 	var normalizedRecipe NormalizedRecipe
-	if err := json.Unmarshal([]byte(llmResponse), &normalizedRecipe); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal LLM response into NormalizedRecipe: %w. LLM Response: %s", err, llmResponse)
+	if err := json.Unmarshal([]byte(resp.Content), &normalizedRecipe); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal LLM response into NormalizedRecipe: %w. LLM Response: %s", err, resp.Content)
 	}
 
 	// Generate Embedding

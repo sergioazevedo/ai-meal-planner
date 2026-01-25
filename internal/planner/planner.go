@@ -46,37 +46,46 @@ type PlanningContext struct {
 	CookingFrequency int // Times per week they want to cook
 }
 
+// AgentMeta holds operational metadata for an agent execution.
+type AgentMeta struct {
+	Usage llm.TokenUsage
+}
+
 // GeneratePlan creates a meal plan based on a user request.
-func (p *Planner) GeneratePlan(ctx context.Context, userRequest string, pCtx PlanningContext) (*MealPlan, error) {
+func (p *Planner) GeneratePlan(ctx context.Context, userRequest string, pCtx PlanningContext) (*MealPlan, []AgentMeta, error) {
+	var metas []AgentMeta
+
 	// 1. Generate embedding for the user request to find relevant recipes
 	queryEmbedding, err := p.embedGen.GenerateEmbedding(ctx, userRequest)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate embedding for request: %w", err)
+		return nil, nil, fmt.Errorf("failed to generate embedding for request: %w", err)
 	}
 
 	// 2. Retrieve top N relevant recipes
 	// We fetch 9 recipes to give the LLM variety while staying within token limits
 	recipes, err := p.recipeStore.FindSimilar(queryEmbedding, 9)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve similar recipes: %w", err)
+		return nil, nil, fmt.Errorf("failed to retrieve similar recipes: %w", err)
 	}
 
 	if len(recipes) == 0 {
-		return nil, fmt.Errorf("no recipes found to create a plan")
+		return nil, nil, fmt.Errorf("no recipes found to create a plan")
 	}
 
 	// 4. Call Analyst agent to create a meal schedule
-	mealSchedule, err := p.runAnalyst(ctx, userRequest, pCtx, recipes)
+	analystResult, err := p.runAnalyst(ctx, userRequest, pCtx, recipes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate meal schedule: %w", err)
+		return nil, nil, fmt.Errorf("failed to generate meal schedule: %w", err)
 	}
+	metas = append(metas, analystResult.Meta)
 
 	// 5. Handover meal schedule to the chef to prempare
 	// the MealPlan and the consolidate shooping list
-	mealPlan, err := p.runChef(ctx, mealSchedule)
+	chefResult, err := p.runChef(ctx, analystResult.Proposal)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate meal plan: %w", err)
+		return nil, metas, fmt.Errorf("failed to generate meal plan: %w", err)
 	}
+	metas = append(metas, chefResult.Meta)
 
-	return mealPlan, nil
+	return chefResult.Plan, metas, nil
 }

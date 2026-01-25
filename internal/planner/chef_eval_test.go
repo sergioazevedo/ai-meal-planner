@@ -43,10 +43,11 @@ func TestChef_LiveEval(t *testing.T) {
 	}
 
 	// 2. Execute
-	plan, err := p.runChef(ctx, proposal)
+	result, err := p.runChef(ctx, proposal)
 	if err != nil {
 		t.Fatalf("Chef failed to respond: %v", err)
 	}
+	plan := result.Plan
 
 	// 3. Quality Assertions (The "Evals")
 

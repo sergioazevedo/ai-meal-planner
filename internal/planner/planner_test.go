@@ -3,8 +3,10 @@ package planner
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 
+	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/recipe"
 	"ai-meal-planner/internal/storage"
 )
@@ -17,14 +19,17 @@ func (m *MockEmbedingGenerator) GenerateEmbedding(ctx context.Context, text stri
 
 type MockTextGenerator struct{}
 
-func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (string, error) {
-	return `{
-			"plan": [
-				{"day": "Monday", "recipe_title": "Pasta", "prep_time": "15 mins", "note": "Yum"}
-			],
-			"shopping_list": ["Pasta", "Tomato"],
-			"total_prep_estimate": "30 mins"
-		}`, nil
+func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (llm.ContentResponse, error) {
+	// If it's the Analyst prompt
+	if strings.Contains(prompt, "# Analyst Agent Prompt") {
+		return llm.ContentResponse{
+			Content: `{"planned_meals": [{"day": "Monday", "action": "Cook", "recipe_title": "Pasta", "note": "Yum"}]}`,
+		}, nil
+	}
+	// It's the Chef prompt
+	return llm.ContentResponse{
+		Content: `{"plan": [{"day": "Monday", "recipe_title": "Cook: Pasta", "prep_time": "15 mins", "note": "Yum"}], "shopping_list": ["Pasta", "Tomato"]}`,
+	}, nil
 }
 
 func TestGeneratePlan(t *testing.T) {
@@ -44,17 +49,20 @@ func TestGeneratePlan(t *testing.T) {
 	planner := NewPlanner(store, &MockTextGenerator{}, &MockEmbedingGenerator{})
 
 	// 4. Run GeneratePlan
-	plan, err := planner.GeneratePlan(ctx, "I want pasta", PlanningContext{})
+	plan, metas, err := planner.GeneratePlan(ctx, "I want pasta", PlanningContext{})
 	if err != nil {
 		t.Fatalf("GeneratePlan failed: %v", err)
 	}
 
 	// 5. Assertions
+	if len(metas) != 2 {
+		t.Errorf("Expected 2 meta entries, got %d", len(metas))
+	}
 	if len(plan.Plan) != 1 {
 		t.Errorf("Expected 1 day in plan, got %d", len(plan.Plan))
 	}
-	if plan.Plan[0].RecipeTitle != "Pasta" {
-		t.Errorf("Expected Monday recipe to be 'Pasta', got '%s'", plan.Plan[0].RecipeTitle)
+	if plan.Plan[0].RecipeTitle != "Cook: Pasta" {
+		t.Errorf("Expected Monday recipe to be 'Cook: Pasta', got '%s'", plan.Plan[0].RecipeTitle)
 	}
 	if len(plan.ShoppingList) != 2 {
 		t.Errorf("Expected 2 items in shopping list, got %d", len(plan.ShoppingList))

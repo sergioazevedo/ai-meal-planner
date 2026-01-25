@@ -158,7 +158,7 @@ func (b *Bot) processMessage(msg *tgbotapi.Message) {
 			fmt.Sscanf(msg.Text, "%d adults", &pCtx.Adults)
 		}
 
-		plan, err := b.planner.GeneratePlan(ctx, msg.Text, pCtx)
+		plan, _, err := b.planner.GeneratePlan(ctx, msg.Text, pCtx)
 
 		if err != nil {
 			log.Printf("Error generating plan: %v", err)

@@ -34,7 +34,7 @@ func NewGroqClient(cfg *config.Config) TextGenerator {
 }
 
 // GenerateContent sends a prompt to the Groq model and returns the generated text.
-func (c *groqClient) GenerateContent(ctx context.Context, prompt string) (string, error) {
+func (c *groqClient) GenerateContent(ctx context.Context, prompt string) (ContentResponse, error) {
 	reqBody := map[string]interface{}{
 		"model": groqModel,
 		"messages": []map[string]string{
@@ -49,12 +49,12 @@ func (c *groqClient) GenerateContent(ctx context.Context, prompt string) (string
 
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal request body: %w", err)
+		return ContentResponse{}, fmt.Errorf("failed to marshal request body: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", groqAPIURL, bytes.NewBuffer(jsonBody))
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return ContentResponse{}, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -62,13 +62,13 @@ func (c *groqClient) GenerateContent(ctx context.Context, prompt string) (string
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to send request: %w", err)
+		return ContentResponse{}, fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("groq api error: status=%d body=%s", resp.StatusCode, string(bodyBytes))
+		return ContentResponse{}, fmt.Errorf("groq api error: status=%d body=%s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var groqResp struct {
@@ -77,15 +77,28 @@ func (c *groqClient) GenerateContent(ctx context.Context, prompt string) (string
 				Content string `json:"content"`
 			} `json:"message"`
 		} `json:"choices"`
+		Usage struct {
+			PromptTokens     int `json:"prompt_tokens"`
+			CompletionTokens int `json:"completion_tokens"`
+			TotalTokens      int `json:"total_tokens"`
+		} `json:"usage"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&groqResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
+		return ContentResponse{}, fmt.Errorf("failed to decode response: %w", err)
 	}
 
 	if len(groqResp.Choices) == 0 {
-		return "", fmt.Errorf("no content generated")
+		return ContentResponse{}, fmt.Errorf("no content generated")
 	}
 
-	return groqResp.Choices[0].Message.Content, nil
+	return ContentResponse{
+		Content: groqResp.Choices[0].Message.Content,
+		Usage: TokenUsage{
+			PromptTokens:     groqResp.Usage.PromptTokens,
+			CompletionTokens: groqResp.Usage.CompletionTokens,
+			TotalTokens:      groqResp.Usage.TotalTokens,
+			Model:            groqModel,
+		},
+	}, nil
 }

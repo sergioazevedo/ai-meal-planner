@@ -10,6 +10,7 @@ import (
 	"ai-meal-planner/internal/clipper"
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/ghost"
+	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/planner"
 	"ai-meal-planner/internal/storage"
 )
@@ -38,26 +39,39 @@ type MockTextGenerator struct {
 	generateContentCalls int
 }
 
-func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (string, error) {
+func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (llm.ContentResponse, error) {
 	m.generateContentCalls++
 	if strings.Contains(prompt, "extract structured recipe information") {
-		return `{
-			"title": "Test Recipe",
-			"ingredients": ["1 cup testing"],
-			"instructions": "Write a test.",
-			"tags": ["go", "test"],
-			"prep_time": "10 mins",
-			"servings": "1"
-		}`, nil
+		return llm.ContentResponse{
+			Content: `{
+				"title": "Test Recipe",
+				"ingredients": ["1 cup testing"],
+				"instructions": "Write a test.",
+				"tags": ["go", "test"],
+				"prep_time": "10 mins",
+				"servings": "1"
+			}`,
+		}, nil
 	}
 
-	return `{
-		"plan": [
-			{"day": "Monday", "recipe_title": "Test Recipe", "prep_time": "10 mins", "note": "Only one available"}
-		],
-		"shopping_list": ["1 cup testing"],
-		"total_prep_estimate": "10 mins"
-	}`, nil
+	if strings.Contains(prompt, "Strategic Meal Planning Analyst") {
+		return llm.ContentResponse{
+			Content: `{
+				"planned_meals": [
+					{"day": "Monday", "action": "Cook", "recipe_title": "Test Recipe", "note": "Only one available"}
+				]
+			}`,
+		}, nil
+	}
+
+	return llm.ContentResponse{
+		Content: `{
+			"plan": [
+				{"day": "Monday", "recipe_title": "Cook: Test Recipe", "prep_time": "10 mins", "note": "Only one available"}
+			],
+			"shopping_list": ["1 cup testing"]
+		}`,
+	}, nil
 }
 
 type MockEmbedingGenerator struct {
@@ -116,11 +130,20 @@ func TestFullWorkflow(t *testing.T) {
 	// Reset counter for planning step
 	mockTextGenerator.generateContentCalls = 0
 
-	if err := application.GenerateMealPlan(ctx, "Give me something simple"); err != nil {
-		t.Fatalf("Meal planning failed: %v", err)
+		if err := application.GenerateMealPlan(ctx, "Give me something simple"); err != nil {
+
+			t.Fatalf("Meal planning failed: %v", err)
+
+		}
+
+	
+
+		if mockTextGenerator.generateContentCalls != 2 {
+
+			t.Errorf("Expected 2 calls to LLM for planning (Analyst + Chef), got %d", mockTextGenerator.generateContentCalls)
+
+		}
+
 	}
 
-	if mockTextGenerator.generateContentCalls != 1 {
-		t.Errorf("Expected 1 call to LLM for planning, got %d", mockTextGenerator.generateContentCalls)
-	}
-}
+	

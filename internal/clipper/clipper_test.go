@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"ai-meal-planner/internal/ghost"
+	"ai-meal-planner/internal/llm"
 )
 
 // --- Mocks ---
@@ -34,11 +35,11 @@ type MockTextGenerator struct {
 	ShouldError bool
 }
 
-func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (string, error) {
+func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (llm.ContentResponse, error) {
 	if m.ShouldError {
-		return "", fmt.Errorf("mock ai error")
+		return llm.ContentResponse{}, fmt.Errorf("mock ai error")
 	}
-	return m.Response, nil
+	return llm.ContentResponse{Content: m.Response}, nil
 }
 
 // --- Tests ---

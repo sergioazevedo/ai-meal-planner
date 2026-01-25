@@ -2,7 +2,6 @@ package planner
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"ai-meal-planner/internal/config"
@@ -52,10 +51,11 @@ func TestAnalyst_LiveEval(t *testing.T) {
 	}
 
 	// 3. Execute
-	proposal, err := p.runAnalyst(ctx, userRequest, pCtx, mockRecipes)
+	result, err := p.runAnalyst(ctx, userRequest, pCtx, mockRecipes)
 	if err != nil {
 		t.Fatalf("Analyst failed to respond: %v", err)
 	}
+	proposal := result.Proposal
 
 	// 4. Quality Assertions (The "Evals")
 	

@@ -2,6 +2,7 @@ package recipe
 
 import (
 	"ai-meal-planner/internal/ghost"
+	"ai-meal-planner/internal/llm"
 	"context"
 	"errors"
 	"strings"
@@ -17,11 +18,11 @@ type MockTextGenerator struct {
 	response    string
 }
 
-func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (string, error) {
+func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (llm.ContentResponse, error) {
 	if m.shouldError {
-		return "", errors.New("LLM error")
+		return llm.ContentResponse{}, errors.New("LLM error")
 	}
-	return m.response, nil
+	return llm.ContentResponse{Content: m.response}, nil
 }
 
 func (m *MockEmbedingGenerator) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {

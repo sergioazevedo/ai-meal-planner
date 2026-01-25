@@ -40,6 +40,11 @@ type MealProposal struct {
 	Recipes      []recipe.NormalizedRecipe
 }
 
+type AnalystResult struct {
+	Proposal *MealProposal
+	Meta     AgentMeta
+}
+
 type rawLlmResult struct {
 	PlannedMeals []PlannedMeal `json:"planned_meals"`
 }
@@ -49,7 +54,7 @@ func (p *Planner) runAnalyst(
 	userRequest string,
 	planingCtx PlanningContext,
 	recipes []recipe.NormalizedRecipe,
-) (*MealProposal, error) {
+) (AnalystResult, error) {
 	prompt, err := buildAnalystPrompt(analystPromptData{
 		UserRequest:  userRequest,
 		Adults:       planingCtx.Adults,
@@ -58,17 +63,17 @@ func (p *Planner) runAnalyst(
 		Recipes:      recipes,
 	})
 	if err != nil {
-		return nil, err
+		return AnalystResult{}, err
 	}
 
-	llmResponse, err := p.textGen.GenerateContent(ctx, prompt)
+	resp, err := p.textGen.GenerateContent(ctx, prompt)
 	if err != nil {
-		return nil, err
+		return AnalystResult{}, err
 	}
 
 	raw := &rawLlmResult{}
-	if err = json.Unmarshal([]byte(llmResponse), raw); err != nil {
-		return nil, fmt.Errorf("failed to parse analyst prompt response %w. Response: %s", err, llmResponse)
+	if err = json.Unmarshal([]byte(resp.Content), raw); err != nil {
+		return AnalystResult{Meta: AgentMeta{Usage: resp.Usage}}, fmt.Errorf("failed to parse analyst prompt response %w. Response: %s", err, resp.Content)
 	}
 
 	recipeLookup := make(map[string]recipe.NormalizedRecipe)
@@ -96,9 +101,12 @@ func (p *Planner) runAnalyst(
 		selectedRecipes = append(selectedRecipes, r)
 	}
 
-	return &MealProposal{
-		PlannedMeals: raw.PlannedMeals,
-		Recipes:      selectedRecipes,
+	return AnalystResult{
+		Proposal: &MealProposal{
+			PlannedMeals: raw.PlannedMeals,
+			Recipes:      selectedRecipes,
+		},
+		Meta: AgentMeta{Usage: resp.Usage},
 	}, nil
 }
 

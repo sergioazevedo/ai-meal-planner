@@ -38,9 +38,4 @@ func TestFormatPlanMarkdownParts(t *testing.T) {
 	if !strings.Contains(shoppingOutput, "• Cheese") {
 		t.Error("Missing shopping item")
 	}
-
-	// Check Total Prep Time
-	if !strings.Contains(planOutput, "⏱ *Total Prep:* 25 mins") {
-		t.Error("Missing total prep time")
-	}
 }

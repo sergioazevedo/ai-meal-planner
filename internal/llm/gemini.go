@@ -31,23 +31,35 @@ func NewGeminiClient(ctx context.Context, cfg *config.Config) (Client, error) {
 }
 
 // GenerateContent sends a prompt to the Gemini model and returns the generated text.
-func (c *geminiClient) GenerateContent(ctx context.Context, prompt string) (string, error) {
+func (c *geminiClient) GenerateContent(ctx context.Context, prompt string) (ContentResponse, error) {
 	resp, err := c.model.GenerateContent(ctx, genai.Text(prompt))
 	if err != nil {
-		return "", fmt.Errorf("failed to generate content: %w", err)
+		return ContentResponse{}, fmt.Errorf("failed to generate content: %w", err)
 	}
 
 	if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
-		return "", fmt.Errorf("no content generated")
+		return ContentResponse{}, fmt.Errorf("no content generated")
 	}
 
 	// Assuming the response is text
 	text, ok := resp.Candidates[0].Content.Parts[0].(genai.Text)
 	if !ok {
-		return "", fmt.Errorf("generated content is not text")
+		return ContentResponse{}, fmt.Errorf("generated content is not text")
 	}
 
-	return string(text), nil
+	usage := TokenUsage{
+		Model: "gemini-2.5-flash",
+	}
+	if resp.UsageMetadata != nil {
+		usage.PromptTokens = int(resp.UsageMetadata.PromptTokenCount)
+		usage.CompletionTokens = int(resp.UsageMetadata.CandidatesTokenCount)
+		usage.TotalTokens = int(resp.UsageMetadata.TotalTokenCount)
+	}
+
+	return ContentResponse{
+		Content: string(text),
+		Usage:   usage,
+	}, nil
 }
 
 // GenerateEmbedding generates a vector embedding for the given text.
