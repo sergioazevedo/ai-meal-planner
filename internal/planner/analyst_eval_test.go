@@ -66,19 +66,39 @@ func TestAnalyst_LiveEval(t *testing.T) {
 		}
 	}
 
-	// EVAL B: Did it follow the batch-cooking strategy?
-	// Monday (Index 0) should be Cook, Tuesday (Index 1) should be Reuse.
-	if proposal.PlannedMeals[0].Action != MealActionCook {
-		t.Errorf("STRATEGY FAIL: Monday should be a 'Cook' day.")
-	}
-	if proposal.PlannedMeals[1].Action != MealActionLeftOvers {
-		t.Errorf("STRATEGY FAIL: Tuesday should be a 'Reuse' day.")
+	// EVAL B: Did it follow the 5-session batch-cooking strategy?
+	// Monday (0) Cook, Tuesday (1) Reuse
+	// Wednesday (2) Cook, Thursday (3) Reuse
+	// Friday (4) Cook, Saturday Lunch (5) Reuse
+	// Saturday Dinner (6) Cook, Sunday Lunch (7) Reuse
+	// Sunday Dinner (8) Cook
+	cadence := []MealAction{
+		MealActionCook, MealActionLeftOvers,
+		MealActionCook, MealActionLeftOvers,
+		MealActionCook, MealActionLeftOvers,
+		MealActionCook, MealActionLeftOvers,
+		MealActionCook,
 	}
 
-	// EVAL C: Recipe consistency in reuse
+	for i, action := range cadence {
+		if proposal.PlannedMeals[i].Action != action {
+			t.Errorf("STRATEGY FAIL: Slot %d (%s) should be %s, got %s", 
+				i, proposal.PlannedMeals[i].Day, action, proposal.PlannedMeals[i].Action)
+		}
+	}
+
+	// EVAL C: Recipe consistency in bridges
+	// Mon -> Tue
 	if proposal.PlannedMeals[1].RecipeTitle != proposal.PlannedMeals[0].RecipeTitle {
-		t.Errorf("STRATEGY FAIL: Tuesday reuse (%s) does not match Monday cook (%s).", 
-			proposal.PlannedMeals[1].RecipeTitle, proposal.PlannedMeals[0].RecipeTitle)
+		t.Errorf("STRATEGY FAIL: Tuesday reuse does not match Monday cook.")
+	}
+	// Fri -> Sat Lunch
+	if proposal.PlannedMeals[5].RecipeTitle != proposal.PlannedMeals[4].RecipeTitle {
+		t.Errorf("STRATEGY FAIL: Saturday Lunch reuse does not match Friday Dinner cook.")
+	}
+	// Sat Dinner -> Sun Lunch
+	if proposal.PlannedMeals[7].RecipeTitle != proposal.PlannedMeals[6].RecipeTitle {
+		t.Errorf("STRATEGY FAIL: Sunday Lunch reuse does not match Saturday Dinner cook.")
 	}
 
 	// EVAL D: Sunday Dinner should be Light
