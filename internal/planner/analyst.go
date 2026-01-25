@@ -39,6 +39,9 @@ type PlannedMeal struct {
 type MealProposal struct {
 	PlannedMeals []PlannedMeal
 	Recipes      []recipe.NormalizedRecipe
+	Adults       int
+	Children     int
+	ChildrenAges []int
 }
 
 type AnalystResult struct {
@@ -107,6 +110,9 @@ func (p *Planner) runAnalyst(
 		Proposal: &MealProposal{
 			PlannedMeals: raw.PlannedMeals,
 			Recipes:      selectedRecipes,
+			Adults:       planingCtx.Adults,
+			Children:     planingCtx.Children,
+			ChildrenAges: planingCtx.ChildrenAges,
 		},
 		Meta: AgentMeta{
 			Usage:   resp.Usage,

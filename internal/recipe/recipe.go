@@ -25,13 +25,13 @@ type NormalizedRecipe struct {
 func NormalizeRecipeHTML(ctx context.Context, textGen llm.TextGenerator, embedGen llm.EmbeddingGenerator, post ghost.Post) (*NormalizedRecipe, error) {
 	prompt := fmt.Sprintf(`
 	You are a helpful assistant that extracts structured recipe information from HTML content.
-	Please extract the recipe title, ingredients, step-by-step instructions, and relevant tags from the following HTML.
+	Please extract the recipe title, ingredients (including quantities), step-by-step instructions, and relevant tags from the following HTML.
 	Also, extract or estimate the preparation time (e.g., "30 mins") and the number of servings (e.g., "4 people").
 	
 	Return the output as a JSON object with the following structure:
 	{
 		"title": "Recipe Name",
-		"ingredients": ["ingredient 1", "ingredient 2", ...],
+		"ingredients": ["quantity + name", "quantity + name", ...],
 		"instructions": "Step-by-step instructions",
 		"tags": ["tag1", "tag2"],
 		"prep_time": "Estimated time",

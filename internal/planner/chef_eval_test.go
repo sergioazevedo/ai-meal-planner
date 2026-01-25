@@ -37,9 +37,12 @@ func TestChef_LiveEval(t *testing.T) {
 			{
 				Title: "Garlic Pasta",
 				PrepTime: "20 mins",
+				Servings: "2 people",
 				Ingredients: []string{"200g Pasta", "2 cloves Garlic", "Olive Oil"},
 			},
 		},
+		Adults: 2,
+		Children: 0,
 	}
 
 	// 2. Execute
@@ -68,19 +71,36 @@ func TestChef_LiveEval(t *testing.T) {
 		t.Errorf("LOGIC FAIL: Leftovers should not take 20 mins to prepare.")
 	}
 
-	// EVAL C: Shopping List Aggregation
+	// EVAL C: Shopping List Aggregation & Quantities
 	// We only have one recipe, so the ingredients should be present.
 	foundGarlic := false
+	hasQuantities := true
 	for _, item := range plan.ShoppingList {
 		if strings.Contains(strings.ToLower(item), "garlic") {
 			foundGarlic = true
-			break
+		}
+		// Basic check: item should probably contain a digit if it has a quantity (like 200g or 2 cloves)
+		// Or at least not be just the name. This is heuristic.
+		if !containsDigit(item) && !strings.Contains(strings.ToLower(item), "olive oil") {
+			hasQuantities = false
 		}
 	}
 	if !foundGarlic {
 		t.Errorf("DATA FAIL: Garlic missing from shopping list.")
 	}
+	if !hasQuantities {
+		t.Errorf("DATA FAIL: Shopping list items missing quantities.")
+	}
 
 	t.Logf("✅ Eval complete. Chef generated a plan with %d days and %d shopping items.", 
 		len(plan.Plan), len(plan.ShoppingList))
+}
+
+func containsDigit(s string) bool {
+	for _, r := range s {
+		if r >= '0' && r <= '9' {
+			return true
+		}
+	}
+	return false
 }
