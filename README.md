@@ -98,6 +98,23 @@ export TELEGRAM_WEBHOOK_URL="https://fresh-apple-move.loca.lt/webhook"
 go run ./cmd/telegram-bot
 ```
 
+## 🛠️ Development
+
+We use a `Makefile` to simplify common tasks.
+
+### Basic Commands
+- **Build all binaries**: `make build`
+- **Run unit tests**: `make test`
+- **Run local ingestion**: `make ingest`
+
+### 🧪 LLM Evaluations
+Since LLM outputs are non-deterministic, we have a specialized "Live Eval" suite that tests agent quality against real-world scenarios. **Note: These tests hit the real APIs and incur costs.**
+
+- **Run all Evals**: `make eval`
+- **Run specific Agent Eval**: `go test -v ./internal/planner -run TestAnalyst_LiveEval`
+
+---
+
 ## 📦 Deployment
 
 This application compiles to a single static binary, making it perfect for low-cost servers like **AWS Lightsail**.
