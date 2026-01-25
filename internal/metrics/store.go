@@ -49,21 +49,23 @@ func NewStore(dbPath string) (*Store, error) {
 }
 
 func (s *Store) migrate() error {
-	query := `
-	CREATE TABLE IF NOT EXISTS execution_metrics (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		agent_name TEXT,
-		model TEXT,
-		prompt_tokens INTEGER,
-		completion_tokens INTEGER,
-		latency_ms INTEGER,
-		timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-	);
-	CREATE INDEX IF NOT EXISTS idx_timestamp ON execution_metrics(timestamp);
-	`
-	_, err := s.db.Exec(query)
-	if err != nil {
-		return fmt.Errorf("failed to migrate metrics db: %w", err)
+	queries := []string{
+		`CREATE TABLE IF NOT EXISTS execution_metrics (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			agent_name TEXT,
+			model TEXT,
+			prompt_tokens INTEGER,
+			completion_tokens INTEGER,
+			latency_ms INTEGER,
+			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_timestamp ON execution_metrics(timestamp);`,
+	}
+
+	for _, q := range queries {
+		if _, err := s.db.Exec(q); err != nil {
+			return fmt.Errorf("failed to migrate metrics db: %w", err)
+		}
 	}
 	return nil
 }
@@ -79,7 +81,8 @@ func (s *Store) Record(m ExecutionMetric) error {
 		ts = time.Now().UTC()
 	}
 
-	_, err := s.db.Exec(query, m.AgentName, m.Model, m.PromptTokens, m.CompletionTokens, m.LatencyMS, ts)
+	// SQLite stores time as strings. Ensure standard ISO format.
+	_, err := s.db.Exec(query, m.AgentName, m.Model, m.PromptTokens, m.CompletionTokens, m.LatencyMS, ts.Format("2006-01-02 15:04:05"))
 	return err
 }
 
@@ -90,26 +93,26 @@ func (s *Store) Close() error {
 
 // DailyUsage represents token totals for a single day.
 type DailyUsage struct {
-	Date             string
-	TotalPrompt      int
-	TotalCompletion  int
-	TotalExecution   int
+	Date            string
+	TotalPrompt     int
+	TotalCompletion int
+	TotalExecution  int
 }
 
 // GetDailyUsage retrieves usage for the last N days.
 func (s *Store) GetDailyUsage(days int) ([]DailyUsage, error) {
 	query := `
 	SELECT 
-		DATE(timestamp) as day,
+		STRFTIME('%Y-%m-%d', timestamp) as day,
 		SUM(prompt_tokens),
 		SUM(completion_tokens),
 		COUNT(*)
 	FROM execution_metrics
-	WHERE timestamp > ?
+	WHERE timestamp > STRFTIME('%Y-%m-%d %H:%M:%S', ?)
 	GROUP BY day
 	ORDER BY day DESC;
 	`
-	since := time.Now().AddDate(0, 0, -days)
+	since := time.Now().AddDate(0, 0, -days).Format("2006-01-02 15:04:05")
 	rows, err := s.db.Query(query, since)
 	if err != nil {
 		return nil, err
@@ -119,8 +122,14 @@ func (s *Store) GetDailyUsage(days int) ([]DailyUsage, error) {
 	var results []DailyUsage
 	for rows.Next() {
 		var u DailyUsage
-		if err := rows.Scan(&u.Date, &u.TotalPrompt, &u.TotalCompletion, &u.TotalExecution); err != nil {
+		var day sql.NullString
+		if err := rows.Scan(&day, &u.TotalPrompt, &u.TotalCompletion, &u.TotalExecution); err != nil {
 			return nil, err
+		}
+		if day.Valid {
+			u.Date = day.String
+		} else {
+			u.Date = "Unknown"
 		}
 		results = append(results, u)
 	}
