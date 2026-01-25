@@ -104,7 +104,13 @@ Add one of the following lines to the end of the file to sync every hour at minu
 
 **If using Binary:**
 ```bash
-0 * * * * cd /home/ubuntu && GHOST_URL="..." GHOST_CONTENT_API_KEY="..." GEMINI_API_KEY="..." ./ai-meal-planner-linux ingest >> /home/ubuntu/ingest.log 2>&1
+0 * * * * cd /home/ubuntu && set -a && . ./.env && set +a && ./ai-meal-planner-linux ingest >> /home/ubuntu/ingest.log 2>&1
+```
+
+### 3. Cleanup Metrics (Optional but Recommended)
+To keep your database small, schedule a daily cleanup of metrics older than 30 days:
+```bash
+0 0 * * * cd /home/ubuntu && set -a && . ./.env && set +a && ./ai-meal-planner-linux metrics-cleanup -days 30 >> /home/ubuntu/metrics-cleanup.log 2>&1
 ```
 
 **If using Docker:**
