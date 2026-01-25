@@ -14,7 +14,6 @@ func TestFormatPlanMarkdownParts(t *testing.T) {
 			{Day: "Tuesday", RecipeTitle: "Salad", PrepTime: "10 mins", Note: ""},
 		},
 		ShoppingList: []string{"Cheese", "Lettuce"},
-		TotalPrep:    "25 mins",
 	}
 
 	planOutput, shoppingOutput := formatPlanMarkdownParts(plan)

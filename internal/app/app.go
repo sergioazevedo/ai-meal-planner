@@ -117,6 +117,5 @@ func (a *App) GenerateMealPlan(ctx context.Context, request string) error {
 		fmt.Printf("- %s\n", item)
 	}
 
-	fmt.Printf("\nPrep Estimate: %s\n", plan.TotalPrep)
 	return nil
 }

@@ -198,7 +198,6 @@ func formatPlanMarkdownParts(plan *planner.MealPlan) (string, string) {
 		}
 		pb.WriteString("\n")
 	}
-	pb.WriteString(fmt.Sprintf("⏱ *Total Prep:* %s", plan.TotalPrep))
 
 	var sb strings.Builder
 	sb.WriteString("🛒 *Shopping List*\n\n")
