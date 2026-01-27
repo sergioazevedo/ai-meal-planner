@@ -170,6 +170,15 @@ Unlike traditional recipe apps that lock you into a proprietary platform, this p
 *   **Zero-Maintenance UI**: Ghost provides a beautiful editor and interface for free. We don't need to build a "Recipe Entry" screen because Ghost is already the best at it.
 *   **Knowledge Base**: Your blog becomes a living, searchable archive of your family's culinary preferences.
 
+## 💰 Cost-Conscious Design
+
+This tool is built with a **Zero-Cost Goal** in mind for personal use:
+
+*   **Free-Tier AI**: Optimized for the Google Gemini and Groq free tiers. The dual-provider approach ensures you stay within rate limits while spending $0 on LLM tokens for daily planning.
+*   **Resource Efficient**: Written in Go with a focus on low RAM and CPU usage. It can run on the smallest $3.50/mo AWS Lightsail instance (or even a Raspberry Pi at home).
+*   **No Paid Databases**: By using a hybrid of Flat-Files and SQLite, we avoid expensive managed database fees.
+*   **No Subscription Bloat**: You don't need a monthly subscription to a recipe service. Your only cost is the server you choose to host it on.
+
 ## 🔮 Roadmap
 
 *   [x] Core CLI & RAG Pipeline
