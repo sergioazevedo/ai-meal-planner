@@ -26,20 +26,20 @@ You need the following API keys:
 
 Set these variables in your `.env` file or environment:
 
-| Variable | Description | Default |
-| :--- | :--- | :--- |
-| `GHOST_URL` | Your Ghost blog base URL | Required |
-| `GHOST_CONTENT_API_KEY` | Ghost Content API Key | Required |
-| `GHOST_ADMIN_API_KEY` | Ghost Admin API Key (for Clipper) | Required |
-| `GEMINI_API_KEY` | Google Gemini API Key | Required |
-| `GROQ_API_KEY` | Groq API Key | Required |
-| `TELEGRAM_BOT_TOKEN` | Token from @BotFather | Optional (Bot) |
-| `TELEGRAM_ALLOWED_USER_IDS`| Comma-separated list of allowed IDs | Optional (Bot) |
-| `DEFAULT_ADULTS` | Number of adults for scaling | `2` |
-| `DEFAULT_CHILDREN` | Number of children for scaling | `1` |
-| `DEFAULT_CHILDREN_AGES` | Comma-separated ages (e.g., `5,8`) | `5` |
-| `DEFAULT_COOKING_FREQUENCY`| How many times per week to cook | `4` |
-| `RECIPE_STORAGE_PATH` | Where to store normalized JSONs | `data/recipes` |
+| Variable                    | Description                         | Default        |
+| :-------------------------- | :---------------------------------- | :------------- |
+| `GHOST_URL`                 | Your Ghost blog base URL            | Required       |
+| `GHOST_CONTENT_API_KEY`     | Ghost Content API Key               | Required       |
+| `GHOST_ADMIN_API_KEY`       | Ghost Admin API Key (for Clipper)   | Required       |
+| `GEMINI_API_KEY`            | Google Gemini API Key               | Required       |
+| `GROQ_API_KEY`              | Groq API Key                        | Required       |
+| `TELEGRAM_BOT_TOKEN`        | Token from @BotFather               | Optional (Bot) |
+| `TELEGRAM_ALLOWED_USER_IDS` | Comma-separated list of allowed IDs | Optional (Bot) |
+| `DEFAULT_ADULTS`            | Number of adults for scaling        | `2`            |
+| `DEFAULT_CHILDREN`          | Number of children for scaling      | `1`            |
+| `DEFAULT_CHILDREN_AGES`     | Comma-separated ages (e.g., `5,8`)  | `5`            |
+| `DEFAULT_COOKING_FREQUENCY` | How many times per week to cook     | `4`            |
+| `RECIPE_STORAGE_PATH`       | Where to store normalized JSONs     | `data/recipes` |
 
 ## ⚡ Quick Start
 
@@ -127,11 +127,48 @@ This application compiles to a single static binary, making it perfect for low-c
 
 ## 🏗️ Architecture
 
+```mermaid
+graph TD
+    User((User)) <--> Bot[Telegram Bot]
+    Bot <--> Planner[Multi-Agent Planner]
+    
+    subgraph Agents [Planner Roles]
+        Planner --> Analyst[Analyst: Strategy]
+        Analyst --> Chef[Chef: Execution]
+    end
+    
+    subgraph Storage [Hybrid Data]
+        Recipes[(JSON Recipes)]
+        Embeddings[(Vector Index)]
+        Metrics[(SQLite Metrics)]
+    end
+    
+    subgraph CMS [Source]
+        Ghost[Ghost Blog]
+    end
+    
+    Ghost -- Ingest --> Recipes
+    Recipes -- Embed --> Embeddings
+    
+    Planner -- RAG --> Embeddings
+    Planner -- Fetch --> Recipes
+    Bot -- Log --> Metrics
+```
+
 1.  **Ingestion Service**: Pulls content from Ghost -> Normalizes via LLM -> Saves JSON + Embeddings.
 2.  **Storage**: Hybrid approach using local JSON files for recipe data and a SQLite database (`data/db/metrics.db`) for observability metrics.
 3.  **Multi-Agent Planner**: Uses a specialized handover pattern between agents:
     - **Analyst**: Responsible for strategic reasoning, selecting recipes, and enforcing the batch-cooking cadence.
     - **Chef**: Responsible for finalized formatting, scaling ingredient quantities, and consolidating the shopping list.
+
+## ✍️ Why a Blog (Ghost CMS)?
+
+Unlike traditional recipe apps that lock you into a proprietary platform, this project uses a **Blog-First** approach:
+
+*   **Ownership**: You own your content. Your recipes are published on your own blog, not hidden in a private database.
+*   **Human-Friendly**: You write recipes for humans (your readers). The AI then "reads" your blog to make it machine-friendly for the planner.
+*   **Zero-Maintenance UI**: Ghost provides a beautiful editor and interface for free. We don't need to build a "Recipe Entry" screen because Ghost is already the best at it.
+*   **Knowledge Base**: Your blog becomes a living, searchable archive of your family's culinary preferences.
 
 ## 🔮 Roadmap
 
@@ -140,8 +177,7 @@ This application compiles to a single static binary, making it perfect for low-c
 *   [x] Recipe Clipper / Importer
 *   [x] Batch Cooking & Household Scaling
 *   [x] Multi-user support
-*   [ ] Shopping List Export (PDF/Email)
-*   [ ] User Accounts (Web Interface)
+*   [ ] Add more agent-roles
 
 ## 📄 License
 MIT
