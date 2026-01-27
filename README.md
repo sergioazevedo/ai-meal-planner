@@ -175,7 +175,7 @@ Unlike traditional recipe apps that lock you into a proprietary platform, this p
 This tool is built with a **Zero-Cost Goal** in mind for personal use:
 
 *   **Free-Tier AI**: Optimized for the Google Gemini and Groq free tiers. The dual-provider approach ensures you stay within rate limits while spending $0 on LLM tokens for daily planning.
-*   **Resource Efficient**: Written in Go with a focus on low RAM and CPU usage. It can run on the smallest $3.50/mo AWS Lightsail instance (or even a Raspberry Pi at home).
+*   **Resource Efficient**: Written in Go with a focus on minimal footprint. With an active memory usage of ~15MB, it is designed to run on extremely low-resource hardware, home servers, or the smallest cloud instances.
 *   **No Paid Databases**: By using a hybrid of Flat-Files and SQLite, we avoid expensive managed database fees.
 *   **No Subscription Bloat**: You don't need a monthly subscription to a recipe service. Your only cost is the server you choose to host it on.
 
