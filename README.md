@@ -1,19 +1,19 @@
 # AI-Assisted Recipe Meal Planner
 
-A smart CLI tool that connects to your **Ghost CMS** blog, learns your recipes using **Google Gemini**, and generates personalized weekly meal plans based on your requests.
+A smart CLI tool that connects to your **Ghost CMS** blog, learns your recipes using **Google Gemini**, and generates personalized weekly meal plans using a **multi-agent role-based architecture**.
 
 ## 🚀 Features
 
+*   **Multi-Agent Architecture**: Collaborative specialized agents (Analyst, Chef) work together to refine the strategy and execution of your meal plans.
 *   **Ghost CMS Integration**: Automatically fetches and updates recipes from your blog.
-*   **AI Normalization**: Uses Gemini 1.5 Pro and Groq Llama3 7b to extract structured data (ingredients, steps, prep time, servings) from raw HTML posts.
+*   **AI Normalization**: Uses Gemini 1.5 Pro and Groq Llama3 7b to extract structured data (ingredients (with quantities), steps, prep time, servings) from raw HTML posts.
 *   **RAG Pipeline**: Generates vector embeddings for every recipe and performs local semantic search to find the best matches for your cravings.
-*   **Smart Planning**: Creates a complete 7-day meal plan with a consolidated shopping list.
+*   **Observability & Metrics**: Built-in SQLite-backed tracking for token usage, latency, and system health with proactive Telegram alerts for "context bloat".
 *   **Recipe Clipper**: Send any recipe URL to the Telegram bot; it extracts the details, publishes them to your Ghost blog, and immediately indexes them for planning.
-*   **Batch Cooking & Leftovers**: Smart scheduling that understands you might only want to cook 3-4 times a week, automatically filling gaps with leftovers.
+*   **Batch Cooking & Leftovers**: Smart 5-session cooking cadence that maximizes efficiency by bridging weekday dinners and weekend lunches.
 *   **Household Scaling**: Automatically adjusts ingredient quantities based on your household composition (Adults vs. Children).
-*   **Multi-User Support**: Whitelist multiple Telegram IDs for shared household planning.
-*   **Telegram Bot Interface**: Chat with your planner, request meals, and get instant markdown plans on your phone.
-*   **Zero-Database**: Uses a highly efficient flat-file storage system with versioned caching.
+*   **Telegram Bot Interface**: Chat with your planner, request meals, check `/metrics`, and get instant markdown plans on your phone.
+*   **Hybrid Storage**: Uses a highly efficient flat-file storage system for recipes and a zero-config SQLite database for metrics.
 
 ## 🛠️ Prerequisites
 
@@ -128,8 +128,10 @@ This application compiles to a single static binary, making it perfect for low-c
 ## 🏗️ Architecture
 
 1.  **Ingestion Service**: Pulls content from Ghost -> Normalizes via LLM -> Saves JSON + Embeddings.
-2.  **Storage**: Local JSON files act as both the database and the vector index.
-3.  **Planner Service**: Embeds user query -> Finds nearest recipe neighbors (Cosine Similarity) -> Generates Plan via LLM.
+2.  **Storage**: Hybrid approach using local JSON files for recipe data and a SQLite database (`data/db/metrics.db`) for observability metrics.
+3.  **Multi-Agent Planner**: Uses a specialized handover pattern between agents:
+    - **Analyst**: Responsible for strategic reasoning, selecting recipes, and enforcing the batch-cooking cadence.
+    - **Chef**: Responsible for finalized formatting, scaling ingredient quantities, and consolidating the shopping list.
 
 ## 🔮 Roadmap
 
