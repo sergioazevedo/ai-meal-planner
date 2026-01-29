@@ -30,11 +30,3 @@ type EmbeddingGenerator interface {
 type Closer interface {
 	Close() error
 }
-
-// Client combines TextGenerator, EmbeddingGenerator, and Closer.
-// This is useful for backward compatibility or when a single client provides all features.
-type Client interface {
-	TextGenerator
-	EmbeddingGenerator
-	Closer
-}

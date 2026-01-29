@@ -17,15 +17,15 @@ const (
 	groqModel  = "llama-3.3-70b-versatile"
 )
 
-// groqClient is a client for the Groq API.
-type groqClient struct {
+// GroqClient is a client for the Groq API.
+type GroqClient struct {
 	apiKey     string
 	httpClient *http.Client
 }
 
 // NewGroqClient creates a new Groq API client.
-func NewGroqClient(cfg *config.Config) TextGenerator {
-	return &groqClient{
+func NewGroqClient(cfg *config.Config) *GroqClient {
+	return &GroqClient{
 		apiKey: cfg.GroqAPIKey,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
@@ -34,7 +34,7 @@ func NewGroqClient(cfg *config.Config) TextGenerator {
 }
 
 // GenerateContent sends a prompt to the Groq model and returns the generated text.
-func (c *groqClient) GenerateContent(ctx context.Context, prompt string) (ContentResponse, error) {
+func (c *GroqClient) GenerateContent(ctx context.Context, prompt string) (ContentResponse, error) {
 	reqBody := map[string]interface{}{
 		"model": groqModel,
 		"messages": []map[string]string{

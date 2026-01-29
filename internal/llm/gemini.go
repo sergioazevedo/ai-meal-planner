@@ -10,15 +10,15 @@ import (
 	"google.golang.org/api/option"
 )
 
-// geminiClient is a client for the Google Gemini API.
-type geminiClient struct {
+// GeminiClient is a client for the Google Gemini API.
+type GeminiClient struct {
 	client         *genai.Client
 	model          *genai.GenerativeModel
 	embeddingModel *genai.EmbeddingModel
 }
 
 // NewGeminiClient creates a new Gemini API client.
-func NewGeminiClient(ctx context.Context, cfg *config.Config) (Client, error) {
+func NewGeminiClient(ctx context.Context, cfg *config.Config) (*GeminiClient, error) {
 	client, err := genai.NewClient(ctx, option.WithAPIKey(cfg.GeminiAPIKey))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Gemini client: %w", err)
@@ -27,11 +27,11 @@ func NewGeminiClient(ctx context.Context, cfg *config.Config) (Client, error) {
 	model := client.GenerativeModel("gemini-2.5-flash")
 	// For embeddings, use text-embedding-004
 	embeddingModel := client.EmbeddingModel("text-embedding-004")
-	return &geminiClient{client: client, model: model, embeddingModel: embeddingModel}, nil
+	return &GeminiClient{client: client, model: model, embeddingModel: embeddingModel}, nil
 }
 
 // GenerateContent sends a prompt to the Gemini model and returns the generated text.
-func (c *geminiClient) GenerateContent(ctx context.Context, prompt string) (ContentResponse, error) {
+func (c *GeminiClient) GenerateContent(ctx context.Context, prompt string) (ContentResponse, error) {
 	resp, err := c.model.GenerateContent(ctx, genai.Text(prompt))
 	if err != nil {
 		return ContentResponse{}, fmt.Errorf("failed to generate content: %w", err)
@@ -63,7 +63,7 @@ func (c *geminiClient) GenerateContent(ctx context.Context, prompt string) (Cont
 }
 
 // GenerateEmbedding generates a vector embedding for the given text.
-func (c *geminiClient) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
+func (c *GeminiClient) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
 	resp, err := c.embeddingModel.EmbedContent(ctx, genai.Text(text))
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate embedding: %w", err)
@@ -77,6 +77,6 @@ func (c *geminiClient) GenerateEmbedding(ctx context.Context, text string) ([]fl
 }
 
 // Close closes the underlying Gemini client.
-func (c *geminiClient) Close() error {
+func (c *GeminiClient) Close() error {
 	return c.client.Close()
 }
