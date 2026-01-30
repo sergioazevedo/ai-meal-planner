@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"ai-meal-planner/internal/llm"
 	"bytes"
 	"context"
 	_ "embed"
@@ -15,7 +16,7 @@ var chefPrompt string
 
 type ChefResult struct {
 	Plan *MealPlan
-	Meta AgentMeta
+	Meta llm.AgentMeta
 }
 
 func (p *Planner) runChef(
@@ -35,14 +36,24 @@ func (p *Planner) runChef(
 
 	result := &MealPlan{}
 	if err = json.Unmarshal([]byte(resp.Content), result); err != nil {
-		return ChefResult{Meta: AgentMeta{Usage: resp.Usage}}, fmt.Errorf("failed to parse MealPlan %w, :%s", err, resp.Content)
+		return ChefResult{
+				Meta: llm.AgentMeta{
+					Usage:     resp.Usage,
+					AgentName: "Chef",
+				}},
+			fmt.Errorf(
+				"failed to parse MealPlan %w, :%s",
+				err,
+				resp.Content,
+			)
 	}
 
 	return ChefResult{
 		Plan: result,
-		Meta: AgentMeta{
-			Usage:   resp.Usage,
-			Latency: time.Since(start),
+		Meta: llm.AgentMeta{
+			AgentName: "Chef",
+			Usage:     resp.Usage,
+			Latency:   time.Since(start),
 		},
 	}, nil
 }

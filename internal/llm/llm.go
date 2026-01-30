@@ -1,6 +1,9 @@
 package llm
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // TokenUsage tracks the tokens consumed by a request.
 type TokenUsage struct {
@@ -8,6 +11,13 @@ type TokenUsage struct {
 	CompletionTokens int
 	TotalTokens      int
 	Model            string
+}
+
+// llm.AgentMeta holds operational metadata for an agent execution.
+type AgentMeta struct {
+	AgentName string
+	Usage     TokenUsage
+	Latency   time.Duration
 }
 
 // ContentResponse contains the generated text and metadata like token usage.

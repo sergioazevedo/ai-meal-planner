@@ -10,7 +10,7 @@ import (
 	"ai-meal-planner/internal/recipe"
 )
 
-// TestChef_LiveEval performs a real LLM call to evaluate the Chef's 
+// TestChef_LiveEval performs a real LLM call to evaluate the Chef's
 // ability to format the plan and consolidate the shopping list.
 // Run with: go test -v ./internal/planner -run TestChef_LiveEval
 func TestChef_LiveEval(t *testing.T) {
@@ -35,13 +35,15 @@ func TestChef_LiveEval(t *testing.T) {
 		},
 		Recipes: []recipe.NormalizedRecipe{
 			{
-				Title: "Garlic Pasta",
-				PrepTime: "20 mins",
-				Servings: "2 people",
-				Ingredients: []string{"200g Pasta", "2 cloves Garlic", "Olive Oil"},
+				Recipe: recipe.Recipe{
+					Title:       "Garlic Pasta",
+					PrepTime:    "20 mins",
+					Servings:    "2 people",
+					Ingredients: []string{"200g Pasta", "2 cloves Garlic", "Olive Oil"},
+				},
 			},
 		},
-		Adults: 2,
+		Adults:   2,
 		Children: 0,
 	}
 
@@ -92,7 +94,7 @@ func TestChef_LiveEval(t *testing.T) {
 		t.Errorf("DATA FAIL: Shopping list items missing quantities.")
 	}
 
-	t.Logf("✅ Eval complete. Chef generated a plan with %d days and %d shopping items.", 
+	t.Logf("✅ Eval complete. Chef generated a plan with %d days and %d shopping items.",
 		len(plan.Plan), len(plan.ShoppingList))
 }
 

@@ -40,10 +40,16 @@ func main() {
 		log.Fatalf("Failed to initialize recipe store: %v", err)
 	}
 
+	metricsStore, err := metrics.NewStore(cfg.MetricsDBPath)
+	if err != nil {
+		log.Fatalf("Failed to initialize metrics store: %v", err)
+	}
+	defer metricsStore.Close()
+
 	mealPlanner := planner.NewPlanner(recipeStore, groqClient, geminiClient)
 	recipeClipper := clipper.NewClipper(ghostClient, groqClient)
 
-	application := app.NewApp(ghostClient, groqClient, geminiClient, recipeStore, mealPlanner, recipeClipper, cfg)
+	application := app.NewApp(ghostClient, groqClient, geminiClient, recipeStore, metricsStore, mealPlanner, recipeClipper, cfg)
 
 	if len(os.Args) < 2 {
 		printUsage()

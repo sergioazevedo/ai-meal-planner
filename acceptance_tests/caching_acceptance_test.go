@@ -3,6 +3,7 @@ package acceptance_tests
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/ghost"
 	"ai-meal-planner/internal/llm"
+	"ai-meal-planner/internal/metrics"
 	"ai-meal-planner/internal/planner"
 	"ai-meal-planner/internal/storage"
 )
@@ -101,11 +103,15 @@ func TestFullWorkflow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create RecipeStore: %v", err)
 	}
+	metricsStore, err := metrics.NewStore(filepath.Join(tempDir, "metrics.db"))
+	if err != nil {
+		t.Fatalf("Failed to create metrics store: %v", err)
+	}
 
 	// 3. Create the application instance with mocks
 	mealPlanner := planner.NewPlanner(recipeStore, mockTextGenerator, mockEmbedingGenerator)
 	recipeClipper := clipper.NewClipper(ghostClient, mockTextGenerator)
-	application := app.NewApp(ghostClient, mockTextGenerator, mockEmbedingGenerator, recipeStore, mealPlanner, recipeClipper, &config.Config{
+	application := app.NewApp(ghostClient, mockTextGenerator, mockEmbedingGenerator, recipeStore, metricsStore, mealPlanner, recipeClipper, &config.Config{
 		DefaultAdults:           2,
 		DefaultCookingFrequency: 7,
 	})

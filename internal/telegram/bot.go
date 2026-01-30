@@ -73,13 +73,13 @@ func NewBot(
 
 func (b *Bot) RegisterHandlers() {
 	http.HandleFunc("/webhook", b.handleWebhook)
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
 }
 
-func (b *Bot) handleWebhook(w http.ResponseWriter, r *http.Request) {
+func (b *Bot) handleWebhook(_ http.ResponseWriter, r *http.Request) {
 	update, err := b.api.HandleUpdate(r)
 	if err != nil {
 		log.Printf("Error parsing update: %v", err)
@@ -177,7 +177,7 @@ func (b *Bot) processMessage(msg *tgbotapi.Message) {
 		// Record Metrics even if it errored (if we have metas)
 		for _, m := range metas {
 			_ = b.metricsStore.Record(metrics.ExecutionMetric{
-				AgentName:        "Planner",
+				AgentName:        m.AgentName,
 				Model:            m.Usage.Model,
 				PromptTokens:     m.Usage.PromptTokens,
 				CompletionTokens: m.Usage.CompletionTokens,
@@ -244,13 +244,32 @@ func (b *Bot) ingestClippedPost(post ghost.Post) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
-	normalizedRecipe, err := recipe.NormalizeRecipeHTML(ctx, b.textGen, b.embedGen, post)
+	normalizedRecipe, meta, err := recipe.NormalizeHTML(
+		ctx,
+		b.textGen,
+		b.embedGen,
+		recipe.PostData{
+			ID:        post.ID,
+			Title:     post.Title,
+			UpdatedAt: post.UpdatedAt,
+			HTML:      post.HTML,
+		},
+	)
+
+	b.metricsStore.Record(metrics.ExecutionMetric{
+		AgentName:        meta.AgentName,
+		Model:            meta.Usage.Model,
+		PromptTokens:     meta.Usage.PromptTokens,
+		CompletionTokens: meta.Usage.CompletionTokens,
+		LatencyMS:        meta.Latency.Milliseconds(),
+	})
+
 	if err != nil {
 		log.Printf("Background Error: Failed to normalize '%s': %v", post.Title, err)
 		return
 	}
 
-	if err := b.recipeStore.Save(post.ID, post.UpdatedAt, *normalizedRecipe); err != nil {
+	if err := b.recipeStore.Save(normalizedRecipe); err != nil {
 		log.Printf("Background Error: Failed to save '%s' to store: %v", post.Title, err)
 		return
 	}

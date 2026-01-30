@@ -37,13 +37,13 @@ func (s *RecipeStore) getVersionedPath(recipeID, updatedAt string) string {
 }
 
 // Save stores a normalized recipe to a file with versioning.
-func (s *RecipeStore) Save(recipeID, updatedAt string, rec recipe.NormalizedRecipe) error {
+func (s *RecipeStore) Save(rec recipe.NormalizedRecipe) error {
 	data, err := json.Marshal(rec)
 	if err != nil {
 		return fmt.Errorf("failed to marshal recipe: %w", err)
 	}
 
-	filePath := s.getVersionedPath(recipeID, updatedAt)
+	filePath := s.getVersionedPath(rec.ID, rec.UpdatedAt)
 	if err := os.WriteFile(filePath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write recipe file: %w", err)
 	}

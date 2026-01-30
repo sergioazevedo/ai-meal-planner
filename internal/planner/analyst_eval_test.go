@@ -9,7 +9,7 @@ import (
 	"ai-meal-planner/internal/recipe"
 )
 
-// TestAnalyst_LiveEval performs a real LLM call to evaluate the Analyst's 
+// TestAnalyst_LiveEval performs a real LLM call to evaluate the Analyst's
 // strategic reasoning and rule adherence.
 // Run with: go test -v ./internal/planner -run TestAnalyst_LiveEval
 func TestAnalyst_LiveEval(t *testing.T) {
@@ -30,18 +30,18 @@ func TestAnalyst_LiveEval(t *testing.T) {
 
 	// 2. Define a "Hard" Scenario
 	userRequest := "We need high-protein meals for the week, but my kids hate spicy food."
-	
+
 	// Provide a mix of spicy and non-spicy recipes
 	mockRecipes := []recipe.NormalizedRecipe{
-		{Title: "Spicy Chili Con Carne", Tags: []string{"Spicy", "Beef", "High-Protein"}},
-		{Title: "Mild Chicken Thighs", Tags: []string{"Kid-Friendly", "Chicken", "High-Protein"}},
-		{Title: "Lentil Soup", Tags: []string{"Vegetarian", "Healthy"}},
-		{Title: "Beef Stew", Tags: []string{"Beef", "High-Protein", "Slow-Cook"}},
-		{Title: "Salmon & Asparagus", Tags: []string{"Fish", "Quick", "Light"}},
-		{Title: "Tofu Stir Fry", Tags: []string{"Vegan", "Tofu"}},
-		{Title: "Turkey Meatballs", Tags: []string{"Kid-Friendly", "Turkey", "High-Protein"}},
-		{Title: "Greek Salad", Tags: []string{"Fresh", "Vegetarian", "Light"}},
-		{Title: "Pasta Bolognese", Tags: []string{"Pasta", "Beef", "Family"}},
+		{Recipe: recipe.Recipe{Title: "Spicy Chili Con Carne", Tags: []string{"Spicy", "Beef", "High-Protein"}}},
+		{Recipe: recipe.Recipe{Title: "Mild Chicken Thighs", Tags: []string{"Kid-Friendly", "Chicken", "High-Protein"}}},
+		{Recipe: recipe.Recipe{Title: "Lentil Soup", Tags: []string{"Vegetarian", "Healthy"}}},
+		{Recipe: recipe.Recipe{Title: "Beef Stew", Tags: []string{"Beef", "High-Protein", "Slow-Cook"}}},
+		{Recipe: recipe.Recipe{Title: "Salmon & Asparagus", Tags: []string{"Fish", "Quick", "Light"}}},
+		{Recipe: recipe.Recipe{Title: "Tofu Stir Fry", Tags: []string{"Vegan", "Tofu"}}},
+		{Recipe: recipe.Recipe{Title: "Turkey Meatballs", Tags: []string{"Kid-Friendly", "Turkey", "High-Protein"}}},
+		{Recipe: recipe.Recipe{Title: "Greek Salad", Tags: []string{"Fresh", "Vegetarian", "Light"}}},
+		{Recipe: recipe.Recipe{Title: "Pasta Bolognese", Tags: []string{"Pasta", "Beef", "Family"}}},
 	}
 
 	pCtx := PlanningContext{
@@ -58,7 +58,7 @@ func TestAnalyst_LiveEval(t *testing.T) {
 	proposal := result.Proposal
 
 	// 4. Quality Assertions (The "Evals")
-	
+
 	// EVAL A: Did it respect the "No Spicy" constraint?
 	for _, meal := range proposal.PlannedMeals {
 		if meal.RecipeTitle == "Spicy Chili Con Carne" {
@@ -82,7 +82,7 @@ func TestAnalyst_LiveEval(t *testing.T) {
 
 	for i, action := range cadence {
 		if proposal.PlannedMeals[i].Action != action {
-			t.Errorf("STRATEGY FAIL: Slot %d (%s) should be %s, got %s", 
+			t.Errorf("STRATEGY FAIL: Slot %d (%s) should be %s, got %s",
 				i, proposal.PlannedMeals[i].Day, action, proposal.PlannedMeals[i].Action)
 		}
 	}
@@ -105,7 +105,7 @@ func TestAnalyst_LiveEval(t *testing.T) {
 	// Sunday Dinner is usually index 8 in a 9-meal plan (Mon-Fri dinner + Sat/Sun lunch/dinner)
 	sundayDinner := proposal.PlannedMeals[8]
 	t.Logf("Checking Sunday Dinner: %s", sundayDinner.RecipeTitle)
-	
+
 	// Helper to check if the chosen recipe is one of the "Light" ones
 	isLight := false
 	lightRecipes := []string{"Salmon & Asparagus", "Greek Salad", "Lentil Soup"}
@@ -119,6 +119,6 @@ func TestAnalyst_LiveEval(t *testing.T) {
 		t.Errorf("STRATEGY FAIL: Sunday Dinner (%s) is not from the 'Light' recipe pool.", sundayDinner.RecipeTitle)
 	}
 
-	t.Logf("✅ Eval complete. Analyst proposed %d meals using %d unique recipes.", 
+	t.Logf("✅ Eval complete. Analyst proposed %d meals using %d unique recipes.",
 		len(proposal.PlannedMeals), len(proposal.Recipes))
 }

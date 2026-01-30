@@ -26,10 +26,14 @@ func TestRecipeStore(t *testing.T) {
 	sanitizedUpdatedAt := "2023-10-27T10-00-00Z" // Expectation based on sanitize logic
 
 	rec := recipe.NormalizedRecipe{
-		Title:        "Test Recipe",
-		Ingredients:  []string{"1 cup of testing"},
-		Instructions: "Write a test.",
-		Tags:         []string{"go", "test"},
+		Recipe: recipe.Recipe{
+			ID:           recipeID,
+			Title:        "Test Recipe",
+			Ingredients:  []string{"1 cup of testing"},
+			Instructions: "Write a test.",
+			Tags:         []string{"go", "test"},
+			UpdatedAt:    updatedAt,
+		},
 	}
 
 	t.Run("CheckExists-False", func(t *testing.T) {
@@ -39,7 +43,7 @@ func TestRecipeStore(t *testing.T) {
 	})
 
 	t.Run("Save", func(t *testing.T) {
-		if err := store.Save(recipeID, updatedAt, rec); err != nil {
+		if err := store.Save(rec); err != nil {
 			t.Fatalf("Failed to save recipe: %v", err)
 		}
 
@@ -74,7 +78,9 @@ func TestRecipeStore(t *testing.T) {
 	t.Run("RemoveStaleVersions", func(t *testing.T) {
 		// Create a few stale files
 		oldVersion := "2023-01-01T00:00:00Z"
-		if err := store.Save(recipeID, oldVersion, rec); err != nil {
+		staleRec := rec
+		staleRec.UpdatedAt = oldVersion
+		if err := store.Save(staleRec); err != nil {
 			t.Fatalf("Failed to save old version: %v", err)
 		}
 
@@ -109,13 +115,22 @@ func TestRecipeStore(t *testing.T) {
 		// Vector B: [1, 0] (Identical to A)
 		// Vector C: [0, 1] (Orthogonal to A)
 
-		recA := recipe.NormalizedRecipe{Title: "Recipe A", Embedding: []float32{1.0, 0.0}}
-		recB := recipe.NormalizedRecipe{Title: "Recipe B", Embedding: []float32{1.0, 0.0}}
-		recC := recipe.NormalizedRecipe{Title: "Recipe C", Embedding: []float32{0.0, 1.0}}
+		recA := recipe.NormalizedRecipe{
+			Recipe:    recipe.Recipe{ID: "A", Title: "Recipe A", UpdatedAt: "2023-01-01T00:00:00Z"},
+			Embedding: []float32{1.0, 0.0},
+		}
+		recB := recipe.NormalizedRecipe{
+			Recipe:    recipe.Recipe{ID: "B", Title: "Recipe B", UpdatedAt: "2023-01-01T00:00:00Z"},
+			Embedding: []float32{1.0, 0.0},
+		}
+		recC := recipe.NormalizedRecipe{
+			Recipe:    recipe.Recipe{ID: "C", Title: "Recipe C", UpdatedAt: "2023-01-01T00:00:00Z"},
+			Embedding: []float32{0.0, 1.0},
+		}
 
-		_ = store.Save("A", "2023-01-01T00:00:00Z", recA)
-		_ = store.Save("B", "2023-01-01T00:00:00Z", recB)
-		_ = store.Save("C", "2023-01-01T00:00:00Z", recC)
+		_ = store.Save(recA)
+		_ = store.Save(recB)
+		_ = store.Save(recC)
 
 		// Search for something similar to A ([1, 0])
 		results, err := store.FindSimilar([]float32{1.0, 0.0}, 2)

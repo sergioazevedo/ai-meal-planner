@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/recipe"
 	"bytes"
 	"context"
@@ -46,7 +47,7 @@ type MealProposal struct {
 
 type AnalystResult struct {
 	Proposal *MealProposal
-	Meta     AgentMeta
+	Meta     llm.AgentMeta
 }
 
 type rawLlmResult struct {
@@ -78,7 +79,16 @@ func (p *Planner) runAnalyst(
 
 	raw := &rawLlmResult{}
 	if err = json.Unmarshal([]byte(resp.Content), raw); err != nil {
-		return AnalystResult{Meta: AgentMeta{Usage: resp.Usage}}, fmt.Errorf("failed to parse analyst prompt response %w. Response: %s", err, resp.Content)
+		return AnalystResult{
+				Meta: llm.AgentMeta{
+					AgentName: "Analyst",
+					Usage:     resp.Usage,
+				},
+			}, fmt.Errorf(
+				"failed to parse analyst prompt response %w. Response: %s",
+				err,
+				resp.Content,
+			)
 	}
 
 	recipeLookup := make(map[string]recipe.NormalizedRecipe)
@@ -114,9 +124,10 @@ func (p *Planner) runAnalyst(
 			Children:     planingCtx.Children,
 			ChildrenAges: planingCtx.ChildrenAges,
 		},
-		Meta: AgentMeta{
-			Usage:   resp.Usage,
-			Latency: time.Since(start),
+		Meta: llm.AgentMeta{
+			AgentName: "Analyst",
+			Usage:     resp.Usage,
+			Latency:   time.Since(start),
 		},
 	}, nil
 }

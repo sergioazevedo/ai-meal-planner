@@ -3,7 +3,6 @@ package planner
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/storage"
@@ -47,15 +46,9 @@ type PlanningContext struct {
 	CookingFrequency int // Times per week they want to cook
 }
 
-// AgentMeta holds operational metadata for an agent execution.
-type AgentMeta struct {
-	Usage   llm.TokenUsage
-	Latency time.Duration
-}
-
 // GeneratePlan creates a meal plan based on a user request.
-func (p *Planner) GeneratePlan(ctx context.Context, userRequest string, pCtx PlanningContext) (*MealPlan, []AgentMeta, error) {
-	var metas []AgentMeta
+func (p *Planner) GeneratePlan(ctx context.Context, userRequest string, pCtx PlanningContext) (*MealPlan, []llm.AgentMeta, error) {
+	var metas []llm.AgentMeta
 
 	// 1. Generate embedding for the user request to find relevant recipes
 	queryEmbedding, err := p.embedGen.GenerateEmbedding(ctx, userRequest)

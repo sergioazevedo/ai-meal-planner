@@ -1,7 +1,6 @@
 package recipe
 
 import (
-	"ai-meal-planner/internal/ghost"
 	"ai-meal-planner/internal/llm"
 	"context"
 	"errors"
@@ -18,23 +17,23 @@ type MockTextGenerator struct {
 	response    string
 }
 
-func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (llm.ContentResponse, error) {
+func (m *MockTextGenerator) GenerateContent(_ context.Context, _ string) (llm.ContentResponse, error) {
 	if m.shouldError {
 		return llm.ContentResponse{}, errors.New("LLM error")
 	}
 	return llm.ContentResponse{Content: m.response}, nil
 }
 
-func (m *MockEmbedingGenerator) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
+func (m *MockEmbedingGenerator) GenerateEmbedding(_ context.Context, _ string) ([]float32, error) {
 	if m.shouldError {
 		return nil, errors.New("LLM error")
 	}
 	return []float32{0.1, 0.2, 0.3}, nil
 }
 
-func TestNormalizeRecipeHTML(t *testing.T) {
+func TestNormalizeHTML(t *testing.T) {
 	ctx := context.Background()
-	post := ghost.Post{
+	post := PostData{
 		ID:    "1",
 		Title: "Test Recipe",
 		HTML:  "<h1>Test Recipe</h1><p>Ingredients: ...</p>",
@@ -53,11 +52,14 @@ func TestNormalizeRecipeHTML(t *testing.T) {
 		}
 		mockEmbedingGenerator := &MockEmbedingGenerator{}
 
-		normalizedRecipe, err := NormalizeRecipeHTML(ctx, mockTextGeneration, mockEmbedingGenerator, post)
+		normalizedRecipe, meta, err := NormalizeHTML(ctx, mockTextGeneration, mockEmbedingGenerator, post)
 		if err != nil {
 			t.Fatalf("Expected no error, got %v", err)
 		}
 
+		if normalizedRecipe.ID != "1" {
+			t.Errorf("Expected ID '1', got '%s'", normalizedRecipe.ID)
+		}
 		if normalizedRecipe.Title != "Test Recipe" {
 			t.Errorf("Expected title 'Test Recipe', got '%s'", normalizedRecipe.Title)
 		}
@@ -79,13 +81,16 @@ func TestNormalizeRecipeHTML(t *testing.T) {
 		if len(normalizedRecipe.Embedding) != 3 {
 			t.Errorf("Expected embedding of length 3, got %d", len(normalizedRecipe.Embedding))
 		}
+		if meta.AgentName != "Extractor" {
+			t.Errorf("Expected agent name 'Extractor', got '%s'", meta.AgentName)
+		}
 	})
 
 	t.Run("LLMError", func(t *testing.T) {
 		mockClient := &MockTextGenerator{shouldError: true}
 		mockEmbedingGenerator := &MockEmbedingGenerator{}
 
-		_, err := NormalizeRecipeHTML(ctx, mockClient, mockEmbedingGenerator, post)
+		_, _, err := NormalizeHTML(ctx, mockClient, mockEmbedingGenerator, post)
 		if err == nil {
 			t.Fatal("Expected an error from the LLM client, got nil")
 		}
@@ -99,11 +104,11 @@ func TestNormalizeRecipeHTML(t *testing.T) {
 		mockTextGeneration := &MockTextGenerator{response: "this is not json"}
 		mockEmbedingGenerator := &MockEmbedingGenerator{}
 
-		_, err := NormalizeRecipeHTML(ctx, mockTextGeneration, mockEmbedingGenerator, post)
+		_, _, err := NormalizeHTML(ctx, mockTextGeneration, mockEmbedingGenerator, post)
 		if err == nil {
 			t.Fatal("Expected an error for invalid JSON, got nil")
 		}
-		if !strings.HasPrefix(err.Error(), "failed to unmarshal LLM response") {
+		if !strings.HasPrefix(err.Error(), "failed to get LLM response: failed to unmarshal LLM response") {
 			t.Errorf("Expected a JSON unmarshaling error, got: %v", err)
 		}
 	})

@@ -41,10 +41,16 @@ func TestGeneratePlan(t *testing.T) {
 	store, _ := storage.NewRecipeStore(tempDir)
 
 	// 2. Add some recipes to storage
-	rec1 := recipe.NormalizedRecipe{Title: "Pasta", Embedding: []float32{1.0, 0.0}, Ingredients: []string{"Pasta", "Tomato"}}
-	rec2 := recipe.NormalizedRecipe{Title: "Salad", Embedding: []float32{0.0, 1.0}, Ingredients: []string{"Lettuce", "Tomato"}}
-	_ = store.Save("1", "2023-01-01T00:00:00Z", rec1)
-	_ = store.Save("2", "2023-01-01T00:00:00Z", rec2)
+	rec1 := recipe.NormalizedRecipe{
+		Recipe:    recipe.Recipe{ID: "1", Title: "Pasta", Ingredients: []string{"Pasta", "Tomato"}, UpdatedAt: "2023-01-01T00:00:00Z"},
+		Embedding: []float32{1.0, 0.0},
+	}
+	rec2 := recipe.NormalizedRecipe{
+		Recipe:    recipe.Recipe{ID: "2", Title: "Salad", Ingredients: []string{"Lettuce", "Tomato"}, UpdatedAt: "2023-01-01T00:00:00Z"},
+		Embedding: []float32{0.0, 1.0},
+	}
+	_ = store.Save(rec1)
+	_ = store.Save(rec2)
 
 	planner := NewPlanner(store, &MockTextGenerator{}, &MockEmbedingGenerator{})
 
