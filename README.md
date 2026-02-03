@@ -1,6 +1,8 @@
 # AI-Assisted Recipe Meal Planner
 
-A smart CLI tool that connects to your **Ghost CMS** blog, learns your recipes using **Google Gemini**, and generates personalized weekly meal plans using a **multi-agent role-based architecture**.
+An **AI Agent project** that connects to your **Ghost CMS** blog, learns your recipes using **Google Gemini**, and generates personalized weekly meal plans using a **multi-agent role-based architecture**.
+
+While originally built as a CLI tool, the project has evolved into an intelligent system where most functionality is handled by a **Telegram Bot**.
 
 ## 🚀 Features
 
@@ -59,7 +61,7 @@ export GEMINI_API_KEY="your_google_gemini_key"
 export GROQ_API_KEY="your_groq_api_key"
 ```
 
-### 3. Run the CLI
+### 3. Run via CLI (Optional)
 
 **Step 1: Ingest Recipes**
 Fetch recipes from Ghost and build the local vector index. Run this whenever you add new posts.
