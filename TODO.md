@@ -94,3 +94,15 @@
     - [ ] Enable SQLite FTS5 (Full Text Search) for recipe titles and ingredient lists.
     - [ ] Combine keyword matches with semantic vector results (using a technique like Reciprocal Rank Fusion) to handle specific ingredient requests more accurately.
 
+## Phase 9: Dynamic Agency (Tool Use & Feedback Loops)
+- [ ] **Implement Tool-Enabled Analyst (Lesson 1-4)**
+    - [ ] Update `internal/llm/llm.go` to support Tool Definitions and Tool Calls (universal schema).
+    - [ ] Implement tool-calling logic in `internal/llm/gemini.go`.
+    - [ ] Update `internal/planner/analyst.go` to implement the Agent Loop.
+    - [ ] Update `internal/planner/analyst_prompt.md` to include tool descriptions.
+- [ ] **Implement Nutritionist as Consultant**
+    - [ ] Add `get_nutrition_advice` tool to the Analyst's toolset.
+    - [ ] Implement a lightweight Nutritionist tool/agent to provide meal alternatives.
+- [ ] **Implement Critic/Reviewer Feedback Loop**
+    - [ ] Add a post-planning review step where the Nutritionist audits the full plan.
+    - [ ] Implement logic to feed criticisms back into the Analyst for one round of revision.
