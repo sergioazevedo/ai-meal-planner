@@ -13,9 +13,9 @@ import (
 
 // GeminiClient is a client for the Google Gemini API.
 type GeminiClient struct {
-	client         *genai.Client
-	model          *genai.GenerativeModel
-	embeddingModel *genai.EmbeddingModel
+	client             *genai.Client
+	modelName          string
+	embeddingModelName string
 }
 
 // NewGeminiClient creates a new Gemini API client.
@@ -33,8 +33,15 @@ func NewGeminiClient(ctx context.Context, cfg *config.Config) (*GeminiClient, er
 }
 
 // GenerateContent sends a prompt to the Gemini model and returns the generated text.
-func (c *GeminiClient) GenerateContent(ctx context.Context, prompt string) (ContentResponse, error) {
-	resp, err := c.model.GenerateContent(ctx, genai.Text(prompt))
+func (c *GeminiClient) GenerateContent(ctx context.Context, prompt string, tools []Tool) (ContentResponse, error) {
+	model := c.client.GenerativeModel(c.modelName)
+	genaiTools, err := mapToGenaiTools(tools)
+	if err != nil {
+		return ContentResponse{}, err
+	}
+	model.Tools = genaiTools
+
+	resp, err := model.GenerateContent(ctx, genai.Text(prompt))
 	if err != nil {
 		return ContentResponse{}, fmt.Errorf("failed to generate content: %w", err)
 	}
@@ -43,10 +50,18 @@ func (c *GeminiClient) GenerateContent(ctx context.Context, prompt string) (Cont
 		return ContentResponse{}, fmt.Errorf("no content generated")
 	}
 
-	// Assuming the response is text
-	text, ok := resp.Candidates[0].Content.Parts[0].(genai.Text)
-	if !ok {
-		return ContentResponse{}, fmt.Errorf("generated content is not text")
+	contentResp := ContentResponse{}
+
+	for _, part := range resp.Candidates[0].Content.Parts {
+		switch p := part.(type) {
+		case genai.Text:
+			contentResp.Content += string(p)
+		case genai.FunctionCall:
+			contentResp.ToolCalls = append(contentResp.ToolCalls, ToolCall{
+				Name: p.Name,
+				Args: p.Args,
+			})
+		}
 	}
 
 	usage := shared.TokenUsage{
@@ -58,15 +73,15 @@ func (c *GeminiClient) GenerateContent(ctx context.Context, prompt string) (Cont
 		usage.TotalTokens = int(resp.UsageMetadata.TotalTokenCount)
 	}
 
-	return ContentResponse{
-		Content: string(text),
-		Usage:   usage,
-	}, nil
+	contentResp.Usage = usage
+
+	return contentResp, nil
 }
 
 // GenerateEmbedding generates a vector embedding for the given text.
 func (c *GeminiClient) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
-	resp, err := c.embeddingModel.EmbedContent(ctx, genai.Text(text))
+	embeddingModel := c.client.EmbeddingModel(c.embeddingModelName)
+	resp, err := embeddingModel.EmbedContent(ctx, genai.Text(text))
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate embedding: %w", err)
 	}
