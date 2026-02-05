@@ -47,7 +47,7 @@ type MockTextGenerator struct {
 	generateContentCalls int
 }
 
-func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (llm.ContentResponse, error) {
+func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string, tools []llm.Tool) (llm.ContentResponse, error) {
 	m.generateContentCalls++
 	if strings.Contains(prompt, "ingredients\": [\"quantity + name") {
 		return llm.ContentResponse{

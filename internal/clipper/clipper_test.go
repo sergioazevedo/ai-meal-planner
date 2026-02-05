@@ -43,7 +43,7 @@ type MockTextGenerator struct {
 	ShouldError bool
 }
 
-func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (llm.ContentResponse, error) {
+func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string, tools []llm.Tool) (llm.ContentResponse, error) {
 	if m.ShouldError {
 		return llm.ContentResponse{}, fmt.Errorf("mock ai error")
 	}

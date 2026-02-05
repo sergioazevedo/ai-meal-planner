@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/recipe"
 	"ai-meal-planner/internal/shared"
 	"bytes"
@@ -54,7 +55,7 @@ func (p *Planner) RunPlanReviewer(
 		return PlanReviewerResult{}, err
 	}
 
-	resp, err := p.reviewerGenerator.GenerateContent(ctx, prompt)
+	resp, err := p.reviewerGenerator.GenerateContent(ctx, prompt, llm.NoTools)
 	if err != nil {
 		return PlanReviewerResult{}, err
 	}

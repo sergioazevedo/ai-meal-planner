@@ -49,7 +49,7 @@ To generate content using **Llama 3 70b**, use the `GenerateContent` method.
 
 ```go
 prompt := "Tell me a joke about a programmer."
-response, err := groqClient.GenerateContent(ctx, prompt)
+response, err := groqClient.GenerateContent(ctx, prompt, llm.NoTools)
 if err != nil {
     log.Printf("Failed to generate content: %v", err)
 } else {

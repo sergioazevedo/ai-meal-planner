@@ -63,7 +63,7 @@ To generate content using **Gemini 1.5 Pro**, use the `GenerateContent` method.
 
 ```go
 prompt := "Tell me a joke about a programmer."
-response, err := geminiClient.GenerateContent(ctx, prompt)
+response, err := geminiClient.GenerateContent(ctx, prompt, llm.NoTools)
 if err != nil {
     log.Printf("Failed to generate content: %v", err)
 } else {

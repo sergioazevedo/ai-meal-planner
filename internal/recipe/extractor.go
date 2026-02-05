@@ -52,7 +52,7 @@ func (e *Extractor) ExtractRecipe(
 		return ExtractorResult{}, err
 	}
 
-	llmResp, err := e.textGen.GenerateContent(ctx, prompt)
+	llmResp, err := e.textGen.GenerateContent(ctx, prompt, llm.NoTools)
 	if err != nil {
 		return ExtractorResult{}, fmt.Errorf("failed to get LLM response: %w", err)
 	}

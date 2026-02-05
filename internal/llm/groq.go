@@ -43,7 +43,7 @@ func NewGroqClient(cfg *config.Config, modelID string, temperature float64) *Gro
 }
 
 // GenerateContent sends a prompt to the Groq model and returns the generated text.
-func (c *GroqClient) GenerateContent(ctx context.Context, prompt string) (ContentResponse, error) {
+func (c *GroqClient) GenerateContent(ctx context.Context, prompt string, tools []Tool) (ContentResponse, error) {
 	maxRetries := 3
 	var lastErr error
 

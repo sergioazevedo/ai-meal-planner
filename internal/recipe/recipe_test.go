@@ -20,6 +20,7 @@ type MockTextGenerator struct {
 	response    string
 }
 
+<<<<<<< HEAD
 type MockVectorRepository struct {
 	// For testing specific scenarios if needed
 	mockGet     func(ctx context.Context, recipeID string) (*llm.EmbeddingRecord, error)
@@ -51,12 +52,11 @@ func (m *MockVectorRepository) Save(ctx context.Context, recipeID string, embedd
 func (m *MockVectorRepository) FindSimilar(ctx context.Context, queryEmbedding []float32, limit int, excludeIDs []string) ([]string, error) {
 	return nil, nil // Not relevant for NormalizeHTML tests
 }
-
 func (m *MockVectorRepository) WithTx(tx *sql.Tx) *llm.VectorRepository {
 	return nil // Return nil for mock as real transaction not needed for this mock
 }
 
-func (m *MockTextGenerator) GenerateContent(_ context.Context, _ string) (llm.ContentResponse, error) {
+func (m *MockTextGenerator) GenerateContent(_ context.Context, _ string, _ []llm.Tool) (llm.ContentResponse, error) {
 	if m.shouldError {
 		return llm.ContentResponse{}, errors.New("LLM error")
 	}

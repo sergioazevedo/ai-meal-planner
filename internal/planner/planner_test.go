@@ -21,7 +21,7 @@ func (m *MockEmbedingGenerator) GenerateEmbedding(ctx context.Context, text stri
 
 type MockTextGenerator struct{}
 
-func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (llm.ContentResponse, error) {
+func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string, tools []llm.Tool) (llm.ContentResponse, error) {
 	// If it's the Analyst prompt
 	if strings.Contains(prompt, "# Analyst Agent Prompt") {
 		return llm.ContentResponse{

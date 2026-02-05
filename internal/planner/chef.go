@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/shared"
 	"bytes"
 	"context"
@@ -30,7 +31,7 @@ func (p *Planner) runChef(
 		return ChefResult{}, err
 	}
 
-	resp, err := p.chefGenerator.GenerateContent(ctx, prompt)
+	resp, err := p.chefGenerator.GenerateContent(ctx, prompt, llm.NoTools)
 	if err != nil {
 		return ChefResult{}, err
 	}
