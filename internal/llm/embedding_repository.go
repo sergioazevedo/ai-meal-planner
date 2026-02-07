@@ -11,28 +11,20 @@ import (
 	"ai-meal-planner/internal/recipe" // To get the Recipe struct for NormalizedRecipe
 )
 
-// VectorRepository defines the interface for interacting with recipe embeddings storage.
-type VectorRepository interface {
-	Save(ctx context.Context, recipeID string, embedding []float32) error
-	Get(ctx context.Context, recipeID string) ([]float32, error)
-	FindSimilar(ctx context.Context, queryEmbedding []float32, limit int) ([]recipe.NormalizedRecipe, error)
-	// Add other necessary methods like Delete if needed later
-}
-
-// SQLCVectorRepository implements the VectorRepository interface using sqlc-generated code.
-type SQLCVectorRepository struct {
+// VectorRepository is a database-backed repository for recipe embeddings.
+type VectorRepository struct {
 	queries *embedding_db.Queries
 	db      *sql.DB
 	// Potentially hold a reference to a RecipeRepository to fetch full recipe data
 	// This creates a dependency, which might be handled by a service layer instead.
 	// For now, FindSimilar will return recipe.NormalizedRecipe which implies it needs
 	// recipe data. We'll pass a RecipeRepository as a dependency if needed.
-	recipeRepo recipe.Repository
+	recipeRepo *recipe.Repository
 }
 
-// NewSQLCVectorRepository creates a new SQLCVectorRepository.
-func NewSQLCVectorRepository(d *sql.DB, rr recipe.Repository) *SQLCVectorRepository {
-	return &SQLCVectorRepository{
+// NewVectorRepository creates a new VectorRepository.
+func NewVectorRepository(d *sql.DB, rr *recipe.Repository) *VectorRepository {
+	return &VectorRepository{
 		queries:    embedding_db.New(d),
 		db:         d,
 		recipeRepo: rr,
@@ -40,7 +32,7 @@ func NewSQLCVectorRepository(d *sql.DB, rr recipe.Repository) *SQLCVectorReposit
 }
 
 // Save inserts or updates an embedding in the database.
-func (r *SQLCVectorRepository) Save(ctx context.Context, recipeID string, embedding []float32) error {
+func (r *VectorRepository) Save(ctx context.Context, recipeID string, embedding []float32) error {
 	embeddingBytes, err := float32SliceToByteSlice(embedding)
 	if err != nil {
 		return fmt.Errorf("failed to convert float32 slice to byte slice: %w", err)
@@ -58,7 +50,7 @@ func (r *SQLCVectorRepository) Save(ctx context.Context, recipeID string, embedd
 }
 
 // Get retrieves an embedding by its recipe ID.
-func (r *SQLCVectorRepository) Get(ctx context.Context, recipeID string) ([]float32, error) {
+func (r *VectorRepository) Get(ctx context.Context, recipeID string) ([]float32, error) {
 	dbEmbedding, err := r.queries.GetEmbeddingByRecipeID(ctx, recipeID)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -77,7 +69,7 @@ func (r *SQLCVectorRepository) Get(ctx context.Context, recipeID string) ([]floa
 // FindSimilar searches for recipes with embeddings similar to the query.
 // It retrieves all embeddings, calculates cosine similarity, and fetches the corresponding
 // recipe data for the top N similar recipes.
-func (r *SQLCVectorRepository) FindSimilar(ctx context.Context, queryEmbedding []float32, limit int) ([]recipe.NormalizedRecipe, error) {
+func (r *VectorRepository) FindSimilar(ctx context.Context, queryEmbedding []float32, limit int) ([]recipe.NormalizedRecipe, error) {
 	allEmbeddings, err := r.queries.ListAllEmbeddings(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list all embeddings: %w", err)

@@ -17,29 +17,22 @@ type MealPlan struct {
 	CreatedAt time.Time
 }
 
-// PlanRepository defines the interface for interacting with meal plan storage.
-type PlanRepository interface {
-	Save(ctx context.Context, userID string, planData []byte) error
-	ListRecentByUserID(ctx context.Context, userID string, limit int) ([]MealPlan, error)
-	// Add other necessary methods like Delete, Cleanup if needed later
-}
-
-// SQLCPlanRepository implements the PlanRepository interface using sqlc-generated code.
-type SQLCPlanRepository struct {
+// PlanRepository is a database-backed repository for meal plans.
+type PlanRepository struct {
 	queries *plan_db.Queries
 	db      *sql.DB
 }
 
-// NewSQLCPlanRepository creates a new SQLCPlanRepository.
-func NewSQLCPlanRepository(d *sql.DB) *SQLCPlanRepository {
-	return &SQLCPlanRepository{
+// NewPlanRepository creates a new PlanRepository.
+func NewPlanRepository(d *sql.DB) *PlanRepository {
+	return &PlanRepository{
 		queries: plan_db.New(d),
 		db:      d,
 	}
 }
 
 // Save inserts a new meal plan into the database.
-func (r *SQLCPlanRepository) Save(ctx context.Context, userID string, planData []byte) error {
+func (r *PlanRepository) Save(ctx context.Context, userID string, planData []byte) error {
 	params := plan_db.InsertMealPlanParams{
 		UserID:    userID,
 		PlanData:  planData,
@@ -49,7 +42,7 @@ func (r *SQLCPlanRepository) Save(ctx context.Context, userID string, planData [
 }
 
 // ListRecentByUserID retrieves the N most recent meal plans for a given user.
-func (r *SQLCPlanRepository) ListRecentByUserID(ctx context.Context, userID string, limit int) ([]MealPlan, error) {
+func (r *PlanRepository) ListRecentByUserID(ctx context.Context, userID string, limit int) ([]MealPlan, error) {
 	dbPlans, err := r.queries.ListRecentMealPlansByUserID(ctx, plan_db.ListRecentMealPlansByUserIDParams{
 		UserID: userID,
 		Limit:  int32(limit), // sqlc generates int32 for LIMIT

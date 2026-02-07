@@ -46,9 +46,9 @@ func main() {
 	defer db.Close()
 
 	// Initialize new repositories
-	recipeRepo := recipe.NewSQLCRepository(db.SQL)
-	vectorRepo := llm.NewSQLCVectorRepository(db.SQL, recipeRepo) // VectorRepo needs recipeRepo
-	planRepo := planner.NewSQLCPlanRepository(db.SQL)
+	recipeRepo := recipe.NewRepository(db.SQL)
+	vectorRepo := llm.NewVectorRepository(db.SQL, recipeRepo)
+	planRepo := planner.NewPlanRepository(db.SQL)
 
 
 	// 3. Initialize Ghost Client
@@ -67,11 +67,11 @@ func main() {
 	defer metricsStore.Close()
 
 	// 5. Initialize Services
-	mealPlanner := planner.NewPlanner(store, textGen, geminiClient) // This will be updated to use repos
+	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, textGen, geminiClient)
 	recipeClipper := clipper.NewClipper(ghostClient, textGen)
 
 	// 6. Initialize Telegram Bot
-	bot, err := telegram.NewBot(cfg, mealPlanner, recipeClipper, store, metricsStore, textGen, geminiClient, planRepo) // Pass planRepo
+	bot, err := telegram.NewBot(cfg, mealPlanner, recipeClipper, store, metricsStore, textGen, geminiClient, planRepo, recipeRepo, vectorRepo)
 	if err != nil {
 		log.Fatalf("Failed to initialize Telegram Bot: %v", err)
 	}

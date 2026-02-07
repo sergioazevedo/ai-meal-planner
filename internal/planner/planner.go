@@ -27,14 +27,14 @@ type MealPlan struct {
 
 // Planner handles the generation of meal plans.
 type Planner struct {
-	recipeRepo recipe.Repository
-	vectorRepo llm.VectorRepository
+	recipeRepo *recipe.Repository
+	vectorRepo *llm.VectorRepository
 	textGen    llm.TextGenerator
 	embedGen   llm.EmbeddingGenerator
 }
 
 // NewPlanner creates a new Planner instance.
-func NewPlanner(recipeRepo recipe.Repository, vectorRepo llm.VectorRepository, textGen llm.TextGenerator, embedGen llm.EmbeddingGenerator) *Planner {
+func NewPlanner(recipeRepo *recipe.Repository, vectorRepo *llm.VectorRepository, textGen llm.TextGenerator, embedGen llm.EmbeddingGenerator) *Planner {
 	return &Planner{
 		recipeRepo: recipeRepo,
 		vectorRepo: vectorRepo,

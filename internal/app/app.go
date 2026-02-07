@@ -30,9 +30,9 @@ type App struct {
 
 	// New database components
 	db             *database.DB
-	recipeRepo     recipe.Repository
-	vectorRepo     llm.VectorRepository
-	planRepo       planner.PlanRepository
+	recipeRepo     *recipe.Repository
+	vectorRepo     *llm.VectorRepository
+	planRepo       *planner.PlanRepository
 }
 
 // NewApp creates and initializes a new App instance.
@@ -46,9 +46,9 @@ func NewApp(
 	recipeClipper *clipper.Clipper,
 	cfg *config.Config,
 	db *database.DB, // New parameter
-	recipeRepo recipe.Repository, // New parameter
-	vectorRepo llm.VectorRepository, // New parameter
-	planRepo planner.PlanRepository, // New parameter
+	recipeRepo *recipe.Repository, // New parameter
+	vectorRepo *llm.VectorRepository, // New parameter
+	planRepo *planner.PlanRepository, // New parameter
 ) *App {
 	return &App{
 		ghostClient:   ghostClient,

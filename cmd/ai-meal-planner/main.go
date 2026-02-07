@@ -45,9 +45,9 @@ func main() {
 	defer db.Close()
 
 	// Initialize new repositories
-	recipeRepo := recipe.NewSQLCRepository(db.SQL)
-	vectorRepo := llm.NewSQLCVectorRepository(db.SQL, recipeRepo) // VectorRepo needs recipeRepo
-	planRepo := planner.NewSQLCPlanRepository(db.SQL)
+	recipeRepo := recipe.NewRepository(db.SQL)
+	vectorRepo := llm.NewVectorRepository(db.SQL, recipeRepo)
+	planRepo := planner.NewPlanRepository(db.SQL)
 
 	// Existing recipeStore (file-based) is still needed for migration utility initially
 	recipeStore, err := storage.NewRecipeStore(cfg.RecipeStoragePath)
@@ -61,7 +61,7 @@ func main() {
 	}
 	defer metricsStore.Close()
 
-	mealPlanner := planner.NewPlanner(recipeStore, groqClient, geminiClient) // This will be updated to use repos
+	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, groqClient, geminiClient)
 	recipeClipper := clipper.NewClipper(ghostClient, groqClient)
 
 	application := app.NewApp(

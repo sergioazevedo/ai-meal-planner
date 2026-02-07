@@ -30,31 +30,22 @@ type NormalizedRecipe struct {
 	Embedding []float32 `json:"embedding"`
 }
 
-// Repository defines the interface for interacting with recipe storage.
-type Repository interface {
-	Save(ctx context.Context, rec Recipe) error
-	Get(ctx context.Context, id string) (*Recipe, error)
-	List(ctx context.Context) ([]Recipe, error)
-	Count(ctx context.Context) (int, error) // New method
-	// Add other necessary methods like Delete, Update if needed later
-}
-
-// SQLCRepository implements the Repository interface using sqlc-generated code.
-type SQLCRepository struct {
+// Repository is a database-backed repository for recipes.
+type Repository struct {
 	queries *db.Queries
 	db      *sql.DB // Direct database access for transactions if needed
 }
 
-// NewSQLCRepository creates a new SQLCRepository.
-func NewSQLCRepository(d *sql.DB) *SQLCRepository {
-	return &SQLCRepository{
+// NewRepository creates a new Repository.
+func NewRepository(d *sql.DB) *Repository {
+	return &Repository{
 		queries: db.New(d),
 		db:      d,
 	}
 }
 
 // Save inserts or updates a recipe in the database.
-func (r *SQLCRepository) Save(ctx context.Context, rec Recipe) error {
+func (r *Repository) Save(ctx context.Context, rec Recipe) error {
 	recipeJSON, err := json.Marshal(rec)
 	if err != nil {
 		return fmt.Errorf("failed to marshal recipe to JSON: %w", err)
@@ -104,7 +95,7 @@ func (r *SQLCRepository) Save(ctx context.Context, rec Recipe) error {
 }
 
 // Get retrieves a recipe by its ID.
-func (r *SQLCRepository) Get(ctx context.Context, id string) (*Recipe, error) {
+func (r *Repository) Get(ctx context.Context, id string) (*Recipe, error) {
 	dbRecipe, err := r.queries.GetRecipeByID(ctx, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -127,7 +118,7 @@ func (r *SQLCRepository) Get(ctx context.Context, id string) (*Recipe, error) {
 }
 
 // List retrieves all recipes.
-func (r *SQLCRepository) List(ctx context.Context) ([]Recipe, error) {
+func (r *Repository) List(ctx context.Context) ([]Recipe, error) {
 	dbRecipes, err := r.queries.ListRecipes(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list recipes: %w", err)
@@ -148,7 +139,7 @@ func (r *SQLCRepository) List(ctx context.Context) ([]Recipe, error) {
 }
 
 // Count returns the number of recipes in the database.
-func (r *SQLCRepository) Count(ctx context.Context) (int, error) {
+func (r *Repository) Count(ctx context.Context) (int, error) {
 	count, err := r.queries.CountRecipes(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count recipes: %w", err)
