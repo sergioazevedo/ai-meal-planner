@@ -17,7 +17,7 @@ type Recipe struct {
 	ID           string   `json:"id"`
 	Title        string   `json:"title"`
 	Ingredients  []string `json:"ingredients"`
-	Instructions string   `json:"instructions"`
+	Instructions []string `json:"instructions"`
 	Tags         []string `json:"tags"`
 	PrepTime     string   `json:"prep_time"`
 	Servings     string   `json:"servings"`
@@ -28,10 +28,11 @@ type Recipe struct {
 // used for generating embeddings and similarity search.
 func (r *Recipe) ToEmbeddingText() string {
 	return fmt.Sprintf(
-		"Title: %s\nTags: %v\nIngredients: %v\nPrep Time: %s",
+		"Title: %s\nTags: %v\nIngredients: %v\nInstructions: %v\nPrep Time: %s",
 		r.Title,
 		r.Tags,
 		r.Ingredients,
+		r.Instructions,
 		r.PrepTime,
 	)
 }

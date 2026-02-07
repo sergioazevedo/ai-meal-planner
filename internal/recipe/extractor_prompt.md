@@ -21,7 +21,7 @@ Return **ONLY** a valid JSON object with the structure below.
 {
     "title": "Recipe Name",
     "ingredients": ["quantity + name", "quantity + name", ...],
-    "instructions": "Step-by-step instructions",
+    "instructions": ["Step 1", "Step 2", ...],
     "tags": ["tag1", "tag2"],
     "prep_time": "Estimated time",
     "servings": "Estimated servings"

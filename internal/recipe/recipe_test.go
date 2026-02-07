@@ -44,7 +44,7 @@ func TestNormalizeHTML(t *testing.T) {
 			response: `{
 				"title": "Test Recipe",
 				"ingredients": ["Ingredient 1", "Ingredient 2"],
-				"instructions": "Step 1. Do something.",
+				"instructions": ["Step 1. Do something."],
 				"tags": ["test", "recipe"],
 				"prep_time": "30 mins",
 				"servings": "4"
@@ -66,8 +66,8 @@ func TestNormalizeHTML(t *testing.T) {
 		if len(recipeWithEmbedding.Ingredients) != 2 {
 			t.Errorf("Expected 2 ingredients, got %d", len(recipeWithEmbedding.Ingredients))
 		}
-		if recipeWithEmbedding.Instructions != "Step 1. Do something." {
-			t.Errorf("Expected instructions 'Step 1. Do something.', got '%s'", recipeWithEmbedding.Instructions)
+		if len(recipeWithEmbedding.Instructions) != 1 || recipeWithEmbedding.Instructions[0] != "Step 1. Do something." {
+			t.Errorf("Expected instructions ['Step 1. Do something.'], got %v", recipeWithEmbedding.Instructions)
 		}
 		if len(recipeWithEmbedding.Tags) != 2 {
 			t.Errorf("Expected 2 tags, got %d", len(recipeWithEmbedding.Tags))
