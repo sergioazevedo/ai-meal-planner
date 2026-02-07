@@ -1,0 +1,196 @@
+package llm
+
+import (
+	"context"
+	"database/sql"
+	"encoding/binary"
+	"fmt"
+	"math"
+
+	"ai-meal-planner/internal/llm/embedding_db"
+	"ai-meal-planner/internal/recipe" // To get the Recipe struct for NormalizedRecipe
+)
+
+// VectorRepository defines the interface for interacting with recipe embeddings storage.
+type VectorRepository interface {
+	Save(ctx context.Context, recipeID string, embedding []float32) error
+	Get(ctx context.Context, recipeID string) ([]float32, error)
+	FindSimilar(ctx context.Context, queryEmbedding []float32, limit int) ([]recipe.NormalizedRecipe, error)
+	// Add other necessary methods like Delete if needed later
+}
+
+// SQLCVectorRepository implements the VectorRepository interface using sqlc-generated code.
+type SQLCVectorRepository struct {
+	queries *embedding_db.Queries
+	db      *sql.DB
+	// Potentially hold a reference to a RecipeRepository to fetch full recipe data
+	// This creates a dependency, which might be handled by a service layer instead.
+	// For now, FindSimilar will return recipe.NormalizedRecipe which implies it needs
+	// recipe data. We'll pass a RecipeRepository as a dependency if needed.
+	recipeRepo recipe.Repository
+}
+
+// NewSQLCVectorRepository creates a new SQLCVectorRepository.
+func NewSQLCVectorRepository(d *sql.DB, rr recipe.Repository) *SQLCVectorRepository {
+	return &SQLCVectorRepository{
+		queries:    embedding_db.New(d),
+		db:         d,
+		recipeRepo: rr,
+	}
+}
+
+// Save inserts or updates an embedding in the database.
+func (r *SQLCVectorRepository) Save(ctx context.Context, recipeID string, embedding []float32) error {
+	embeddingBytes, err := float32SliceToByteSlice(embedding)
+	if err != nil {
+		return fmt.Errorf("failed to convert float32 slice to byte slice: %w", err)
+	}
+
+	params := embedding_db.InsertEmbeddingParams{
+		RecipeID:  recipeID,
+		Embedding: embeddingBytes,
+	}
+
+	// Similar to RecipeRepository, this `InsertEmbedding` needs to be an UPSERT
+	// or handle conflicts. For now, it will attempt a direct insert and fail on conflict.
+	// This will be addressed by modifying embedding_queries.sql for UPSERT.
+	return r.queries.InsertEmbedding(ctx, params)
+}
+
+// Get retrieves an embedding by its recipe ID.
+func (r *SQLCVectorRepository) Get(ctx context.Context, recipeID string) ([]float32, error) {
+	dbEmbedding, err := r.queries.GetEmbeddingByRecipeID(ctx, recipeID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // Embedding not found
+		}
+		return nil, fmt.Errorf("failed to get embedding by recipe ID: %w", err)
+	}
+
+	embedding, err := byteSliceToFloat32Slice(dbEmbedding.Embedding)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert byte slice to float32 slice: %w", err)
+	}
+	return embedding, nil
+}
+
+// FindSimilar searches for recipes with embeddings similar to the query.
+// It retrieves all embeddings, calculates cosine similarity, and fetches the corresponding
+// recipe data for the top N similar recipes.
+func (r *SQLCVectorRepository) FindSimilar(ctx context.Context, queryEmbedding []float32, limit int) ([]recipe.NormalizedRecipe, error) {
+	allEmbeddings, err := r.queries.ListAllEmbeddings(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list all embeddings: %w", err)
+	}
+
+	var scoredRecipes []struct {
+		RecipeID string
+		Score    float64
+	}
+
+	for _, dbEmbed := range allEmbeddings {
+		embed, err := byteSliceToFloat32Slice(dbEmbed.Embedding)
+		if err != nil {
+			fmt.Printf("Warning: Failed to convert embedding for recipe ID %s: %v
+", dbEmbed.RecipeID, err)
+			continue
+		}
+
+		score := cosineSimilarity(queryEmbedding, embed)
+		scoredRecipes = append(scoredRecipes, struct {
+			RecipeID string
+			Score    float64
+		}{
+			RecipeID: dbEmbed.RecipeID,
+			Score:    score,
+		})
+	}
+
+	// Sort by score descending
+	sort.Slice(scoredRecipes, func(i, j int) bool {
+		return scoredRecipes[i].Score > scoredRecipes[j].Score
+	})
+
+	// Take top K and fetch full recipe data
+	if limit > len(scoredRecipes) {
+		limit = len(scoredRecipes)
+	}
+
+	var result []recipe.NormalizedRecipe
+	for i := 0; i < limit; i++ {
+		recID := scoredRecipes[i].RecipeID
+		rec, err := r.recipeRepo.Get(ctx, recID)
+		if err != nil {
+			fmt.Printf("Warning: Failed to retrieve recipe data for ID %s: %v
+", recID, err)
+			continue // Skip this recipe if data can't be fetched
+		}
+		if rec == nil {
+			continue // Recipe not found, might have been deleted
+		}
+
+		embed, err := r.Get(ctx, recID) // Re-fetch embedding to ensure it's accurate and available
+		if err != nil {
+			fmt.Printf("Warning: Failed to retrieve embedding for recipe ID %s during FindSimilar: %v
+", recID, err)
+			continue
+		}
+		if embed == nil {
+			continue // Embedding not found
+		}
+
+		result = append(result, recipe.NormalizedRecipe{
+			Recipe:    *rec,
+			Embedding: embed,
+		})
+	}
+
+	return result, nil
+}
+
+// float32SliceToByteSlice converts a slice of float32 to a byte slice.
+func float32SliceToByteSlice(floats []float32) ([]byte, error) {
+	if len(floats) == 0 {
+		return nil, nil
+	}
+	buf := make([]byte, 4*len(floats)) // 4 bytes per float32
+	for i, f := range floats {
+		binary.LittleEndian.PutUint32(buf[i*4:(i+1)*4], math.Float32bits(f))
+	}
+	return buf, nil
+}
+
+// byteSliceToFloat32Slice converts a byte slice to a slice of float32.
+func byteSliceToFloat32Slice(bytes []byte) ([]float32, error) {
+	if len(bytes) == 0 {
+		return nil, nil
+	}
+	if len(bytes)%4 != 0 {
+		return nil, fmt.Errorf("byte slice length is not a multiple of 4")
+	}
+	floats := make([]float32, len(bytes)/4)
+	for i := 0; i < len(bytes)/4; i++ {
+		floats[i] = math.Float32frombits(binary.LittleEndian.Uint32(bytes[i*4:(i+1)*4]))
+	}
+	return floats, nil
+}
+
+// cosineSimilarity calculates the cosine similarity between two vectors.
+func cosineSimilarity(a, b []float32) float64 {
+	if len(a) != len(b) || len(a) == 0 {
+		return 0.0
+	}
+
+	var dotProduct, normA, normB float64
+	for i := range a {
+		dotProduct += float64(a[i] * b[i])
+		normA += float64(a[i] * a[i])
+		normB += float64(b[i] * b[i])
+	}
+
+	if normA == 0 || normB == 0 {
+		return 0.0
+	}
+
+	return dotProduct / (math.Sqrt(normA) * math.Sqrt(normB))
+}
