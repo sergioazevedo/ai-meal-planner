@@ -52,14 +52,11 @@ func main() {
 	// 3. Initialize Ghost Client
 	ghostClient := ghost.NewClient(cfg)
 
-	metricsStore, err := metrics.NewStore(cfg.DatabasePath)
-	if err != nil {
-		log.Fatalf("Failed to initialize metrics store: %v", err)
-	}
+	metricsStore := metrics.NewStore(db.SQL)
 	defer metricsStore.Close()
 
 	// 5. Initialize Services
-	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, textGen, geminiClient)
+	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, planRepo, textGen, geminiClient)
 	recipeClipper := clipper.NewClipper(ghostClient, textGen)
 
 	// 6. Initialize Telegram Bot

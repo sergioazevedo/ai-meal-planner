@@ -92,9 +92,17 @@ func (r *Repository) GetByIds(ctx context.Context, ids []string) ([]Recipe, erro
 	return recipes, nil
 }
 
-// List retrieves all recipes.
-func (r *Repository) List(ctx context.Context) ([]Recipe, error) {
-	dbRecipes, err := r.queries.ListRecipes(ctx)
+// List retrieves all recipes, optionally excluding specified IDs.
+func (r *Repository) List(ctx context.Context, excludeIDs []string) ([]Recipe, error) {
+	var dbRecipes []db.Recipe
+	var err error
+
+	if len(excludeIDs) > 0 {
+		dbRecipes, err = r.queries.ListRecipes(ctx, excludeIDs)
+	} else {
+		dbRecipes, err = r.queries.ListAllRecipes(ctx)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to list recipes: %w", err)
 	}

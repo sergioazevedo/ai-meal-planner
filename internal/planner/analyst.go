@@ -32,6 +32,7 @@ const (
 
 type PlannedMeal struct {
 	Day         string     `json:"day"`
+	RecipeID    string     `json:"recipe_id"`
 	Action      MealAction `json:"action"`
 	RecipeTitle string     `json:"recipe_title"`
 	Note        string     `json:"note"`

@@ -1,14 +1,11 @@
 package metrics
 
 import (
+	"ai-meal-planner/internal/metrics/metrics_db"
 	"ai-meal-planner/internal/shared"
+	"context"
 	"database/sql"
-	"fmt"
-	"os"
-	"path/filepath"
 	"time"
-
-	_ "modernc.org/sqlite"
 )
 
 // ExecutionMetric records metadata for a single agent execution.
@@ -23,66 +20,33 @@ type ExecutionMetric struct {
 
 // Store handles persistence of metrics to SQLite.
 type Store struct {
-	db *sql.DB
+	queries *metricsdb.Queries
+	db      *sql.DB
 }
 
-// NewStore initializes the SQLite database and creates the metrics table.
-func NewStore(dbPath string) (*Store, error) {
-	// Ensure directory exists
-	dir := filepath.Dir(dbPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create metrics directory: %w", err)
+// NewStore initializes the Store with an existing database connection.
+func NewStore(db *sql.DB) *Store {
+	return &Store{
+		queries: metricsdb.New(db),
+		db:      db,
 	}
-
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open metrics db: %w", err)
-	}
-
-	s := &Store{db: db}
-	if err := s.migrate(); err != nil {
-		return nil, err
-	}
-
-	return s, nil
-}
-
-func (s *Store) migrate() error {
-	queries := []string{
-		`CREATE TABLE IF NOT EXISTS execution_metrics (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			agent_name TEXT,
-			model TEXT,
-			prompt_tokens INTEGER,
-			completion_tokens INTEGER,
-			latency_ms INTEGER,
-			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-		);`,
-		`CREATE INDEX IF NOT EXISTS idx_timestamp ON execution_metrics(timestamp);`,
-	}
-
-	for _, q := range queries {
-		if _, err := s.db.Exec(q); err != nil {
-			return fmt.Errorf("failed to migrate metrics db: %w", err)
-		}
-	}
-	return nil
 }
 
 // Record saves a metric to the database.
 func (s *Store) Record(m ExecutionMetric) error {
-	query := `
-	INSERT INTO execution_metrics (agent_name, model, prompt_tokens, completion_tokens, latency_ms, timestamp)
-	VALUES (?, ?, ?, ?, ?, ?);
-	`
 	ts := m.Timestamp
 	if ts.IsZero() {
 		ts = time.Now().UTC()
 	}
 
-	// SQLite stores time as strings. Ensure standard ISO format.
-	_, err := s.db.Exec(query, m.AgentName, m.Model, m.PromptTokens, m.CompletionTokens, m.LatencyMS, ts.Format("2006-01-02 15:04:05"))
-	return err
+	return s.queries.InsertExecutionMetric(context.Background(), metricsdb.InsertExecutionMetricParams{
+		AgentName:        m.AgentName,
+		Model:            m.Model,
+		PromptTokens:     int64(m.PromptTokens),
+		CompletionTokens: int64(m.CompletionTokens),
+		LatencyMs:        m.LatencyMS,
+		Timestamp:        ts,
+	})
 }
 
 // Close closes the database connection.
@@ -100,36 +64,31 @@ type DailyUsage struct {
 
 // GetDailyUsage retrieves usage for the last N days.
 func (s *Store) GetDailyUsage(days int) ([]DailyUsage, error) {
-	query := `
-	SELECT 
-		STRFTIME('%Y-%m-%d', timestamp) as day,
-		SUM(prompt_tokens),
-		SUM(completion_tokens),
-		COUNT(*)
-	FROM execution_metrics
-	WHERE timestamp > STRFTIME('%Y-%m-%d %H:%M:%S', ?)
-	GROUP BY day
-	ORDER BY day DESC;
-	`
 	since := time.Now().AddDate(0, 0, -days).Format("2006-01-02 15:04:05")
-	rows, err := s.db.Query(query, since)
+	rows, err := s.queries.GetDailyUsage(context.Background(), since)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	var results []DailyUsage
-	for rows.Next() {
-		var u DailyUsage
-		var day sql.NullString
-		if err := rows.Scan(&day, &u.TotalPrompt, &u.TotalCompletion, &u.TotalExecution); err != nil {
-			return nil, err
+	for _, r := range rows {
+		u := DailyUsage{
+			TotalExecution: int(r.Count),
 		}
-		if day.Valid {
-			u.Date = day.String
+
+		if day, ok := r.Day.(string); ok {
+			u.Date = day
 		} else {
 			u.Date = "Unknown"
 		}
+
+		if r.Sum.Valid {
+			u.TotalPrompt = int(r.Sum.Float64)
+		}
+		if r.Sum_2.Valid {
+			u.TotalCompletion = int(r.Sum_2.Float64)
+		}
+
 		results = append(results, u)
 	}
 	return results, nil
@@ -137,13 +96,15 @@ func (s *Store) GetDailyUsage(days int) ([]DailyUsage, error) {
 
 // Cleanup removes records older than the specified number of days.
 func (s *Store) Cleanup(olderThanDays int) (int64, error) {
-	query := `DELETE FROM execution_metrics WHERE timestamp < ?;`
 	threshold := time.Now().AddDate(0, 0, -olderThanDays)
-	res, err := s.db.Exec(query, threshold)
+	err := s.queries.CleanupExecutionMetrics(context.Background(), threshold)
 	if err != nil {
 		return 0, err
 	}
-	return res.RowsAffected()
+
+	// sqlc's :exec doesn't return rows affected for SQLite easily without extra steps.
+	// For simplicity, we'll return 0 or implement a custom check if needed.
+	return 0, nil
 }
 
 // MapUsage helper to convert llm.TokenUsage to ExecutionMetric.

@@ -134,7 +134,8 @@ func (a *App) GenerateMealPlan(ctx context.Context, request string) error {
 		CookingFrequency: a.cfg.DefaultCookingFrequency,
 	}
 
-	plan, metas, err := a.mealPlanner.GeneratePlan(ctx, request, pCtx)
+	userID := "default_user"
+	plan, metas, err := a.mealPlanner.GeneratePlan(ctx, userID, request, pCtx)
 	if err != nil {
 		return fmt.Errorf("failed to generate plan: %w", err)
 	}
@@ -147,7 +148,7 @@ func (a *App) GenerateMealPlan(ctx context.Context, request string) error {
 	}
 
 	// Save the generated meal plan to user memory
-	if err := a.planRepo.Save(ctx, "default_user", plan); err != nil { // TODO: Replace "default_user" with actual user ID
+	if err := a.planRepo.Save(ctx, userID, plan); err != nil {
 		log.Printf("Warning: failed to save meal plan to user memory: %v", err)
 	}
 

@@ -16,15 +16,17 @@ import (
 type Planner struct {
 	recipeRepo *recipe.Repository
 	vectorRepo *llm.VectorRepository
+	planRepo   *PlanRepository
 	textGen    llm.TextGenerator
 	embedGen   llm.EmbeddingGenerator
 }
 
 // NewPlanner creates a new Planner instance.
-func NewPlanner(recipeRepo *recipe.Repository, vectorRepo *llm.VectorRepository, textGen llm.TextGenerator, embedGen llm.EmbeddingGenerator) *Planner {
+func NewPlanner(recipeRepo *recipe.Repository, vectorRepo *llm.VectorRepository, planRepo *PlanRepository, textGen llm.TextGenerator, embedGen llm.EmbeddingGenerator) *Planner {
 	return &Planner{
 		recipeRepo: recipeRepo,
 		vectorRepo: vectorRepo,
+		planRepo:   planRepo,
 		textGen:    textGen,
 		embedGen:   embedGen,
 	}
@@ -39,9 +41,22 @@ type PlanningContext struct {
 }
 
 // GeneratePlan creates a meal plan based on a user request.
-func (p *Planner) GeneratePlan(ctx context.Context, userRequest string, pCtx PlanningContext) (*MealPlan, []shared.AgentMeta, error) {
+func (p *Planner) GeneratePlan(ctx context.Context, userID string, userRequest string, pCtx PlanningContext) (*MealPlan, []shared.AgentMeta, error) {
 	var metas []shared.AgentMeta
 	var recipes []recipe.Recipe
+
+	// 0. Fetch recent history to avoid repetition
+	var excludeIDs []string
+	recentPlans, err := p.planRepo.ListRecentByUserID(ctx, userID, 3) // Check last 3 plans
+	if err == nil {
+		for _, plan := range recentPlans {
+			for _, day := range plan.Plan {
+				if day.RecipeID != "" {
+					excludeIDs = append(excludeIDs, day.RecipeID)
+				}
+			}
+		}
+	}
 
 	// 1. Decide retrieval strategy based on total recipe count
 	count, err := p.recipeRepo.Count(ctx)
@@ -51,9 +66,9 @@ func (p *Planner) GeneratePlan(ctx context.Context, userRequest string, pCtx Pla
 
 	if count <= 20 {
 		// For small pools, give everything to the Analyst to maximize variety
-		recipes, err = p.recipeRepo.List(ctx)
+		recipes, err = p.recipeRepo.List(ctx, excludeIDs)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to list all recipes: %w", err)
+			return nil, nil, fmt.Errorf("failed to list recipes: %w", err)
 		}
 		// Shuffle to avoid positional bias in the LLM
 		r := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -61,13 +76,13 @@ func (p *Planner) GeneratePlan(ctx context.Context, userRequest string, pCtx Pla
 			recipes[i], recipes[j] = recipes[j], recipes[i]
 		})
 	} else {
-		// 2. For larger pools, use embedding search to find top 9 relevant recipes
+		// 2. For larger pools, use embedding search to find top 20 relevant recipes
 		queryEmbedding, err := p.embedGen.GenerateEmbedding(ctx, userRequest)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to generate embedding for request: %w", err)
 		}
 
-		recipeIds, err := p.vectorRepo.FindSimilar(ctx, queryEmbedding, 20)
+		recipeIds, err := p.vectorRepo.FindSimilar(ctx, queryEmbedding, 15, excludeIDs)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to retrieve similar recipes: %w", err)
 		}

@@ -179,7 +179,8 @@ func (b *Bot) processMessage(msg *tgbotapi.Message) {
 			fmt.Sscanf(msg.Text, "%d adults", &pCtx.Adults)
 		}
 
-		plan, metas, err := b.planner.GeneratePlan(ctx, msg.Text, pCtx)
+		userID := fmt.Sprintf("%d", msg.From.ID)
+		plan, metas, err := b.planner.GeneratePlan(ctx, userID, msg.Text, pCtx)
 
 		// Record Metrics even if it errored (if we have metas)
 		for _, m := range metas {

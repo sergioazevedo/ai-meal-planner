@@ -56,10 +56,16 @@ func (r *VectorRepository) Get(ctx context.Context, recipeID string) ([]float32,
 // FindSimilar searches for recipes with embeddings similar to the query.
 // It retrieves all embeddings, calculates cosine similarity, and fetches the corresponding
 // recipe data for the top N similar recipes.
-func (r *VectorRepository) FindSimilar(ctx context.Context, queryEmbedding []float32, limit int) ([]string, error) {
+func (r *VectorRepository) FindSimilar(ctx context.Context, queryEmbedding []float32, limit int, excludeIDs []string) ([]string, error) {
 	allEmbeddings, err := r.queries.ListAllEmbeddings(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list all embeddings: %w", err)
+	}
+
+	// Create a map for efficient exclusion lookup
+	excludeMap := make(map[string]struct{})
+	for _, id := range excludeIDs {
+		excludeMap[id] = struct{}{}
 	}
 
 	type scoredRecipe struct {
@@ -70,6 +76,11 @@ func (r *VectorRepository) FindSimilar(ctx context.Context, queryEmbedding []flo
 	scoredRecipes := []scoredRecipe{}
 
 	for _, dbEmbed := range allEmbeddings {
+		// Skip if ID is in the exclusion list
+		if _, excluded := excludeMap[dbEmbed.RecipeID]; excluded {
+			continue
+		}
+
 		embed, err := byteSliceToFloat32Slice(dbEmbed.Embedding)
 		if err != nil {
 			fmt.Printf("Warning: Failed to convert embedding for recipe ID %s: %v", dbEmbed.RecipeID, err)

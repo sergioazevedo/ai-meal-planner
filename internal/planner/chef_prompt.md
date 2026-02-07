@@ -48,12 +48,14 @@ Return ONLY a valid JSON object with this structure:
   "plan": [
     {
       "day": "Monday",
+      "recipe_id": "[Original Recipe ID]",
       "recipe_title": "Cook: [Recipe Name]",
       "prep_time": "45 mins",
       "note": "Tip for cooking..."
     },
     {
       "day": "Tuesday",
+      "recipe_id": "[Original Recipe ID]",
       "recipe_title": "Leftovers: [Recipe Name]",
       "prep_time": "10 mins",
       "note": "Reheat and enjoy!"

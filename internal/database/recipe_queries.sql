@@ -13,6 +13,11 @@ WHERE id IN (sqlc.slice('ids'));
 
 -- name: ListRecipes :many
 SELECT id, data, updated_at FROM recipes
+WHERE id NOT IN (sqlc.slice('exclude_ids'))
+ORDER BY updated_at DESC;
+
+-- name: ListAllRecipes :many
+SELECT id, data, updated_at FROM recipes
 ORDER BY updated_at DESC;
 
 -- name: DeleteRecipeByID :exec

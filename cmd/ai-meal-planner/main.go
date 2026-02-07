@@ -48,13 +48,10 @@ func main() {
 	vectorRepo := llm.NewVectorRepository(db.SQL)
 	planRepo := planner.NewPlanRepository(db.SQL)
 
-	metricsStore, err := metrics.NewStore(cfg.DatabasePath)
-	if err != nil {
-		log.Fatalf("Failed to initialize metrics store: %v", err)
-	}
+	metricsStore := metrics.NewStore(db.SQL)
 	defer metricsStore.Close()
 
-	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, groqClient, geminiClient)
+	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, planRepo, groqClient, geminiClient)
 	recipeClipper := clipper.NewClipper(ghostClient, groqClient)
 
 	application := app.NewApp(
@@ -86,13 +83,7 @@ func main() {
 		days := cleanupCmd.Int("days", 30, "Keep records for the last N days")
 		cleanupCmd.Parse(os.Args[2:])
 
-		mStore, err := metrics.NewStore(cfg.DatabasePath)
-		if err != nil {
-			log.Fatalf("Failed to open metrics store: %v", err)
-		}
-		defer mStore.Close()
-
-		affected, err := mStore.Cleanup(*days)
+		affected, err := metricsStore.Cleanup(*days)
 		if err != nil {
 			log.Fatalf("Cleanup failed: %v", err)
 		}

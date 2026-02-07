@@ -97,13 +97,52 @@ func (q *Queries) InsertRecipe(ctx context.Context, arg InsertRecipeParams) erro
 	return err
 }
 
-const listRecipes = `-- name: ListRecipes :many
+const listAllRecipes = `-- name: ListAllRecipes :many
 SELECT id, data, updated_at FROM recipes
 ORDER BY updated_at DESC
 `
 
-func (q *Queries) ListRecipes(ctx context.Context) ([]Recipe, error) {
-	rows, err := q.db.QueryContext(ctx, listRecipes)
+func (q *Queries) ListAllRecipes(ctx context.Context) ([]Recipe, error) {
+	rows, err := q.db.QueryContext(ctx, listAllRecipes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Recipe
+	for rows.Next() {
+		var i Recipe
+		if err := rows.Scan(&i.ID, &i.Data, &i.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecipes = `-- name: ListRecipes :many
+SELECT id, data, updated_at FROM recipes
+WHERE id NOT IN (/*SLICE:exclude_ids*/?)
+ORDER BY updated_at DESC
+`
+
+func (q *Queries) ListRecipes(ctx context.Context, excludeIds []string) ([]Recipe, error) {
+	query := listRecipes
+	var queryParams []interface{}
+	if len(excludeIds) > 0 {
+		for _, v := range excludeIds {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:exclude_ids*/?", strings.Repeat(",?", len(excludeIds))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:exclude_ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
 		return nil, err
 	}

@@ -113,13 +113,10 @@ func TestFullWorkflow(t *testing.T) {
 	vectorRepo := llm.NewVectorRepository(db.SQL)
 	planRepo := planner.NewPlanRepository(db.SQL)
 
-	metricsStore, err := metrics.NewStore(dbPath)
-	if err != nil {
-		t.Fatalf("Failed to create metrics store: %v", err)
-	}
+	metricsStore := metrics.NewStore(db.SQL)
 
 	// 3. Create the application instance with mocks
-	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, mockTextGenerator, mockEmbedingGenerator)
+	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, planRepo, mockTextGenerator, mockEmbedingGenerator)
 	recipeClipper := clipper.NewClipper(ghostClient, mockTextGenerator)
 	application := app.NewApp(ghostClient, mockTextGenerator, mockEmbedingGenerator, metricsStore, mealPlanner, recipeClipper, &config.Config{
 		DefaultAdults:           2,

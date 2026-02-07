@@ -50,6 +50,7 @@ func TestGeneratePlan(t *testing.T) {
 
 	recipeRepo := recipe.NewRepository(db.SQL)
 	vectorRepo := llm.NewVectorRepository(db.SQL)
+	planRepo := NewPlanRepository(db.SQL)
 
 	// 2. Add some recipes to database
 	rec1 := recipe.Recipe{ID: "1", Title: "Pasta", Ingredients: []string{"Pasta", "Tomato"}, UpdatedAt: "2023-01-01T00:00:00Z"}
@@ -64,10 +65,10 @@ func TestGeneratePlan(t *testing.T) {
 	_ = recipeRepo.Save(ctx, rec2)
 	_ = vectorRepo.Save(ctx, rec2.ID, emb2)
 
-	p := NewPlanner(recipeRepo, vectorRepo, &MockTextGenerator{}, &MockEmbedingGenerator{})
+	p := NewPlanner(recipeRepo, vectorRepo, planRepo, &MockTextGenerator{}, &MockEmbedingGenerator{})
 
 	// 4. Run GeneratePlan
-	plan, metas, err := p.GeneratePlan(ctx, "I want pasta", PlanningContext{})
+	plan, metas, err := p.GeneratePlan(ctx, "test_user", "I want pasta", PlanningContext{})
 	if err != nil {
 		t.Fatalf("GeneratePlan failed: %v", err)
 	}
