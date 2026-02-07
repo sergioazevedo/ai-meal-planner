@@ -3,8 +3,11 @@ package planner
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"time"
 
 	"ai-meal-planner/internal/llm"
+	"ai-meal-planner/internal/recipe"
 	"ai-meal-planner/internal/storage"
 )
 
@@ -49,18 +52,36 @@ type PlanningContext struct {
 // GeneratePlan creates a meal plan based on a user request.
 func (p *Planner) GeneratePlan(ctx context.Context, userRequest string, pCtx PlanningContext) (*MealPlan, []llm.AgentMeta, error) {
 	var metas []llm.AgentMeta
+	var recipes []recipe.NormalizedRecipe
 
-	// 1. Generate embedding for the user request to find relevant recipes
-	queryEmbedding, err := p.embedGen.GenerateEmbedding(ctx, userRequest)
+	// 1. Decide retrieval strategy based on total recipe count
+	count, err := p.recipeStore.Count()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to generate embedding for request: %w", err)
+		return nil, nil, fmt.Errorf("failed to count recipes: %w", err)
 	}
 
-	// 2. Retrieve top N relevant recipes
-	// We fetch 9 recipes to give the LLM variety while staying within token limits
-	recipes, err := p.recipeStore.FindSimilar(queryEmbedding, 9)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to retrieve similar recipes: %w", err)
+	if count <= 20 {
+		// For small pools, give everything to the Analyst to maximize variety
+		recipes, err = p.recipeStore.ListAll()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to list all recipes: %w", err)
+		}
+		// Shuffle to avoid positional bias in the LLM
+		r := rand.New(rand.NewSource(time.Now().UnixNano()))
+		r.Shuffle(len(recipes), func(i, j int) {
+			recipes[i], recipes[j] = recipes[j], recipes[i]
+		})
+	} else {
+		// 2. For larger pools, use embedding search to find top 9 relevant recipes
+		queryEmbedding, err := p.embedGen.GenerateEmbedding(ctx, userRequest)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to generate embedding for request: %w", err)
+		}
+
+		recipes, err = p.recipeStore.FindSimilar(queryEmbedding, 9)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to retrieve similar recipes: %w", err)
+		}
 	}
 
 	if len(recipes) == 0 {

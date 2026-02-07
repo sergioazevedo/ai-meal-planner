@@ -162,3 +162,36 @@ func (s *RecipeStore) FindSimilar(queryEmbedding []float32, limit int) ([]recipe
 
 	return result, nil
 }
+
+// ListAll retrieves all normalized recipes from the storage.
+func (s *RecipeStore) ListAll() ([]recipe.NormalizedRecipe, error) {
+	matches, err := filepath.Glob(filepath.Join(s.basePath, "*.json"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to glob recipe files: %w", err)
+	}
+
+	var recipes []recipe.NormalizedRecipe
+	for _, match := range matches {
+		data, err := os.ReadFile(match)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read file %s: %w", match, err)
+		}
+
+		var rec recipe.NormalizedRecipe
+		if err := json.Unmarshal(data, &rec); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal file %s: %w", match, err)
+		}
+		recipes = append(recipes, rec)
+	}
+
+	return recipes, nil
+}
+
+// Count returns the number of recipes currently in storage.
+func (s *RecipeStore) Count() (int, error) {
+	matches, err := filepath.Glob(filepath.Join(s.basePath, "*.json"))
+	if err != nil {
+		return 0, fmt.Errorf("failed to count recipe files: %w", err)
+	}
+	return len(matches), nil
+}
