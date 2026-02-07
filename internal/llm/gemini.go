@@ -24,10 +24,14 @@ func NewGeminiClient(ctx context.Context, cfg *config.Config) (*GeminiClient, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Gemini client: %w", err)
 	}
+	// For text-only input, use the gemini-2.5-flash model
+	modelName := "gemini-2.5-flash"
+	// For embeddings, use gemini-embedding-001
+	embeddingModelName := "gemini-embedding-001"
 	return &GeminiClient{
 		client:             client,
-		modelName:          "gemini-2.5-flash",
-		embeddingModelName: "gemini-embedding-001",
+		modelName:          modelName,
+		embeddingModelName: embeddingModelName,
 	}, nil
 }
 
