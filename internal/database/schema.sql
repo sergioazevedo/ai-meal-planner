@@ -38,7 +38,10 @@ CREATE TABLE IF NOT EXISTS recipe_embeddings (
 CREATE TABLE IF NOT EXISTS user_meal_plans (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT NOT NULL,                -- Identifier for the user (e.g., Telegram Chat ID)
-    plan_data TEXT NOT NULL               -- Full meal plan JSON as text
+    plan_data TEXT NOT NULL,              -- Full meal plan JSON as text
+    week_start_date DATETIME NOT NULL,    -- The Monday this plan is for
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_user_meal_plans_user_id ON user_meal_plans(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_meal_plans_user_id_id ON user_meal_plans(user_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_user_meal_plans_week_start ON user_meal_plans(week_start_date);
+CREATE INDEX IF NOT EXISTS idx_user_meal_plans_user_id_week ON user_meal_plans(user_id, week_start_date DESC);

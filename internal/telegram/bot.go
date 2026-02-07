@@ -86,10 +86,15 @@ func (b *Bot) RegisterHandlers() {
 	})
 }
 
-func (b *Bot) handleWebhook(_ http.ResponseWriter, r *http.Request) {
+func (b *Bot) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	update, err := b.api.HandleUpdate(r)
 	if err != nil {
 		log.Printf("Error parsing update: %v", err)
+		return
+	}
+
+	if update.CallbackQuery != nil {
+		b.handleCallbackQuery(update.CallbackQuery)
 		return
 	}
 
@@ -164,66 +169,126 @@ func (b *Bot) processMessage(msg *tgbotapi.Message) {
 		// --- Planner Flow ---
 		log.Printf("Generating plan for request: %s", msg.Text)
 
-		// Simple heuristic to extract context from natural language
-		// In a production app, we might use a dedicated LLM call to extract these parameters.
-		// For now, we'll use defaults and allow simple overrides in text.
-		pCtx := planner.PlanningContext{
-			Adults:           b.cfg.DefaultAdults,
-			Children:         b.cfg.DefaultChildren,
-			ChildrenAges:     b.cfg.DefaultChildrenAges,
-			CookingFrequency: b.cfg.DefaultCookingFrequency,
-		}
-
-		// Basic extraction for demo purposes
-		if strings.Contains(strings.ToLower(msg.Text), "adults") {
-			fmt.Sscanf(msg.Text, "%d adults", &pCtx.Adults)
-		}
-
 		userID := fmt.Sprintf("%d", msg.From.ID)
-		plan, metas, err := b.planner.GeneratePlan(ctx, userID, msg.Text, pCtx)
+		nextMonday := planner.GetNextMonday(time.Now())
 
-		// Record Metrics even if it errored (if we have metas)
-		for _, m := range metas {
-			_ = b.metricsStore.Record(metrics.ExecutionMetric{
-				AgentName:        m.AgentName,
-				Model:            m.Usage.Model,
-				PromptTokens:     m.Usage.PromptTokens,
-				CompletionTokens: m.Usage.CompletionTokens,
-				LatencyMS:        m.Latency.Milliseconds(),
-			})
-			// Alert on Context Bloat
-			if m.Usage.PromptTokens > 4000 {
-				alert := fmt.Sprintf("⚠️ *Context Bloat Alert*\nAgent: Planner\nModel: %s\nPrompt Tokens: %d", m.Usage.Model, m.Usage.PromptTokens)
-				b.sendAdminAlert(alert)
-			}
-		}
+		// Check if plan already exists for next week
+		exists, _ := b.planRepo.ExistsForWeek(ctx, userID, nextMonday)
+		if exists {
+			// Ask user what to do
+			promptText := fmt.Sprintf("🗓️ A plan already exists for next week (starting *%s*).\nWhat would you like to do?", nextMonday.Format("2006-01-02"))
 
-		if err != nil {
-			log.Printf("Error generating plan: %v", err)
-			safeErr := strings.ReplaceAll(err.Error(), "`", "'")
-			finalText := fmt.Sprintf("❌ *Error generating plan:*\n```\n%v\n```", safeErr)
-			edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, finalText)
-			edit.ParseMode = "Markdown"
-			b.api.Send(edit)
-		} else {
-			// Save the generated meal plan to user memory
-			userID := fmt.Sprintf("%d", msg.From.ID)
-			if err := b.planRepo.Save(ctx, userID, plan); err != nil {
-				log.Printf("Warning: failed to save meal plan to user memory for user %s: %v", userID, err)
+			// We need to keep the user request. Callback data is limited to 64 bytes.
+			shortReq := msg.Text
+			if len(shortReq) > 32 {
+				shortReq = shortReq[:32]
 			}
 
-			planText, shoppingListText := formatPlanMarkdownParts(plan)
+			keyboard := tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonData("🔄 Redo Next Week", "redo|"+shortReq),
+					tgbotapi.NewInlineKeyboardButtonData("⏭️ Plan Following Week", "next|"+shortReq),
+				),
+			)
 
-			// Edit first message with the Plan
-			edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, planText)
+			edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, promptText)
 			edit.ParseMode = "Markdown"
+			edit.ReplyMarkup = &keyboard
 			b.api.Send(edit)
-
-			// Send second message with the Shopping List
-			shoppingMsg := tgbotapi.NewMessage(msg.Chat.ID, shoppingListText)
-			shoppingMsg.ParseMode = "Markdown"
-			b.api.Send(shoppingMsg)
+			return
 		}
+
+		b.generateAndSendPlan(ctx, userID, msg.Chat.ID, sentMsg.MessageID, msg.Text, nextMonday)
+	}
+}
+
+func (b *Bot) handleCallbackQuery(query *tgbotapi.CallbackQuery) {
+	ctx := context.Background()
+	userID := fmt.Sprintf("%d", query.From.ID)
+	data := query.Data // "redo|request" or "next|request"
+
+	parts := strings.Split(data, "|")
+	if len(parts) < 2 {
+		return
+	}
+
+	action := parts[0]
+	request := parts[1]
+
+	var targetWeek time.Time
+	if action == "redo" {
+		targetWeek = planner.GetNextMonday(time.Now())
+	} else {
+		targetWeek = planner.GetNextMonday(planner.GetNextMonday(time.Now())) // Next next Monday
+	}
+
+	// Answer callback to remove spinner
+	b.api.Request(tgbotapi.NewCallback(query.ID, ""))
+
+	// Edit original message to show "Thinking..." again
+	edit := tgbotapi.NewEditMessageText(query.Message.Chat.ID, query.Message.MessageID, "🧑‍🍳 *Thinking...*")
+	edit.ParseMode = "Markdown"
+	b.api.Send(edit)
+
+	b.generateAndSendPlan(ctx, userID, query.Message.Chat.ID, query.Message.MessageID, request, targetWeek)
+}
+
+func (b *Bot) generateAndSendPlan(ctx context.Context, userID string, chatID int64, messageID int, request string, targetWeek time.Time) {
+	// Simple heuristic to extract context from natural language
+	pCtx := planner.PlanningContext{
+		Adults:           b.cfg.DefaultAdults,
+		Children:         b.cfg.DefaultChildren,
+		ChildrenAges:     b.cfg.DefaultChildrenAges,
+		CookingFrequency: b.cfg.DefaultCookingFrequency,
+	}
+
+	// Basic extraction for demo purposes
+	if strings.Contains(strings.ToLower(request), "adults") {
+		fmt.Sscanf(request, "%d adults", &pCtx.Adults)
+	}
+
+	plan, metas, err := b.planner.GeneratePlan(ctx, userID, request, pCtx, targetWeek)
+
+	// Record Metrics even if it errored (if we have metas)
+	for _, m := range metas {
+		_ = b.metricsStore.Record(metrics.ExecutionMetric{
+			AgentName:        m.AgentName,
+			Model:            m.Usage.Model,
+			PromptTokens:     m.Usage.PromptTokens,
+			CompletionTokens: m.Usage.CompletionTokens,
+			LatencyMS:        m.Latency.Milliseconds(),
+		})
+		// Alert on Context Bloat
+		if m.Usage.PromptTokens > 4000 {
+			alert := fmt.Sprintf("⚠️ *Context Bloat Alert*\nAgent: Planner\nModel: %s\nPrompt Tokens: %d", m.Usage.Model, m.Usage.PromptTokens)
+			b.sendAdminAlert(alert)
+		}
+	}
+
+	if err != nil {
+		log.Printf("Error generating plan: %v", err)
+		safeErr := strings.ReplaceAll(err.Error(), "`", "'")
+		finalText := fmt.Sprintf("❌ *Error generating plan:*\n```\n%v\n```", safeErr)
+		edit := tgbotapi.NewEditMessageText(chatID, messageID, finalText)
+		edit.ParseMode = "Markdown"
+		b.api.Send(edit)
+	} else {
+		// Save the generated meal plan to user memory
+		if err := b.planRepo.Save(ctx, userID, plan); err != nil {
+			log.Printf("Warning: failed to save meal plan to user memory for user %s: %v", userID, err)
+		}
+
+		planText, shoppingListText := formatPlanMarkdownParts(plan)
+
+		// Edit message with the Plan
+		edit := tgbotapi.NewEditMessageText(chatID, messageID, planText)
+		edit.ParseMode = "Markdown"
+		b.api.Send(edit)
+
+		// Send second message with the Shopping List
+		shoppingMsg := tgbotapi.NewMessage(chatID, shoppingListText)
+		shoppingMsg.ParseMode = "Markdown"
+		b.api.Send(shoppingMsg)
 	}
 }
 

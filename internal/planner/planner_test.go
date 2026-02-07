@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"ai-meal-planner/internal/database"
 	"ai-meal-planner/internal/llm"
@@ -68,7 +69,7 @@ func TestGeneratePlan(t *testing.T) {
 	p := NewPlanner(recipeRepo, vectorRepo, planRepo, &MockTextGenerator{}, &MockEmbedingGenerator{})
 
 	// 4. Run GeneratePlan
-	plan, metas, err := p.GeneratePlan(ctx, "test_user", "I want pasta", PlanningContext{})
+	plan, metas, err := p.GeneratePlan(ctx, "test_user", "I want pasta", PlanningContext{}, time.Now())
 	if err != nil {
 		t.Fatalf("GeneratePlan failed: %v", err)
 	}

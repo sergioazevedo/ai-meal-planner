@@ -22,6 +22,7 @@ type ChefResult struct {
 func (p *Planner) runChef(
 	ctx context.Context,
 	mealSchedule *MealProposal,
+	weekStart time.Time,
 ) (ChefResult, error) {
 	start := time.Now()
 	prompt, err := buildChefPrompt(mealSchedule)
@@ -48,6 +49,7 @@ func (p *Planner) runChef(
 			)
 	}
 
+	result.WeekStart = weekStart
 	return ChefResult{
 		Plan: result,
 		Meta: shared.AgentMeta{

@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/llm"
@@ -46,7 +47,7 @@ func TestChef_LiveEval(t *testing.T) {
 	}
 
 	// 2. Execute
-	result, err := p.runChef(ctx, proposal)
+	result, err := p.runChef(ctx, proposal, time.Now())
 	if err != nil {
 		t.Fatalf("Chef failed to respond: %v", err)
 	}

@@ -78,6 +78,21 @@ func main() {
 		if err := application.IngestRecipes(ctx); err != nil {
 			log.Fatalf("Ingestion failed: %v", err)
 		}
+	case "plan":
+		planCmd := flag.NewFlagSet("plan", flag.ExitOnError)
+		request := planCmd.String("request", "", "What would you like to eat?")
+		userID := planCmd.String("user", "cli_user", "User identifier for memory")
+		planCmd.Parse(os.Args[2:])
+
+		if *request == "" {
+			fmt.Println("Error: -request is required")
+			planCmd.Usage()
+			os.Exit(1)
+		}
+
+		if err := application.GenerateMealPlan(ctx, *userID, *request); err != nil {
+			log.Fatalf("Meal planning failed: %v", err)
+		}
 	case "metrics-cleanup":
 		cleanupCmd := flag.NewFlagSet("metrics-cleanup", flag.ExitOnError)
 		days := cleanupCmd.Int("days", 30, "Keep records for the last N days")

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 )
 
 // PlanRepository is a database-backed repository for meal plans.
@@ -31,8 +32,10 @@ func (r *PlanRepository) Save(ctx context.Context, userID string, planData *Meal
 	}
 
 	params := db.InsertMealPlanParams{
-		UserID:   userID,
-		PlanData: string(planJSON),
+		UserID:         userID,
+		PlanData:       string(planJSON),
+		WeekStartDate:  planData.WeekStart,
+		CreatedAt:      time.Now().UTC(),
 	}
 	return r.queries.InsertMealPlan(ctx, params)
 }
@@ -41,7 +44,7 @@ func (r *PlanRepository) Save(ctx context.Context, userID string, planData *Meal
 func (r *PlanRepository) ListRecentByUserID(ctx context.Context, userID string, limit int) ([]MealPlan, error) {
 	dbPlans, err := r.queries.ListRecentMealPlansByUserID(ctx, db.ListRecentMealPlansByUserIDParams{
 		UserID: userID,
-		Limit:  int64(limit), // sqlc generates int32 for LIMIT
+		Limit:  int64(limit),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list recent meal plans for user %s: %w", userID, err)
@@ -51,8 +54,21 @@ func (r *PlanRepository) ListRecentByUserID(ctx context.Context, userID string, 
 	for _, dbPlan := range dbPlans {
 		plan := MealPlan{}
 		if err := json.Unmarshal([]byte(dbPlan.PlanData), &plan); err == nil {
+			plan.WeekStart = dbPlan.WeekStartDate
 			mealPlans = append(mealPlans, plan)
 		}
 	}
 	return mealPlans, nil
+}
+
+// ExistsForWeek checks if a plan already exists for a user on a given week.
+func (r *PlanRepository) ExistsForWeek(ctx context.Context, userID string, weekStart time.Time) (bool, error) {
+	count, err := r.queries.CheckPlanExists(ctx, db.CheckPlanExistsParams{
+		UserID:        userID,
+		WeekStartDate: weekStart,
+	})
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }

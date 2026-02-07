@@ -123,7 +123,7 @@ func (a *App) IngestRecipes(ctx context.Context) error {
 }
 
 // GenerateMealPlan creates a meal plan based on user request and prints it.
-func (a *App) GenerateMealPlan(ctx context.Context, request string) error {
+func (a *App) GenerateMealPlan(ctx context.Context, userID string, request string) error {
 	fmt.Printf("Generating meal plan for: \"%s\"...\n", request)
 
 	// Use defaults from config
@@ -134,8 +134,8 @@ func (a *App) GenerateMealPlan(ctx context.Context, request string) error {
 		CookingFrequency: a.cfg.DefaultCookingFrequency,
 	}
 
-	userID := "default_user"
-	plan, metas, err := a.mealPlanner.GeneratePlan(ctx, userID, request, pCtx)
+	targetWeek := planner.GetNextMonday(time.Now())
+	plan, metas, err := a.mealPlanner.GeneratePlan(ctx, userID, request, pCtx, targetWeek)
 	if err != nil {
 		return fmt.Errorf("failed to generate plan: %w", err)
 	}

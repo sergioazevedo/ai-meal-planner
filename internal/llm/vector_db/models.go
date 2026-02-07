@@ -30,7 +30,9 @@ type RecipeEmbedding struct {
 }
 
 type UserMealPlan struct {
-	ID       int64
-	UserID   string
-	PlanData string
+	ID            int64
+	UserID        string
+	PlanData      string
+	WeekStartDate time.Time
+	CreatedAt     time.Time
 }

@@ -147,7 +147,7 @@ func TestFullWorkflow(t *testing.T) {
 	// Reset counter for planning step
 	mockTextGenerator.generateContentCalls = 0
 
-	if err := application.GenerateMealPlan(ctx, "Give me something simple"); err != nil {
+	if err := application.GenerateMealPlan(ctx, "test_user", "Give me something simple"); err != nil {
 
 		t.Fatalf("Meal planning failed: %v", err)
 

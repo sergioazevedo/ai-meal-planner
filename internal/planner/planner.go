@@ -32,6 +32,17 @@ func NewPlanner(recipeRepo *recipe.Repository, vectorRepo *llm.VectorRepository,
 	}
 }
 
+// GetNextMonday returns the time.Time for the next upcoming Monday at 00:00:00.
+// If today is Monday, it returns next week's Monday.
+func GetNextMonday(t time.Time) time.Time {
+	daysUntilMonday := int(time.Monday - t.Weekday())
+	if daysUntilMonday <= 0 {
+		daysUntilMonday += 7
+	}
+	nextMonday := t.AddDate(0, 0, daysUntilMonday)
+	return time.Date(nextMonday.Year(), nextMonday.Month(), nextMonday.Day(), 0, 0, 0, 0, nextMonday.Location())
+}
+
 // PlanningContext holds user-specific constraints for the meal plan.
 type PlanningContext struct {
 	Adults           int
@@ -41,7 +52,7 @@ type PlanningContext struct {
 }
 
 // GeneratePlan creates a meal plan based on a user request.
-func (p *Planner) GeneratePlan(ctx context.Context, userID string, userRequest string, pCtx PlanningContext) (*MealPlan, []shared.AgentMeta, error) {
+func (p *Planner) GeneratePlan(ctx context.Context, userID string, userRequest string, pCtx PlanningContext, targetWeek time.Time) (*MealPlan, []shared.AgentMeta, error) {
 	var metas []shared.AgentMeta
 	var recipes []recipe.Recipe
 
@@ -105,7 +116,7 @@ func (p *Planner) GeneratePlan(ctx context.Context, userID string, userRequest s
 
 	// 5. Handover meal schedule to the chef to prempare
 	// the MealPlan and the consolidate shooping list
-	chefResult, err := p.runChef(ctx, analystResult.Proposal)
+	chefResult, err := p.runChef(ctx, analystResult.Proposal, targetWeek)
 	if err != nil {
 		return nil, metas, fmt.Errorf("failed to generate meal plan: %w", err)
 	}

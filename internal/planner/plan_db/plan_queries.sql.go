@@ -7,42 +7,67 @@ package plandb
 
 import (
 	"context"
+	"time"
 )
+
+const checkPlanExists = `-- name: CheckPlanExists :one
+SELECT COUNT(*) FROM user_meal_plans
+WHERE user_id = ? AND week_start_date = ?
+`
+
+type CheckPlanExistsParams struct {
+	UserID        string
+	WeekStartDate time.Time
+}
+
+func (q *Queries) CheckPlanExists(ctx context.Context, arg CheckPlanExistsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, checkPlanExists, arg.UserID, arg.WeekStartDate)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
 
 const deleteOldMealPlansByUserID = `-- name: DeleteOldMealPlansByUserID :exec
 DELETE FROM user_meal_plans
-WHERE user_id = ? AND id < ?
+WHERE user_id = ? AND week_start_date < ?
 `
 
 type DeleteOldMealPlansByUserIDParams struct {
-	UserID string
-	ID     int64
+	UserID        string
+	WeekStartDate time.Time
 }
 
 func (q *Queries) DeleteOldMealPlansByUserID(ctx context.Context, arg DeleteOldMealPlansByUserIDParams) error {
-	_, err := q.db.ExecContext(ctx, deleteOldMealPlansByUserID, arg.UserID, arg.ID)
+	_, err := q.db.ExecContext(ctx, deleteOldMealPlansByUserID, arg.UserID, arg.WeekStartDate)
 	return err
 }
 
 const insertMealPlan = `-- name: InsertMealPlan :exec
-INSERT INTO user_meal_plans (user_id, plan_data)
-VALUES (?, ?)
+INSERT INTO user_meal_plans (user_id, plan_data, week_start_date, created_at)
+VALUES (?, ?, ?, ?)
 `
 
 type InsertMealPlanParams struct {
-	UserID   string
-	PlanData string
+	UserID        string
+	PlanData      string
+	WeekStartDate time.Time
+	CreatedAt     time.Time
 }
 
 func (q *Queries) InsertMealPlan(ctx context.Context, arg InsertMealPlanParams) error {
-	_, err := q.db.ExecContext(ctx, insertMealPlan, arg.UserID, arg.PlanData)
+	_, err := q.db.ExecContext(ctx, insertMealPlan,
+		arg.UserID,
+		arg.PlanData,
+		arg.WeekStartDate,
+		arg.CreatedAt,
+	)
 	return err
 }
 
 const listRecentMealPlansByUserID = `-- name: ListRecentMealPlansByUserID :many
-SELECT id, user_id, plan_data FROM user_meal_plans
+SELECT id, user_id, plan_data, week_start_date, created_at FROM user_meal_plans
 WHERE user_id = ?
-ORDER BY id DESC
+ORDER BY week_start_date DESC
 LIMIT ?
 `
 
@@ -60,7 +85,13 @@ func (q *Queries) ListRecentMealPlansByUserID(ctx context.Context, arg ListRecen
 	var items []UserMealPlan
 	for rows.Next() {
 		var i UserMealPlan
-		if err := rows.Scan(&i.ID, &i.UserID, &i.PlanData); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.PlanData,
+			&i.WeekStartDate,
+			&i.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
