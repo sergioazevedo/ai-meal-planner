@@ -15,3 +15,7 @@ ORDER BY created_at DESC;
 
 -- name: DeleteRecipeByID :exec
 DELETE FROM recipes WHERE id = ?;
+
+-- name: CountRecipes :one
+SELECT COUNT(id) FROM recipes;
+
