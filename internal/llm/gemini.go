@@ -25,8 +25,8 @@ func NewGeminiClient(ctx context.Context, cfg *config.Config) (*GeminiClient, er
 	}
 	// For text-only input, use the gemini-2.5-flash model
 	model := client.GenerativeModel("gemini-2.5-flash")
-	// For embeddings, use text-embedding-004
-	embeddingModel := client.EmbeddingModel("text-embedding-004")
+	// For embeddings, use gemini-embedding-001
+	embeddingModel := client.EmbeddingModel("gemini-embedding-001")
 	return &GeminiClient{client: client, model: model, embeddingModel: embeddingModel}, nil
 }
 
