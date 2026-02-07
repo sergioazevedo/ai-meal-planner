@@ -9,7 +9,7 @@ import (
 	_ "modernc.org/sqlite" // SQLite driver
 )
 
-//go:generate sqlc generate
+//go:generate sh -c "cd ../.. && sqlc generate"
 
 // DB provides a centralized database connection
 type DB struct {
