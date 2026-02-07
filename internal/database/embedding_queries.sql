@@ -1,6 +1,8 @@
 -- name: InsertEmbedding :exec
-INSERT OR REPLACE INTO recipe_embeddings (recipe_id, embedding)
-VALUES (?, ?);
+INSERT INTO recipe_embeddings (recipe_id, embedding)
+VALUES (?, ?)
+ON CONFLICT (recipe_id) DO UPDATE SET
+    embedding = EXCLUDED.embedding;
 
 -- name: GetEmbeddingByRecipeID :one
 SELECT recipe_id, embedding FROM recipe_embeddings
