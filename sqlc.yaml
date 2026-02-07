@@ -1,0 +1,30 @@
+version: "2"
+sql:
+  - engine: "sqlite"
+    schema: "internal/database/schema.sql"
+    queries: "internal/database/recipe_queries.sql"
+    gen:
+      go:
+        package: "recipedb"
+        out: "internal/recipe/db"
+  - engine: "sqlite"
+    schema: "internal/database/schema.sql"
+    queries: "internal/database/embedding_queries.sql"
+    gen:
+      go:
+        package: "embeddingdb"
+        out: "internal/llm/embedding_db"
+  - engine: "sqlite"
+    schema: "internal/database/schema.sql"
+    queries: "internal/database/plan_queries.sql"
+    gen:
+      go:
+        package: "plandb"
+        out: "internal/planner/plan_db"
+  - engine: "sqlite"
+    schema: "internal/database/schema.sql"
+    queries: "internal/database/metrics_queries.sql"
+    gen:
+      go:
+        package: "metricsdb"
+        out: "internal/metrics/metrics_db"

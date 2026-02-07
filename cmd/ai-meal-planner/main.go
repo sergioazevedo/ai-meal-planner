@@ -58,23 +58,6 @@ func main() {
 
 	switch os.Args[1] {
 	case "ingest":
-		if err := application.IngestRecipes(ctx); err != nil {
-			log.Fatalf("Ingestion failed: %v", err)
-		}
-	case "plan":
-		planCmd := flag.NewFlagSet("plan", flag.ExitOnError)
-		request := planCmd.String("request", "", "User request for the meal plan (e.g., 'healthy dinners')")
-		planCmd.Parse(os.Args[2:])
-
-		if *request == "" {
-			fmt.Println("Error: -request flag is required for the plan command.")
-			planCmd.Usage()
-			os.Exit(1)
-		}
-
-		if err := application.GenerateMealPlan(ctx, *request); err != nil {
-			log.Fatalf("Planning failed: %v", err)
-		}
 	case "metrics-cleanup":
 		cleanupCmd := flag.NewFlagSet("metrics-cleanup", flag.ExitOnError)
 		days := cleanupCmd.Int("days", 30, "Keep records for the last N days")
@@ -102,6 +85,5 @@ func printUsage() {
 	fmt.Println("Usage: ai-meal-planner <command> [arguments]")
 	fmt.Println("\nCommands:")
 	fmt.Println("  ingest             Fetch and normalize recipes from Ghost")
-	fmt.Println("  plan -request \"...\" Generate a weekly meal plan")
 	fmt.Println("  metrics-cleanup    Remove old metric records")
 }
