@@ -38,7 +38,7 @@ func main() {
 	groqClient := llm.NewGroqClient(cfg)
 
 	// Initialize the new SQLite database
-	db, err := database.NewDB(cfg.DatabasePath) // Assume DatabasePath is in config
+	db, err := database.NewDB(cfg.MetricsDBPath) // Assume DatabasePath is in config
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
@@ -66,14 +66,14 @@ func main() {
 
 	application := app.NewApp(
 		ghostClient,
-		groqClient, // textGen
+		groqClient,   // textGen
 		geminiClient, // embedGen
 		recipeStore,
 		metricsStore,
 		mealPlanner,
 		recipeClipper,
 		cfg,
-		db, // Pass new DB
+		db,         // Pass new DB
 		recipeRepo, // Pass new RecipeRepo
 		vectorRepo, // Pass new VectorRepo
 		planRepo,   // Pass new PlanRepo

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"ai-meal-planner/internal/config"
+	"ai-meal-planner/internal/shared"
 
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/option"
@@ -47,7 +48,7 @@ func (c *GeminiClient) GenerateContent(ctx context.Context, prompt string) (Cont
 		return ContentResponse{}, fmt.Errorf("generated content is not text")
 	}
 
-	usage := TokenUsage{
+	usage := shared.TokenUsage{
 		Model: "gemini-2.5-flash",
 	}
 	if resp.UsageMetadata != nil {

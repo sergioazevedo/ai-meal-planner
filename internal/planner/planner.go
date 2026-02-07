@@ -8,22 +8,9 @@ import (
 
 	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/recipe"
+	"ai-meal-planner/internal/shared"
 	// Removed "ai-meal-planner/internal/storage" as it's no longer directly used by Planner
 )
-
-// DayPlan represents the plan for a single day.
-type DayPlan struct {
-	Day         string `json:"day"`
-	RecipeTitle string `json:"recipe_title"`
-	PrepTime    string `json:"prep_time"`
-	Note        string `json:"note"`
-}
-
-// MealPlan represents a full weekly meal plan.
-type MealPlan struct {
-	Plan         []DayPlan `json:"plan"`
-	ShoppingList []string  `json:"shopping_list"`
-}
 
 // Planner handles the generation of meal plans.
 type Planner struct {
@@ -52,8 +39,8 @@ type PlanningContext struct {
 }
 
 // GeneratePlan creates a meal plan based on a user request.
-func (p *Planner) GeneratePlan(ctx context.Context, userRequest string, pCtx PlanningContext) (*MealPlan, []llm.AgentMeta, error) {
-	var metas []llm.AgentMeta
+func (p *Planner) GeneratePlan(ctx context.Context, userRequest string, pCtx PlanningContext) (*MealPlan, []shared.AgentMeta, error) {
+	var metas []shared.AgentMeta
 	var recipes []recipe.NormalizedRecipe
 
 	// 1. Decide retrieval strategy based on total recipe count

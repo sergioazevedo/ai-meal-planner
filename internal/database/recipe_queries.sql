@@ -1,17 +1,14 @@
 -- name: InsertRecipe :exec
-INSERT INTO recipes (id, data, created_at, updated_at)
-VALUES (?, ?, ?, ?)
-ON CONFLICT (id) DO UPDATE SET
-    data = EXCLUDED.data,
-    updated_at = EXCLUDED.updated_at;
+INSERT INTO recipes (id, data, updated_at)
+VALUES (?, ?, ?);
 
 -- name: GetRecipeByID :one
-SELECT id, data, created_at, updated_at FROM recipes
+SELECT id, data, updated_at FROM recipes
 WHERE id = ?;
 
 -- name: ListRecipes :many
-SELECT id, data, created_at, updated_at FROM recipes
-ORDER BY created_at DESC;
+SELECT id, data, updated_at FROM recipes
+ORDER BY updated_at DESC;
 
 -- name: DeleteRecipeByID :exec
 DELETE FROM recipes WHERE id = ?;

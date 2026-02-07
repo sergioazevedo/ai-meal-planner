@@ -18,10 +18,8 @@ CREATE INDEX IF NOT EXISTS idx_execution_metrics_agent_model ON execution_metric
 CREATE TABLE IF NOT EXISTS recipes (
     id TEXT PRIMARY KEY NOT NULL,         -- Unique recipe ID
     data TEXT NOT NULL,                   -- Full recipe JSON as text
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_recipes_created_at ON recipes(created_at);
 CREATE INDEX IF NOT EXISTS idx_recipes_updated_at ON recipes(updated_at);
 -- Optional: Index on frequently queried JSON fields if performance becomes an issue
 -- e.g., CREATE INDEX IF NOT EXISTS idx_recipes_title ON recipes(json_extract(data, '$.title'));
@@ -40,9 +38,7 @@ CREATE TABLE IF NOT EXISTS recipe_embeddings (
 CREATE TABLE IF NOT EXISTS user_meal_plans (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT NOT NULL,                -- Identifier for the user (e.g., Telegram Chat ID)
-    plan_data TEXT NOT NULL,              -- Full meal plan JSON as text
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+    plan_data TEXT NOT NULL               -- Full meal plan JSON as text
 );
 CREATE INDEX IF NOT EXISTS idx_user_meal_plans_user_id ON user_meal_plans(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_meal_plans_created_at ON user_meal_plans(created_at);
 CREATE INDEX IF NOT EXISTS idx_user_meal_plans_user_id_created_at ON user_meal_plans(user_id, created_at DESC);

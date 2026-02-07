@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -29,10 +30,10 @@ type App struct {
 	cfg           *config.Config
 
 	// New database components
-	db             *database.DB
-	recipeRepo     *recipe.Repository
-	vectorRepo     *llm.VectorRepository
-	planRepo       *planner.PlanRepository
+	db         *database.DB
+	recipeRepo *recipe.Repository
+	vectorRepo *llm.VectorRepository
+	planRepo   *planner.PlanRepository
 }
 
 // NewApp creates and initializes a new App instance.
@@ -59,10 +60,10 @@ func NewApp(
 		mealPlanner:   mealPlanner,
 		recipeClipper: recipeClipper,
 		cfg:           cfg,
-		db:             db,
-		recipeRepo:     recipeRepo,
-		vectorRepo:     vectorRepo,
-		planRepo:       planRepo,
+		db:            db,
+		recipeRepo:    recipeRepo,
+		vectorRepo:    vectorRepo,
+		planRepo:      planRepo,
 	}
 }
 
@@ -90,7 +91,6 @@ func (a *App) IngestRecipes(ctx context.Context) error {
 				log.Printf("Warning: failed to clean up stale versions for '%s' in file storage: %v", post.Title, err)
 			}
 		}
-
 
 		log.Printf("Normalizing '%s'...", post.Title)
 		normalizedRecipe, meta, err := recipe.NormalizeHTML(
@@ -134,7 +134,6 @@ func (a *App) IngestRecipes(ctx context.Context) error {
 			CompletionTokens: meta.Usage.CompletionTokens,
 			LatencyMS:        meta.Latency.Milliseconds(),
 		})
-
 
 		log.Printf("Successfully processed '%s'.", normalizedRecipe.Title)
 

@@ -1,29 +1,14 @@
 package llm
 
 import (
+	"ai-meal-planner/internal/shared" // New import
 	"context"
-	"time"
 )
-
-// TokenUsage tracks the tokens consumed by a request.
-type TokenUsage struct {
-	PromptTokens     int
-	CompletionTokens int
-	TotalTokens      int
-	Model            string
-}
-
-// llm.AgentMeta holds operational metadata for an agent execution.
-type AgentMeta struct {
-	AgentName string
-	Usage     TokenUsage
-	Latency   time.Duration
-}
 
 // ContentResponse contains the generated text and metadata like token usage.
 type ContentResponse struct {
 	Content string
-	Usage   TokenUsage
+	Usage   shared.TokenUsage
 }
 
 // TextGenerator is an interface for generating text from a prompt.

@@ -2,6 +2,7 @@ package recipe
 
 import (
 	"ai-meal-planner/internal/llm"
+	"ai-meal-planner/internal/shared"
 	"bytes"
 	"context"
 	_ "embed"
@@ -16,7 +17,7 @@ var extractorPrompt string
 
 type ExtractorResult struct {
 	Recipe Recipe
-	Meta   llm.AgentMeta
+	Meta   shared.AgentMeta
 }
 
 func runExtractor(
@@ -41,7 +42,7 @@ func runExtractor(
 	if err := json.Unmarshal([]byte(llmResp.Content), &recipe); err != nil {
 		return ExtractorResult{
 				Recipe: recipe,
-				Meta: llm.AgentMeta{
+				Meta: shared.AgentMeta{
 					AgentName: "Extractor",
 					Usage:     llmResp.Usage,
 				},
@@ -55,7 +56,7 @@ func runExtractor(
 	recipe.UpdatedAt = data.UpdatedAt
 	return ExtractorResult{
 		Recipe: recipe,
-		Meta: llm.AgentMeta{
+		Meta: shared.AgentMeta{
 			AgentName: "Extractor",
 			Usage:     llmResp.Usage,
 			Latency:   time.Since(start),

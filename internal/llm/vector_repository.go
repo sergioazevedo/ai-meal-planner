@@ -6,50 +6,37 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
+	"slices"
 
-	"ai-meal-planner/internal/llm/embedding_db"
-	"ai-meal-planner/internal/recipe" // To get the Recipe struct for NormalizedRecipe
+	db "ai-meal-planner/internal/llm/vector_db"
 )
 
-// VectorRepository is a database-backed repository for recipe embeddings.
 type VectorRepository struct {
-	queries *embedding_db.Queries
+	queries *db.Queries
 	db      *sql.DB
-	// Potentially hold a reference to a RecipeRepository to fetch full recipe data
-	// This creates a dependency, which might be handled by a service layer instead.
-	// For now, FindSimilar will return recipe.NormalizedRecipe which implies it needs
-	// recipe data. We'll pass a RecipeRepository as a dependency if needed.
-	recipeRepo *recipe.Repository
 }
 
-// NewVectorRepository creates a new VectorRepository.
-func NewVectorRepository(d *sql.DB, rr *recipe.Repository) *VectorRepository {
+func NewVectorRepository(d *sql.DB) *VectorRepository {
 	return &VectorRepository{
-		queries:    embedding_db.New(d),
-		db:         d,
-		recipeRepo: rr,
+		queries: db.New(d),
+		db:      d,
 	}
 }
 
-// Save inserts or updates an embedding in the database.
 func (r *VectorRepository) Save(ctx context.Context, recipeID string, embedding []float32) error {
 	embeddingBytes, err := float32SliceToByteSlice(embedding)
 	if err != nil {
 		return fmt.Errorf("failed to convert float32 slice to byte slice: %w", err)
 	}
 
-	params := embedding_db.InsertEmbeddingParams{
+	params := db.InsertEmbeddingParams{
 		RecipeID:  recipeID,
 		Embedding: embeddingBytes,
 	}
 
-	// Similar to RecipeRepository, this `InsertEmbedding` needs to be an UPSERT
-	// or handle conflicts. For now, it will attempt a direct insert and fail on conflict.
-	// This will be addressed by modifying embedding_queries.sql for UPSERT.
 	return r.queries.InsertEmbedding(ctx, params)
 }
 
-// Get retrieves an embedding by its recipe ID.
 func (r *VectorRepository) Get(ctx context.Context, recipeID string) ([]float32, error) {
 	dbEmbedding, err := r.queries.GetEmbeddingByRecipeID(ctx, recipeID)
 	if err != nil {
@@ -69,22 +56,23 @@ func (r *VectorRepository) Get(ctx context.Context, recipeID string) ([]float32,
 // FindSimilar searches for recipes with embeddings similar to the query.
 // It retrieves all embeddings, calculates cosine similarity, and fetches the corresponding
 // recipe data for the top N similar recipes.
-func (r *VectorRepository) FindSimilar(ctx context.Context, queryEmbedding []float32, limit int) ([]recipe.NormalizedRecipe, error) {
+func (r *VectorRepository) FindSimilar(ctx context.Context, queryEmbedding []float32, limit int) ([]string, error) {
 	allEmbeddings, err := r.queries.ListAllEmbeddings(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list all embeddings: %w", err)
 	}
 
-	var scoredRecipes []struct {
+	type scoredRecipe struct {
 		RecipeID string
 		Score    float64
 	}
 
+	scoredRecipes := []scoredRecipe{}
+
 	for _, dbEmbed := range allEmbeddings {
 		embed, err := byteSliceToFloat32Slice(dbEmbed.Embedding)
 		if err != nil {
-			fmt.Printf("Warning: Failed to convert embedding for recipe ID %s: %v
-", dbEmbed.RecipeID, err)
+			fmt.Printf("Warning: Failed to convert embedding for recipe ID %s: %v", dbEmbed.RecipeID, err)
 			continue
 		}
 
@@ -99,8 +87,8 @@ func (r *VectorRepository) FindSimilar(ctx context.Context, queryEmbedding []flo
 	}
 
 	// Sort by score descending
-	sort.Slice(scoredRecipes, func(i, j int) bool {
-		return scoredRecipes[i].Score > scoredRecipes[j].Score
+	slices.SortFunc(scoredRecipes, func(i, j scoredRecipe) int {
+		return int(i.Score*100) - int(j.Score*100)
 	})
 
 	// Take top K and fetch full recipe data
@@ -108,33 +96,9 @@ func (r *VectorRepository) FindSimilar(ctx context.Context, queryEmbedding []flo
 		limit = len(scoredRecipes)
 	}
 
-	var result []recipe.NormalizedRecipe
+	var result []string
 	for i := 0; i < limit; i++ {
-		recID := scoredRecipes[i].RecipeID
-		rec, err := r.recipeRepo.Get(ctx, recID)
-		if err != nil {
-			fmt.Printf("Warning: Failed to retrieve recipe data for ID %s: %v
-", recID, err)
-			continue // Skip this recipe if data can't be fetched
-		}
-		if rec == nil {
-			continue // Recipe not found, might have been deleted
-		}
-
-		embed, err := r.Get(ctx, recID) // Re-fetch embedding to ensure it's accurate and available
-		if err != nil {
-			fmt.Printf("Warning: Failed to retrieve embedding for recipe ID %s during FindSimilar: %v
-", recID, err)
-			continue
-		}
-		if embed == nil {
-			continue // Embedding not found
-		}
-
-		result = append(result, recipe.NormalizedRecipe{
-			Recipe:    *rec,
-			Embedding: embed,
-		})
+		result = append(result, scoredRecipes[i].RecipeID)
 	}
 
 	return result, nil
@@ -162,7 +126,7 @@ func byteSliceToFloat32Slice(bytes []byte) ([]float32, error) {
 	}
 	floats := make([]float32, len(bytes)/4)
 	for i := 0; i < len(bytes)/4; i++ {
-		floats[i] = math.Float32frombits(binary.LittleEndian.Uint32(bytes[i*4:(i+1)*4]))
+		floats[i] = math.Float32frombits(binary.LittleEndian.Uint32(bytes[i*4 : (i+1)*4]))
 	}
 	return floats, nil
 }

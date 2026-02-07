@@ -1,13 +1,13 @@
 -- name: InsertMealPlan :exec
-INSERT INTO user_meal_plans (user_id, plan_data, created_at)
-VALUES (?, ?, ?);
+INSERT INTO user_meal_plans (user_id, plan_data)
+VALUES (?, ?);
 
 -- name: ListRecentMealPlansByUserID :many
-SELECT id, user_id, plan_data, created_at FROM user_meal_plans
+SELECT id, user_id, plan_data FROM user_meal_plans
 WHERE user_id = ?
-ORDER BY created_at DESC
+ORDER BY id DESC
 LIMIT ?;
 
 -- name: DeleteOldMealPlansByUserID :exec
 DELETE FROM user_meal_plans
-WHERE user_id = ? AND created_at < ?;
+WHERE user_id = ? AND id < ?;

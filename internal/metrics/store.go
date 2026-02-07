@@ -1,13 +1,12 @@
 package metrics
 
 import (
+	"ai-meal-planner/internal/shared"
 	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
-
-	"ai-meal-planner/internal/llm"
 
 	_ "modernc.org/sqlite"
 )
@@ -148,7 +147,7 @@ func (s *Store) Cleanup(olderThanDays int) (int64, error) {
 }
 
 // MapUsage helper to convert llm.TokenUsage to ExecutionMetric.
-func MapUsage(agentName string, usage llm.TokenUsage, latency time.Duration) ExecutionMetric {
+func MapUsage(agentName string, usage shared.TokenUsage, latency time.Duration) ExecutionMetric {
 	return ExecutionMetric{
 		AgentName:        agentName,
 		Model:            usage.Model,

@@ -1,7 +1,7 @@
 package planner
 
 import (
-	"ai-meal-planner/internal/llm"
+	"ai-meal-planner/internal/shared"
 	"bytes"
 	"context"
 	_ "embed"
@@ -16,7 +16,7 @@ var chefPrompt string
 
 type ChefResult struct {
 	Plan *MealPlan
-	Meta llm.AgentMeta
+	Meta shared.AgentMeta
 }
 
 func (p *Planner) runChef(
@@ -37,7 +37,7 @@ func (p *Planner) runChef(
 	result := &MealPlan{}
 	if err = json.Unmarshal([]byte(resp.Content), result); err != nil {
 		return ChefResult{
-				Meta: llm.AgentMeta{
+				Meta: shared.AgentMeta{
 					Usage:     resp.Usage,
 					AgentName: "Chef",
 				}},
@@ -50,7 +50,7 @@ func (p *Planner) runChef(
 
 	return ChefResult{
 		Plan: result,
-		Meta: llm.AgentMeta{
+		Meta: shared.AgentMeta{
 			AgentName: "Chef",
 			Usage:     resp.Usage,
 			Latency:   time.Since(start),

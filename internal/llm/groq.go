@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"ai-meal-planner/internal/config"
+	"ai-meal-planner/internal/shared"
 )
 
 const (
@@ -94,7 +95,7 @@ func (c *GroqClient) GenerateContent(ctx context.Context, prompt string) (Conten
 
 	return ContentResponse{
 		Content: groqResp.Choices[0].Message.Content,
-		Usage: TokenUsage{
+		Usage: shared.TokenUsage{
 			PromptTokens:     groqResp.Usage.PromptTokens,
 			CompletionTokens: groqResp.Usage.CompletionTokens,
 			TotalTokens:      groqResp.Usage.TotalTokens,

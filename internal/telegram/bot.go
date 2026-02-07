@@ -25,11 +25,16 @@ type Bot struct {
 	api          *tgbotapi.BotAPI
 	planner      *planner.Planner
 	clipper      *clipper.Clipper
-	recipeStore  *storage.RecipeStore
+	recipeStore  *storage.RecipeStore // Still needed for some legacy parts or direct file access
 	metricsStore *metrics.Store
 	textGen      llm.TextGenerator
 	embedGen     llm.EmbeddingGenerator
 	cfg          *config.Config
+
+	// New repositories
+	planRepo   *planner.PlanRepository
+	recipeRepo *recipe.Repository
+	vectorRepo *llm.VectorRepository
 }
 
 // NewBot initializes the Telegram Bot and sets the Webhook.
@@ -37,10 +42,13 @@ func NewBot(
 	cfg *config.Config,
 	planner *planner.Planner,
 	clipper *clipper.Clipper,
-	store *storage.RecipeStore,
+	store *storage.RecipeStore, // file-based store
 	metricsStore *metrics.Store,
 	textGen llm.TextGenerator,
 	embedGen llm.EmbeddingGenerator,
+	planRepo *planner.PlanRepository, // New parameter
+	recipeRepo *recipe.Repository,    // New parameter
+	vectorRepo *llm.VectorRepository, // New parameter
 ) (*Bot, error) {
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramBotToken)
 	if err != nil {
@@ -66,6 +74,9 @@ func NewBot(
 		textGen:      textGen,
 		embedGen:     embedGen,
 		cfg:          cfg,
+		planRepo:     planRepo,
+		recipeRepo:   recipeRepo,
+		vectorRepo:   vectorRepo,
 	}, nil
 }
 
@@ -198,6 +209,17 @@ func (b *Bot) processMessage(msg *tgbotapi.Message) {
 			edit.ParseMode = "Markdown"
 			b.api.Send(edit)
 		} else {
+			// Save the generated meal plan to user memory
+			planJSON, err := json.Marshal(plan)
+			if err != nil {
+				log.Printf("Warning: failed to marshal meal plan to JSON for saving: %v", err)
+			} else {
+				userID := fmt.Sprintf("%d", msg.From.ID)
+				if err := b.planRepo.Save(ctx, userID, planJSON); err != nil {
+					log.Printf("Warning: failed to save meal plan to user memory for user %s: %v", userID, err)
+				}
+			}
+
 			planText, shoppingListText := formatPlanMarkdownParts(plan)
 
 			// Edit first message with the Plan
@@ -269,8 +291,14 @@ func (b *Bot) ingestClippedPost(post ghost.Post) {
 		return
 	}
 
-	if err := b.recipeStore.Save(normalizedRecipe); err != nil {
-		log.Printf("Background Error: Failed to save '%s' to store: %v", post.Title, err)
+	// Save to new RecipeRepository
+	if err := b.recipeRepo.Save(ctx, normalizedRecipe.Recipe); err != nil {
+		log.Printf("Background Error: Failed to save recipe '%s' to DB: %v", normalizedRecipe.Title, err)
+		return
+	}
+	// Save embedding to new VectorRepository
+	if err := b.vectorRepo.Save(ctx, normalizedRecipe.ID, normalizedRecipe.Embedding); err != nil {
+		log.Printf("Background Error: Failed to save embedding for '%s' to DB: %v", normalizedRecipe.Title, err)
 		return
 	}
 

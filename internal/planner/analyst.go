@@ -1,8 +1,8 @@
 package planner
 
 import (
-	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/recipe"
+	"ai-meal-planner/internal/shared"
 	"bytes"
 	"context"
 	_ "embed"
@@ -47,7 +47,7 @@ type MealProposal struct {
 
 type AnalystResult struct {
 	Proposal *MealProposal
-	Meta     llm.AgentMeta
+	Meta     shared.AgentMeta
 }
 
 type rawLlmResult struct {
@@ -80,7 +80,7 @@ func (p *Planner) runAnalyst(
 	raw := &rawLlmResult{}
 	if err = json.Unmarshal([]byte(resp.Content), raw); err != nil {
 		return AnalystResult{
-				Meta: llm.AgentMeta{
+				Meta: shared.AgentMeta{
 					AgentName: "Analyst",
 					Usage:     resp.Usage,
 				},
@@ -124,7 +124,7 @@ func (p *Planner) runAnalyst(
 			Children:     planingCtx.Children,
 			ChildrenAges: planingCtx.ChildrenAges,
 		},
-		Meta: llm.AgentMeta{
+		Meta: shared.AgentMeta{
 			AgentName: "Analyst",
 			Usage:     resp.Usage,
 			Latency:   time.Since(start),

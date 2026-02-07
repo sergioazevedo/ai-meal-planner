@@ -39,7 +39,7 @@ func main() {
 	defer geminiClient.Close()
 
 	// Initialize the new SQLite database
-	db, err := database.NewDB(cfg.DatabasePath) // Assume DatabasePath is in config
+	db, err := database.NewDB(cfg.MetricsDBPath) // Assume DatabasePath is in config
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
@@ -47,9 +47,8 @@ func main() {
 
 	// Initialize new repositories
 	recipeRepo := recipe.NewRepository(db.SQL)
-	vectorRepo := llm.NewVectorRepository(db.SQL, recipeRepo)
+	vectorRepo := llm.NewVectorRepository(db.SQL)
 	planRepo := planner.NewPlanRepository(db.SQL)
-
 
 	// 3. Initialize Ghost Client
 	ghostClient := ghost.NewClient(cfg)
