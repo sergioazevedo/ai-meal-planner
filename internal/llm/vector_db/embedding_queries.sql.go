@@ -3,7 +3,7 @@
 //   sqlc v1.30.0
 // source: embedding_queries.sql
 
-package embeddingdb
+package vectordb
 
 import (
 	"context"

@@ -33,14 +33,12 @@ func TestChef_LiveEval(t *testing.T) {
 			{Day: "Monday", Action: MealActionCook, RecipeTitle: "Garlic Pasta", Note: "Easy start"},
 			{Day: "Tuesday", Action: MealActionLeftOvers, RecipeTitle: "Garlic Pasta", Note: "Reheat"},
 		},
-		Recipes: []recipe.NormalizedRecipe{
+		Recipes: []recipe.Recipe{
 			{
-				Recipe: recipe.Recipe{
-					Title:       "Garlic Pasta",
-					PrepTime:    "20 mins",
-					Servings:    "2 people",
-					Ingredients: []string{"200g Pasta", "2 cloves Garlic", "Olive Oil"},
-				},
+				Title:       "Garlic Pasta",
+				PrepTime:    "20 mins",
+				Servings:    "2 people",
+				Ingredients: []string{"200g Pasta", "2 cloves Garlic", "Olive Oil"},
 			},
 		},
 		Adults:   2,

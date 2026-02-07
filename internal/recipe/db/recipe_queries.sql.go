@@ -7,6 +7,7 @@ package recipedb
 
 import (
 	"context"
+	"strings"
 	"time"
 )
 
@@ -40,6 +41,44 @@ func (q *Queries) GetRecipeByID(ctx context.Context, id string) (Recipe, error) 
 	var i Recipe
 	err := row.Scan(&i.ID, &i.Data, &i.UpdatedAt)
 	return i, err
+}
+
+const getRecipesByIDs = `-- name: GetRecipesByIDs :many
+SELECT id, data, updated_at FROM recipes
+WHERE id IN (/*SLICE:ids*/?)
+`
+
+func (q *Queries) GetRecipesByIDs(ctx context.Context, ids []string) ([]Recipe, error) {
+	query := getRecipesByIDs
+	var queryParams []interface{}
+	if len(ids) > 0 {
+		for _, v := range ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Recipe
+	for rows.Next() {
+		var i Recipe
+		if err := rows.Scan(&i.ID, &i.Data, &i.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const insertRecipe = `-- name: InsertRecipe :exec

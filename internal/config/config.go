@@ -20,8 +20,7 @@ type Config struct {
 	TelegramAllowedUserIDs []int64
 	AdminTelegramID        int64
 
-	MetricsDBPath     string
-	RecipeStoragePath string
+	DatabasePath string
 
 	// Defaults for Planning
 	DefaultAdults           int
@@ -79,14 +78,12 @@ func NewFromEnv() (*Config, error) {
 		}
 	}
 
-	recipeStoragePath := os.Getenv("RECIPE_STORAGE_PATH")
-	if recipeStoragePath == "" {
-		recipeStoragePath = "data/recipes"
-	}
-
-	metricsDBPath := os.Getenv("METRICS_DB_PATH")
-	if metricsDBPath == "" {
-		metricsDBPath = "data/db/metrics.db"
+	databasePath := os.Getenv("DATABASE_PATH")
+	if databasePath == "" {
+		databasePath = os.Getenv("METRICS_DB_PATH") // Backward compatibility
+		if databasePath == "" {
+			databasePath = "data/db/planner.db"
+		}
 	}
 
 	var adminID int64
@@ -136,8 +133,7 @@ func NewFromEnv() (*Config, error) {
 		TelegramWebhookURL:      telegramWebhookURL,
 		TelegramAllowedUserIDs:  allowedIDs,
 		AdminTelegramID:         adminID,
-		MetricsDBPath:           metricsDBPath,
-		RecipeStoragePath:       recipeStoragePath,
+		DatabasePath:            databasePath,
 		DefaultAdults:           defaultAdults,
 		DefaultChildren:         defaultChildren,
 		DefaultChildrenAges:     defaultAges,

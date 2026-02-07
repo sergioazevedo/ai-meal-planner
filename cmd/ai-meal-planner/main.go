@@ -16,7 +16,6 @@ import (
 	"ai-meal-planner/internal/metrics"
 	"ai-meal-planner/internal/planner"
 	"ai-meal-planner/internal/recipe" // New import
-	"ai-meal-planner/internal/storage"
 )
 
 func main() {
@@ -38,7 +37,7 @@ func main() {
 	groqClient := llm.NewGroqClient(cfg)
 
 	// Initialize the new SQLite database
-	db, err := database.NewDB(cfg.MetricsDBPath) // Assume DatabasePath is in config
+	db, err := database.NewDB(cfg.DatabasePath)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
@@ -46,16 +45,10 @@ func main() {
 
 	// Initialize new repositories
 	recipeRepo := recipe.NewRepository(db.SQL)
-	vectorRepo := llm.NewVectorRepository(db.SQL, recipeRepo)
+	vectorRepo := llm.NewVectorRepository(db.SQL)
 	planRepo := planner.NewPlanRepository(db.SQL)
 
-	// Existing recipeStore (file-based) is still needed for migration utility initially
-	recipeStore, err := storage.NewRecipeStore(cfg.RecipeStoragePath)
-	if err != nil {
-		log.Fatalf("Failed to initialize file-based recipe store: %v", err)
-	}
-
-	metricsStore, err := metrics.NewStore(cfg.MetricsDBPath)
+	metricsStore, err := metrics.NewStore(cfg.DatabasePath)
 	if err != nil {
 		log.Fatalf("Failed to initialize metrics store: %v", err)
 	}
@@ -68,7 +61,6 @@ func main() {
 		ghostClient,
 		groqClient,   // textGen
 		geminiClient, // embedGen
-		recipeStore,
 		metricsStore,
 		mealPlanner,
 		recipeClipper,
@@ -89,16 +81,12 @@ func main() {
 		if err := application.IngestRecipes(ctx); err != nil {
 			log.Fatalf("Ingestion failed: %v", err)
 		}
-	case "migrate-recipes": // New command
-		if err := application.MigrateRecipesFromFiles(ctx); err != nil {
-			log.Fatalf("Recipe migration failed: %v", err)
-		}
 	case "metrics-cleanup":
 		cleanupCmd := flag.NewFlagSet("metrics-cleanup", flag.ExitOnError)
 		days := cleanupCmd.Int("days", 30, "Keep records for the last N days")
 		cleanupCmd.Parse(os.Args[2:])
 
-		mStore, err := metrics.NewStore(cfg.MetricsDBPath) // Re-initializing store just for cleanup might be refactored
+		mStore, err := metrics.NewStore(cfg.DatabasePath)
 		if err != nil {
 			log.Fatalf("Failed to open metrics store: %v", err)
 		}
@@ -120,6 +108,5 @@ func printUsage() {
 	fmt.Println("Usage: ai-meal-planner <command> [arguments]")
 	fmt.Println("\nCommands:")
 	fmt.Println("  ingest             Fetch and normalize recipes from Ghost")
-	fmt.Println("  migrate-recipes    Migrate existing JSON recipe files to the database") // New usage
 	fmt.Println("  metrics-cleanup    Remove old metric records")
 }

@@ -41,7 +41,7 @@ type PlanningContext struct {
 // GeneratePlan creates a meal plan based on a user request.
 func (p *Planner) GeneratePlan(ctx context.Context, userRequest string, pCtx PlanningContext) (*MealPlan, []shared.AgentMeta, error) {
 	var metas []shared.AgentMeta
-	var recipes []recipe.NormalizedRecipe
+	var recipes []recipe.Recipe
 
 	// 1. Decide retrieval strategy based on total recipe count
 	count, err := p.recipeRepo.Count(ctx)
@@ -67,9 +67,13 @@ func (p *Planner) GeneratePlan(ctx context.Context, userRequest string, pCtx Pla
 			return nil, nil, fmt.Errorf("failed to generate embedding for request: %w", err)
 		}
 
-		recipes, err = p.vectorRepo.FindSimilar(ctx, queryEmbedding, 9)
+		recipeIds, err := p.vectorRepo.FindSimilar(ctx, queryEmbedding, 20)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to retrieve similar recipes: %w", err)
+		}
+		recipes, err = p.recipeRepo.GetByIds(ctx, recipeIds)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to retrieve recipes: %w", err)
 		}
 	}
 

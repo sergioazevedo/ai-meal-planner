@@ -20,6 +20,30 @@ type ExtractorResult struct {
 	Meta   shared.AgentMeta
 }
 
+// NormalizeHTML takes raw recipe data (usually HTML), extracts structured information
+// using an LLM, and generates vector embeddings for semantic search.
+func NormalizeHTML(
+	ctx context.Context,
+	textGen llm.TextGenerator,
+	embGen llm.EmbeddingGenerator,
+	data PostData,
+) (RecipeWithEmbedding, shared.AgentMeta, error) {
+	result, err := runExtractor(ctx, textGen, data)
+	if err != nil {
+		return RecipeWithEmbedding{}, shared.AgentMeta{}, err
+	}
+
+	embedding, err := embGen.GenerateEmbedding(ctx, result.Recipe.ToEmbeddingText())
+	if err != nil {
+		return RecipeWithEmbedding{}, result.Meta, fmt.Errorf("failed to generate embedding: %w", err)
+	}
+
+	return RecipeWithEmbedding{
+		Recipe:    result.Recipe,
+		Embedding: embedding,
+	}, result.Meta, nil
+}
+
 func runExtractor(
 	ctx context.Context,
 	textGen llm.TextGenerator,

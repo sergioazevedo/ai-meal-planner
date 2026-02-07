@@ -73,6 +73,25 @@ func (r *Repository) Get(ctx context.Context, id string) (*Recipe, error) {
 	return &rec, nil
 }
 
+// GetByIds retrieves multiple recipes by their IDs.
+func (r *Repository) GetByIds(ctx context.Context, ids []string) ([]Recipe, error) {
+	dbRecipes, err := r.queries.GetRecipesByIDs(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get recipes by IDs: %w", err)
+	}
+
+	var recipes []Recipe
+	for _, dbRec := range dbRecipes {
+		var rec Recipe
+		if err := json.Unmarshal([]byte(dbRec.Data), &rec); err != nil {
+			fmt.Printf("Warning: Failed to unmarshal recipe JSON for ID %s: %v\n", dbRec.ID, err)
+			continue
+		}
+		recipes = append(recipes, rec)
+	}
+	return recipes, nil
+}
+
 // List retrieves all recipes.
 func (r *Repository) List(ctx context.Context) ([]Recipe, error) {
 	dbRecipes, err := r.queries.ListRecipes(ctx)

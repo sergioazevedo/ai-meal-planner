@@ -6,9 +6,10 @@ import (
 	"strings"
 	"testing"
 
+	"ai-meal-planner/internal/database"
 	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/recipe"
-	"ai-meal-planner/internal/storage"
+	_ "modernc.org/sqlite"
 )
 
 type MockEmbedingGenerator struct{}
@@ -35,27 +36,38 @@ func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) 
 func TestGeneratePlan(t *testing.T) {
 	ctx := context.Background()
 
-	// 1. Setup temporary storage
-	tempDir, _ := os.MkdirTemp("", "planner_test")
-	defer os.RemoveAll(tempDir)
-	store, _ := storage.NewRecipeStore(tempDir)
+	// 1. Setup temporary database
+	tempFile, _ := os.CreateTemp("", "planner_test_*.db")
+	dbPath := tempFile.Name()
+	tempFile.Close()
+	defer os.Remove(dbPath)
 
-	// 2. Add some recipes to storage
-	rec1 := recipe.NormalizedRecipe{
-		Recipe:    recipe.Recipe{ID: "1", Title: "Pasta", Ingredients: []string{"Pasta", "Tomato"}, UpdatedAt: "2023-01-01T00:00:00Z"},
-		Embedding: []float32{1.0, 0.0},
+	db, err := database.NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("Failed to create test DB: %v", err)
 	}
-	rec2 := recipe.NormalizedRecipe{
-		Recipe:    recipe.Recipe{ID: "2", Title: "Salad", Ingredients: []string{"Lettuce", "Tomato"}, UpdatedAt: "2023-01-01T00:00:00Z"},
-		Embedding: []float32{0.0, 1.0},
-	}
-	_ = store.Save(rec1)
-	_ = store.Save(rec2)
+	defer db.Close()
 
-	planner := NewPlanner(store, &MockTextGenerator{}, &MockEmbedingGenerator{})
+	recipeRepo := recipe.NewRepository(db.SQL)
+	vectorRepo := llm.NewVectorRepository(db.SQL)
+
+	// 2. Add some recipes to database
+	rec1 := recipe.Recipe{ID: "1", Title: "Pasta", Ingredients: []string{"Pasta", "Tomato"}, UpdatedAt: "2023-01-01T00:00:00Z"}
+	emb1 := []float32{1.0, 0.0}
+
+	rec2 := recipe.Recipe{ID: "2", Title: "Salad", Ingredients: []string{"Lettuce", "Tomato"}, UpdatedAt: "2023-01-01T00:00:00Z"}
+	emb2 := []float32{0.0, 1.0}
+
+	_ = recipeRepo.Save(ctx, rec1)
+	_ = vectorRepo.Save(ctx, rec1.ID, emb1)
+
+	_ = recipeRepo.Save(ctx, rec2)
+	_ = vectorRepo.Save(ctx, rec2.ID, emb2)
+
+	p := NewPlanner(recipeRepo, vectorRepo, &MockTextGenerator{}, &MockEmbedingGenerator{})
 
 	// 4. Run GeneratePlan
-	plan, metas, err := planner.GeneratePlan(ctx, "I want pasta", PlanningContext{})
+	plan, metas, err := p.GeneratePlan(ctx, "I want pasta", PlanningContext{})
 	if err != nil {
 		t.Fatalf("GeneratePlan failed: %v", err)
 	}

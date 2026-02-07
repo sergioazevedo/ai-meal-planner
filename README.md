@@ -15,7 +15,7 @@ While originally built as a CLI tool, the project has evolved into an intelligen
 *   **Batch Cooking & Leftovers**: Smart 5-session cooking cadence that maximizes efficiency by bridging weekday dinners and weekend lunches.
 *   **Household Scaling**: Automatically adjusts ingredient quantities based on your household composition (Adults vs. Children).
 *   **Telegram Bot Interface**: Chat with your planner, request meals, check `/metrics`, and get instant markdown plans on your phone.
-*   **Hybrid Storage**: Uses a highly efficient flat-file storage system for recipes and a zero-config SQLite database for metrics.
+*   **Centralized Storage**: Uses a single, zero-config SQLite database to store all recipes, embeddings, meal plans, and observability metrics.
 
 ## 🛠️ Prerequisites
 
@@ -37,11 +37,11 @@ Set these variables in your `.env` file or environment:
 | `GROQ_API_KEY`              | Groq API Key                        | Required       |
 | `TELEGRAM_BOT_TOKEN`        | Token from @BotFather               | Optional (Bot) |
 | `TELEGRAM_ALLOWED_USER_IDS` | Comma-separated list of allowed IDs | Optional (Bot) |
+| `DATABASE_PATH`             | Path to the SQLite database file    | `data/db/planner.db` |
 | `DEFAULT_ADULTS`            | Number of adults for scaling        | `2`            |
 | `DEFAULT_CHILDREN`          | Number of children for scaling      | `1`            |
 | `DEFAULT_CHILDREN_AGES`     | Comma-separated ages (e.g., `5,8`)  | `5`            |
 | `DEFAULT_COOKING_FREQUENCY` | How many times per week to cook     | `4`            |
-| `RECIPE_STORAGE_PATH`       | Where to store normalized JSONs     | `data/recipes` |
 
 ## ⚡ Quick Start
 
@@ -67,12 +67,6 @@ export GROQ_API_KEY="your_groq_api_key"
 Fetch recipes from Ghost and build the local vector index. Run this whenever you add new posts.
 ```bash
 go run ./cmd/ai-meal-planner ingest
-```
-
-**Step 2: Generate a Plan**
-Ask for a plan using natural language.
-```bash
-go run ./cmd/ai-meal-planner plan -request "I want healthy vegetarian dinners, quick to make"
 ```
 
 ## 🤖 Telegram Bot (Optional)
@@ -139,10 +133,11 @@ graph TD
         Analyst --> Chef[Chef: Execution]
     end
     
-    subgraph Storage [Hybrid Data]
-        Recipes[(JSON Recipes)]
-        Embeddings[(Vector Index)]
-        Metrics[(SQLite Metrics)]
+    subgraph Storage [SQLite Database]
+        Recipes[(Recipes Table)]
+        Embeddings[(Embeddings Table)]
+        Plans[(Meal Plans Table)]
+        Metrics[(Metrics Table)]
     end
     
     subgraph CMS [Source]
@@ -155,10 +150,11 @@ graph TD
     Planner -- RAG --> Embeddings
     Planner -- Fetch --> Recipes
     Bot -- Log --> Metrics
+    Bot -- Save/Load --> Plans
 ```
 
-1.  **Ingestion Service**: Pulls content from Ghost -> Normalizes via LLM -> Saves JSON + Embeddings.
-2.  **Storage**: Hybrid approach using local JSON files for recipe data and a SQLite database (`data/db/metrics.db`) for observability metrics.
+1.  **Ingestion Service**: Pulls content from Ghost -> Normalizes via LLM -> Saves to SQLite.
+2.  **Storage**: Centralized SQLite database (`data/db/planner.db`) for all application data, ensuring data integrity and simplified management.
 3.  **Multi-Agent Planner**: Uses a specialized handover pattern between agents:
     - **Analyst**: Responsible for strategic reasoning, selecting recipes, and enforcing the batch-cooking cadence.
     - **Chef**: Responsible for finalized formatting, scaling ingredient quantities, and consolidating the shopping list.
@@ -178,7 +174,7 @@ This tool is built with a **Zero-Cost Goal** in mind for personal use:
 
 *   **Free-Tier AI**: Optimized for the Google Gemini and Groq free tiers. The dual-provider approach ensures you stay within rate limits while spending $0 on LLM tokens for daily planning.
 *   **Resource Efficient**: Written in Go with a focus on minimal footprint. With an active memory usage of ~15MB, it is designed to run on extremely low-resource hardware, home servers, or the smallest cloud instances.
-*   **No Paid Databases**: By using a hybrid of Flat-Files and SQLite, we avoid expensive managed database fees.
+*   **No Managed Databases**: By using SQLite, we avoid expensive managed database fees.
 *   **No Subscription Bloat**: You don't need a monthly subscription to a recipe service. Your only cost is the server you choose to host it on.
 
 ## 🔮 Roadmap
@@ -187,7 +183,7 @@ This tool is built with a **Zero-Cost Goal** in mind for personal use:
 *   [x] Telegram Bot Integration
 *   [x] Recipe Clipper / Importer
 *   [x] Batch Cooking & Household Scaling
-*   [x] Multi-user support
+*   [x] Centralized SQLite Storage
 *   [ ] Add more agent-roles
 
 ## 📄 License

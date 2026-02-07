@@ -32,16 +32,16 @@ func TestAnalyst_LiveEval(t *testing.T) {
 	userRequest := "We need high-protein meals for the week, but my kids hate spicy food."
 
 	// Provide a mix of spicy and non-spicy recipes
-	mockRecipes := []recipe.NormalizedRecipe{
-		{Recipe: recipe.Recipe{Title: "Spicy Chili Con Carne", Tags: []string{"Spicy", "Beef", "High-Protein"}}},
-		{Recipe: recipe.Recipe{Title: "Mild Chicken Thighs", Tags: []string{"Kid-Friendly", "Chicken", "High-Protein"}}},
-		{Recipe: recipe.Recipe{Title: "Lentil Soup", Tags: []string{"Vegetarian", "Healthy"}}},
-		{Recipe: recipe.Recipe{Title: "Beef Stew", Tags: []string{"Beef", "High-Protein", "Slow-Cook"}}},
-		{Recipe: recipe.Recipe{Title: "Salmon & Asparagus", Tags: []string{"Fish", "Quick", "Light"}}},
-		{Recipe: recipe.Recipe{Title: "Tofu Stir Fry", Tags: []string{"Vegan", "Tofu"}}},
-		{Recipe: recipe.Recipe{Title: "Turkey Meatballs", Tags: []string{"Kid-Friendly", "Turkey", "High-Protein"}}},
-		{Recipe: recipe.Recipe{Title: "Greek Salad", Tags: []string{"Fresh", "Vegetarian", "Light"}}},
-		{Recipe: recipe.Recipe{Title: "Pasta Bolognese", Tags: []string{"Pasta", "Beef", "Family"}}},
+	mockRecipes := []recipe.Recipe{
+		{Title: "Spicy Chili Con Carne", Tags: []string{"Spicy", "Beef", "High-Protein"}},
+		{Title: "Mild Chicken Thighs", Tags: []string{"Kid-Friendly", "Chicken", "High-Protein"}},
+		{Title: "Lentil Soup", Tags: []string{"Vegetarian", "Healthy"}},
+		{Title: "Beef Stew", Tags: []string{"Beef", "High-Protein", "Slow-Cook"}},
+		{Title: "Salmon & Asparagus", Tags: []string{"Fish", "Quick", "Light"}},
+		{Title: "Tofu Stir Fry", Tags: []string{"Vegan", "Tofu"}},
+		{Title: "Turkey Meatballs", Tags: []string{"Kid-Friendly", "Turkey", "High-Protein"}},
+		{Title: "Greek Salad", Tags: []string{"Fresh", "Vegetarian", "Light"}},
+		{Title: "Pasta Bolognese", Tags: []string{"Pasta", "Beef", "Family"}},
 	}
 
 	pCtx := PlanningContext{

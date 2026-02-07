@@ -41,4 +41,4 @@ CREATE TABLE IF NOT EXISTS user_meal_plans (
     plan_data TEXT NOT NULL               -- Full meal plan JSON as text
 );
 CREATE INDEX IF NOT EXISTS idx_user_meal_plans_user_id ON user_meal_plans(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_meal_plans_user_id_created_at ON user_meal_plans(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_meal_plans_user_id_id ON user_meal_plans(user_id, id DESC);

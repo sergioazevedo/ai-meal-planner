@@ -52,34 +52,34 @@ func TestNormalizeHTML(t *testing.T) {
 		}
 		mockEmbedingGenerator := &MockEmbedingGenerator{}
 
-		normalizedRecipe, meta, err := NormalizeHTML(ctx, mockTextGeneration, mockEmbedingGenerator, post)
+		recipeWithEmbedding, meta, err := NormalizeHTML(ctx, mockTextGeneration, mockEmbedingGenerator, post)
 		if err != nil {
 			t.Fatalf("Expected no error, got %v", err)
 		}
 
-		if normalizedRecipe.ID != "1" {
-			t.Errorf("Expected ID '1', got '%s'", normalizedRecipe.ID)
+		if recipeWithEmbedding.ID != "1" {
+			t.Errorf("Expected ID '1', got '%s'", recipeWithEmbedding.ID)
 		}
-		if normalizedRecipe.Title != "Test Recipe" {
-			t.Errorf("Expected title 'Test Recipe', got '%s'", normalizedRecipe.Title)
+		if recipeWithEmbedding.Title != "Test Recipe" {
+			t.Errorf("Expected title 'Test Recipe', got '%s'", recipeWithEmbedding.Title)
 		}
-		if len(normalizedRecipe.Ingredients) != 2 {
-			t.Errorf("Expected 2 ingredients, got %d", len(normalizedRecipe.Ingredients))
+		if len(recipeWithEmbedding.Ingredients) != 2 {
+			t.Errorf("Expected 2 ingredients, got %d", len(recipeWithEmbedding.Ingredients))
 		}
-		if normalizedRecipe.Instructions != "Step 1. Do something." {
-			t.Errorf("Expected instructions 'Step 1. Do something.', got '%s'", normalizedRecipe.Instructions)
+		if recipeWithEmbedding.Instructions != "Step 1. Do something." {
+			t.Errorf("Expected instructions 'Step 1. Do something.', got '%s'", recipeWithEmbedding.Instructions)
 		}
-		if len(normalizedRecipe.Tags) != 2 {
-			t.Errorf("Expected 2 tags, got %d", len(normalizedRecipe.Tags))
+		if len(recipeWithEmbedding.Tags) != 2 {
+			t.Errorf("Expected 2 tags, got %d", len(recipeWithEmbedding.Tags))
 		}
-		if normalizedRecipe.PrepTime != "30 mins" {
-			t.Errorf("Expected PrepTime '30 mins', got '%s'", normalizedRecipe.PrepTime)
+		if recipeWithEmbedding.PrepTime != "30 mins" {
+			t.Errorf("Expected PrepTime '30 mins', got '%s'", recipeWithEmbedding.PrepTime)
 		}
-		if normalizedRecipe.Servings != "4" {
-			t.Errorf("Expected Servings '4', got '%s'", normalizedRecipe.Servings)
+		if recipeWithEmbedding.Servings != "4" {
+			t.Errorf("Expected Servings '4', got '%s'", recipeWithEmbedding.Servings)
 		}
-		if len(normalizedRecipe.Embedding) != 3 {
-			t.Errorf("Expected embedding of length 3, got %d", len(normalizedRecipe.Embedding))
+		if len(recipeWithEmbedding.Embedding) != 3 {
+			t.Errorf("Expected embedding of length 3, got %d", len(recipeWithEmbedding.Embedding))
 		}
 		if meta.AgentName != "Extractor" {
 			t.Errorf("Expected agent name 'Extractor', got '%s'", meta.AgentName)

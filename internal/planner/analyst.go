@@ -20,7 +20,7 @@ type analystPromptData struct {
 	Adults       int
 	Children     int
 	ChildrenAges []int
-	Recipes      []recipe.NormalizedRecipe
+	Recipes      []recipe.Recipe
 }
 
 type MealAction string
@@ -39,7 +39,7 @@ type PlannedMeal struct {
 
 type MealProposal struct {
 	PlannedMeals []PlannedMeal
-	Recipes      []recipe.NormalizedRecipe
+	Recipes      []recipe.Recipe
 	Adults       int
 	Children     int
 	ChildrenAges []int
@@ -58,7 +58,7 @@ func (p *Planner) runAnalyst(
 	ctx context.Context,
 	userRequest string,
 	planingCtx PlanningContext,
-	recipes []recipe.NormalizedRecipe,
+	recipes []recipe.Recipe,
 ) (AnalystResult, error) {
 	start := time.Now()
 	prompt, err := buildAnalystPrompt(analystPromptData{
@@ -91,12 +91,12 @@ func (p *Planner) runAnalyst(
 			)
 	}
 
-	recipeLookup := make(map[string]recipe.NormalizedRecipe)
+	recipeLookup := make(map[string]recipe.Recipe)
 	for _, r := range recipes {
 		recipeLookup[r.Title] = r
 	}
 
-	selectedRecipes := []recipe.NormalizedRecipe{}
+	selectedRecipes := []recipe.Recipe{}
 	seen := make(map[string]struct{})
 	for _, meal := range raw.PlannedMeals {
 		if meal.Action != MealActionCook {

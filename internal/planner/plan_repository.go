@@ -4,7 +4,9 @@ import (
 	db "ai-meal-planner/internal/planner/plan_db"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"log"
 )
 
 // PlanRepository is a database-backed repository for meal plans.
@@ -22,10 +24,15 @@ func NewPlanRepository(d *sql.DB) *PlanRepository {
 }
 
 // Save inserts a new meal plan into the database.
-func (r *PlanRepository) Save(ctx context.Context, userID string, planData []byte) error {
+func (r *PlanRepository) Save(ctx context.Context, userID string, planData *MealPlan) error {
+	planJSON, err := json.Marshal(planData)
+	if err != nil {
+		log.Printf("Warning: failed to marshal meal plan to JSON for saving: %v", err)
+	}
+
 	params := db.InsertMealPlanParams{
 		UserID:   userID,
-		PlanData: string(planData),
+		PlanData: string(planJSON),
 	}
 	return r.queries.InsertMealPlan(ctx, params)
 }
@@ -42,11 +49,10 @@ func (r *PlanRepository) ListRecentByUserID(ctx context.Context, userID string, 
 
 	var mealPlans []MealPlan
 	for _, dbPlan := range dbPlans {
-		mealPlans = append(mealPlans, MealPlan{
-			ID:       dbPlan.ID,
-			UserID:   dbPlan.UserID,
-			PlanData: dbPlan.PlanData,
-		})
+		plan := MealPlan{}
+		if err := json.Unmarshal([]byte(dbPlan.PlanData), &plan); err == nil {
+			mealPlans = append(mealPlans, plan)
+		}
 	}
 	return mealPlans, nil
 }

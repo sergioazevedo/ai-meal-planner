@@ -36,8 +36,8 @@ func (r *Recipe) ToEmbeddingText() string {
 	)
 }
 
-// Contains the normalized recipe and embeding
-type NormalizedRecipe struct {
+// RecipeWithEmbedding contains the recipe data along with its vector embedding.
+type RecipeWithEmbedding struct {
 	Recipe
 	Embedding []float32 `json:"embedding"`
 }

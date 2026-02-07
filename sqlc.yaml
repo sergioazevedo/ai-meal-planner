@@ -12,8 +12,8 @@ sql:
     queries: "internal/database/embedding_queries.sql"
     gen:
       go:
-        package: "embeddingdb"
-        out: "internal/llm/embedding_db"
+        package: "vectordb"
+        out: "internal/llm/vector_db"
   - engine: "sqlite"
     schema: "internal/database/schema.sql"
     queries: "internal/database/plan_queries.sql"

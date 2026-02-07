@@ -17,7 +17,6 @@ import (
 	"ai-meal-planner/internal/metrics"
 	"ai-meal-planner/internal/planner" // New import
 	"ai-meal-planner/internal/recipe"  // New import
-	"ai-meal-planner/internal/storage"
 	"ai-meal-planner/internal/telegram"
 )
 
@@ -39,7 +38,7 @@ func main() {
 	defer geminiClient.Close()
 
 	// Initialize the new SQLite database
-	db, err := database.NewDB(cfg.MetricsDBPath) // Assume DatabasePath is in config
+	db, err := database.NewDB(cfg.DatabasePath)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
@@ -53,13 +52,7 @@ func main() {
 	// 3. Initialize Ghost Client
 	ghostClient := ghost.NewClient(cfg)
 
-	// 4. Initialize Storage (file-based, still needed until fully replaced)
-	store, err := storage.NewRecipeStore(cfg.RecipeStoragePath)
-	if err != nil {
-		log.Fatalf("Failed to initialize recipe store: %v", err)
-	}
-
-	metricsStore, err := metrics.NewStore(cfg.MetricsDBPath)
+	metricsStore, err := metrics.NewStore(cfg.DatabasePath)
 	if err != nil {
 		log.Fatalf("Failed to initialize metrics store: %v", err)
 	}
@@ -70,7 +63,7 @@ func main() {
 	recipeClipper := clipper.NewClipper(ghostClient, textGen)
 
 	// 6. Initialize Telegram Bot
-	bot, err := telegram.NewBot(cfg, mealPlanner, recipeClipper, store, metricsStore, textGen, geminiClient, planRepo, recipeRepo, vectorRepo)
+	bot, err := telegram.NewBot(cfg, mealPlanner, recipeClipper, metricsStore, textGen, geminiClient, planRepo, recipeRepo, vectorRepo)
 	if err != nil {
 		log.Fatalf("Failed to initialize Telegram Bot: %v", err)
 	}

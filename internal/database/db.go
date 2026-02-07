@@ -1,6 +1,7 @@
 package database
 
 import (
+	_ "embed"
 	"database/sql"
 	"fmt"
 	"os"
@@ -8,6 +9,9 @@ import (
 
 	_ "modernc.org/sqlite" // SQLite driver
 )
+
+//go:embed schema.sql
+var schemaSQL string
 
 //go:generate sh -c "cd ../.. && sqlc generate"
 
@@ -44,12 +48,7 @@ func (d *DB) Close() error {
 
 // migrate runs all necessary schema migrations.
 func (d *DB) migrate() error {
-	schemaSQL, err := os.ReadFile("internal/database/schema.sql")
-	if err != nil {
-		return fmt.Errorf("failed to read schema.sql: %w", err)
-	}
-
-	_, err = d.SQL.Exec(string(schemaSQL))
+	_, err := d.SQL.Exec(schemaSQL)
 	if err != nil {
 		return fmt.Errorf("failed to run schema migrations: %w", err)
 	}
