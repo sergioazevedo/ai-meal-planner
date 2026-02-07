@@ -1,5 +1,5 @@
 -- name: InsertRecipe :exec
-INSERT INTO recipes (id, data, created_at, updated_at)
+INSERT OR REPLACE INTO recipes (id, data, created_at, updated_at)
 VALUES (?, ?, ?, ?);
 
 -- name: GetRecipeByID :one

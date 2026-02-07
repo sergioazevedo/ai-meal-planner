@@ -1,5 +1,5 @@
 -- name: InsertEmbedding :exec
-INSERT INTO recipe_embeddings (recipe_id, embedding)
+INSERT OR REPLACE INTO recipe_embeddings (recipe_id, embedding)
 VALUES (?, ?);
 
 -- name: GetEmbeddingByRecipeID :one
