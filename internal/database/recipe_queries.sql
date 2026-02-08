@@ -25,3 +25,7 @@ DELETE FROM recipes WHERE id = ?;
 
 -- name: CountRecipes :one
 SELECT COUNT(id) FROM recipes;
+
+-- name: CheckRecipeExists :one
+SELECT COUNT(*) FROM recipes
+WHERE id = ? AND updated_at = ?;

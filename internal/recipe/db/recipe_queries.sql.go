@@ -11,6 +11,23 @@ import (
 	"time"
 )
 
+const checkRecipeExists = `-- name: CheckRecipeExists :one
+SELECT COUNT(*) FROM recipes
+WHERE id = ? AND updated_at = ?
+`
+
+type CheckRecipeExistsParams struct {
+	ID        string
+	UpdatedAt time.Time
+}
+
+func (q *Queries) CheckRecipeExists(ctx context.Context, arg CheckRecipeExistsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, checkRecipeExists, arg.ID, arg.UpdatedAt)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countRecipes = `-- name: CountRecipes :one
 SELECT COUNT(id) FROM recipes
 `
