@@ -63,7 +63,7 @@ func NewApp(
 }
 
 // IngestRecipes fetches and normalizes recipes from Ghost.
-func (a *App) IngestRecipes(ctx context.Context) error {
+func (a *App) IngestRecipes(ctx context.Context, force bool) error {
 	fmt.Println("Fetching and processing recipes...")
 
 	posts, err := a.ghostClient.FetchRecipes()
@@ -73,11 +73,13 @@ func (a *App) IngestRecipes(ctx context.Context) error {
 
 	fmt.Printf("Successfully fetched %d recipe posts from Ghost.\n", len(posts))
 	for _, post := range posts {
-		// Optimization: Check if recipe already exists with the same updatedAt
-		exists, err := a.recipeRepo.Exists(ctx, post.ID, post.UpdatedAt)
-		if err == nil && exists {
-			log.Printf("Recipe '%s' is already up-to-date in DB. Skipping normalization.", post.Title)
-			continue
+		if !force {
+			// Optimization: Check if recipe already exists with the same updatedAt
+			exists, err := a.recipeRepo.Exists(ctx, post.ID, post.UpdatedAt)
+			if err == nil && exists {
+				log.Printf("Recipe '%s' is already up-to-date in DB. Skipping normalization.", post.Title)
+				continue
+			}
 		}
 
 		log.Printf("Normalizing '%s'...", post.Title)
@@ -98,13 +100,30 @@ func (a *App) IngestRecipes(ctx context.Context) error {
 			continue
 		}
 
-		// Save to new repositories
-		if err := a.recipeRepo.Save(ctx, recipeWithEmbedding.Recipe); err != nil {
+		// Use a transaction to ensure atomic save of recipe and embedding
+		err = func() error {
+			tx, err := a.db.SQL.BeginTx(ctx, nil)
+			if err != nil {
+				return err
+			}
+			defer tx.Rollback()
+
+			// Use WithTx to get transaction-aware repos
+			recipeRepoTx := a.recipeRepo.WithTx(tx)
+			vectorRepoTx := a.vectorRepo.WithTx(tx)
+
+			if err := recipeRepoTx.Save(ctx, recipeWithEmbedding.Recipe); err != nil {
+				return fmt.Errorf("failed to save recipe: %w", err)
+			}
+			if err := vectorRepoTx.Save(ctx, recipeWithEmbedding.ID, recipeWithEmbedding.Embedding); err != nil {
+				return fmt.Errorf("failed to save embedding: %w", err)
+			}
+
+			return tx.Commit()
+		}()
+
+		if err != nil {
 			log.Printf("Failed to save recipe '%s' to DB: %v", recipeWithEmbedding.Title, err)
-			continue
-		}
-		if err := a.vectorRepo.Save(ctx, recipeWithEmbedding.ID, recipeWithEmbedding.Embedding); err != nil {
-			log.Printf("Failed to save embedding for '%s' to DB: %v", recipeWithEmbedding.Title, err)
 			continue
 		}
 

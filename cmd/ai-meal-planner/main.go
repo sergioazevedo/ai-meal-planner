@@ -75,7 +75,11 @@ func main() {
 
 	switch os.Args[1] {
 	case "ingest":
-		if err := application.IngestRecipes(ctx); err != nil {
+		ingestCmd := flag.NewFlagSet("ingest", flag.ExitOnError)
+		force := ingestCmd.Bool("force", false, "Force re-ingestion even if recipe is up-to-date")
+		ingestCmd.Parse(os.Args[2:])
+
+		if err := application.IngestRecipes(ctx, *force); err != nil {
 			log.Fatalf("Ingestion failed: %v", err)
 		}
 	case "plan":

@@ -23,6 +23,14 @@ func NewRepository(d *sql.DB) *Repository {
 	}
 }
 
+// WithTx returns a new Repository that uses the provided transaction.
+func (r *Repository) WithTx(tx *sql.Tx) *Repository {
+	return &Repository{
+		queries: db.New(tx),
+		db:      r.db,
+	}
+}
+
 // Save inserts or updates a recipe in the database.
 func (r *Repository) Save(ctx context.Context, rec Recipe) error {
 	recipeJSON, err := json.Marshal(rec)

@@ -23,6 +23,14 @@ func NewVectorRepository(d *sql.DB) *VectorRepository {
 	}
 }
 
+// WithTx returns a new VectorRepository that uses the provided transaction.
+func (r *VectorRepository) WithTx(tx *sql.Tx) *VectorRepository {
+	return &VectorRepository{
+		queries: db.New(tx),
+		db:      r.db,
+	}
+}
+
 func (r *VectorRepository) Save(ctx context.Context, recipeID string, embedding []float32) error {
 	embeddingBytes, err := float32SliceToByteSlice(embedding)
 	if err != nil {

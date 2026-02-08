@@ -125,7 +125,7 @@ func TestFullWorkflow(t *testing.T) {
 
 	// --- 4. Step 1: Ingestion ---
 	t.Log("--- Step 1: Ingesting Recipes ---")
-	if err := application.IngestRecipes(ctx); err != nil {
+	if err := application.IngestRecipes(ctx, false); err != nil {
 		t.Fatalf("Ingestion failed: %v", err)
 	}
 
