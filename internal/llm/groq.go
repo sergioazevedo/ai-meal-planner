@@ -15,7 +15,7 @@ import (
 
 const (
 	groqAPIURL = "https://api.groq.com/openai/v1/chat/completions"
-	groqModel  = "llama-3.3-70b-versatile"
+	groqModel  = "llama-3.1-8b-instant"
 )
 
 // GroqClient is a client for the Groq API.
