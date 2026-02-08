@@ -52,6 +52,10 @@ You must plan exactly 9 meals in this specific order:
 ### Forbidden Actions
 - **NO DUPLICATES**: Never repeat a recipe title in the "Monday", "Wednesday", "Friday", "Saturday (Dinner)", or "Sunday (Dinner)" slots.
 - **NO IGNORED EXCLUSIONS**: If a user mentions a dish they don't want, do not include it under any circumstances.
+- **NO SHORTCUTS**: Do not reuse a "Cook" recipe from earlier in the week just because you ran out of ideas. You MUST pick 5 DIFFERENT recipes.
+
+### HARD CONSTRAINT: The Rule of Five
+You MUST select exactly 5 DIFFERENT recipes from the list. If the user's request is too narrow and only 2-3 recipes match, you MUST fill the remaining slots with OTHER available recipes. Adherence to the '5 unique recipes' rule is MORE IMPORTANT than matching every keyword in the request.
 
 ### Task
 
@@ -70,16 +74,10 @@ Before generating the final JSON, perform this internal audit:
 Return ONLY a valid JSON object with this structure:
 
 {
+  "selected_recipes_audit": ["Recipe 1", "Recipe 2", "Recipe 3", "Recipe 4", "Recipe 5"],
   "planned_meals": [
-    { "day": "Monday", "action": "Cook", "recipe_title": "Recipe A", "note": "Strategic reasoning" },
-    { "day": "Tuesday", "action": "Reuse", "recipe_title": "Recipe A", "note": "Enjoying leftovers" },
-    { "day": "Wednesday", "action": "Cook", "recipe_title": "Recipe B", "note": "..." },
-    { "day": "Thursday", "action": "Reuse", "recipe_title": "Recipe B", "note": "..." },
-    { "day": "Friday", "action": "Cook", "recipe_title": "Recipe C", "note": "..." },
-    { "day": "Saturday (Lunch)", "action": "Reuse", "recipe_title": "Recipe C", "note": "..." },
-    { "day": "Saturday (Dinner)", "action": "Cook", "recipe_title": "Recipe D", "note": "..." },
-    { "day": "Sunday (Lunch)", "action": "Reuse", "recipe_title": "Recipe D", "note": "..." },
-    { "day": "Sunday (Dinner)", "action": "Cook", "recipe_title": "Recipe E", "note": "Light Sunday dinner" }
+    { "day": "Monday", "recipe_id": "...", "action": "Cook", "recipe_title": "Recipe A", "note": "Strategic reasoning" },
+    ...
   ]
 }
 

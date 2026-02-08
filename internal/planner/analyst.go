@@ -32,7 +32,7 @@ const (
 
 type PlannedMeal struct {
 	Day         string     `json:"day"`
-	RecipeID    string     `json:"recipe_id"`
+	RecipeID    string     `json:"-"`
 	Action      MealAction `json:"action"`
 	RecipeTitle string     `json:"recipe_title"`
 	Note        string     `json:"note"`
@@ -52,7 +52,8 @@ type AnalystResult struct {
 }
 
 type rawLlmResult struct {
-	PlannedMeals []PlannedMeal `json:"planned_meals"`
+	SelectedRecipesAudit []string      `json:"selected_recipes_audit"`
+	PlannedMeals         []PlannedMeal `json:"planned_meals"`
 }
 
 func (p *Planner) runAnalyst(
@@ -99,13 +100,16 @@ func (p *Planner) runAnalyst(
 
 	selectedRecipes := []recipe.Recipe{}
 	seen := make(map[string]struct{})
-	for _, meal := range raw.PlannedMeals {
-		if meal.Action != MealActionCook {
-			continue
-		}
+	finalPlannedMeals := []PlannedMeal{}
 
+	for _, meal := range raw.PlannedMeals {
 		r, ok := recipeLookup[meal.RecipeTitle]
-		if !ok {
+		if ok {
+			meal.RecipeID = r.ID // Inject the actual ID
+		}
+		finalPlannedMeals = append(finalPlannedMeals, meal)
+
+		if meal.Action != MealActionCook || !ok {
 			continue
 		}
 
@@ -119,7 +123,7 @@ func (p *Planner) runAnalyst(
 
 	return AnalystResult{
 		Proposal: &MealProposal{
-			PlannedMeals: raw.PlannedMeals,
+			PlannedMeals: finalPlannedMeals,
 			Recipes:      selectedRecipes,
 			Adults:       planingCtx.Adults,
 			Children:     planingCtx.Children,

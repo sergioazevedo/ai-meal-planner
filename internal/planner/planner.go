@@ -3,6 +3,7 @@ package planner
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/rand"
 	"time"
 
@@ -97,7 +98,7 @@ func (p *Planner) GeneratePlan(ctx context.Context, userID string, userRequest s
 			return nil, nil, fmt.Errorf("failed to generate embedding for request: %w", err)
 		}
 
-		recipeIds, err := p.vectorRepo.FindSimilar(ctx, queryEmbedding, 15, excludeIDs)
+		recipeIds, err := p.vectorRepo.FindSimilar(ctx, queryEmbedding, 40, excludeIDs)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to retrieve similar recipes: %w", err)
 		}
@@ -106,6 +107,8 @@ func (p *Planner) GeneratePlan(ctx context.Context, userID string, userRequest s
 			return nil, nil, fmt.Errorf("failed to retrieve recipes: %w", err)
 		}
 	}
+
+	log.Printf("Analyst will choose from %d available recipes", len(recipes))
 
 	if len(recipes) == 0 {
 		return nil, nil, fmt.Errorf("no recipes found to create a plan")

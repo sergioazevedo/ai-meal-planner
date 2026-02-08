@@ -50,6 +50,16 @@ func (p *Planner) runChef(
 	}
 
 	result.WeekStart = weekStart
+
+	// Post-processing: Map IDs back from the Analyst's proposal
+	// The Chef might have modified the titles (e.g., adding "Cook:" prefix),
+	// so we use the original proposal's order which is preserved (9 meals).
+	if len(result.Plan) == len(mealSchedule.PlannedMeals) {
+		for i := range result.Plan {
+			result.Plan[i].RecipeID = mealSchedule.PlannedMeals[i].RecipeID
+		}
+	}
+
 	return ChefResult{
 		Plan: result,
 		Meta: shared.AgentMeta{
