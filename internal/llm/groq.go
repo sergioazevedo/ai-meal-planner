@@ -17,8 +17,8 @@ const (
 	groqAPIURL = "https://api.groq.com/openai/v1/chat/completions"
 
 	// Model identifiers
-	ModelGroqLlama33_70B = "llama-3.3-70b-versatile"
-	ModelGroqLlama31_8B  = "llama-3.1-8b-instant"
+	ModelAnalyst    = "llama-3.3-70b-versatile"
+	ModelNormalizer = "llama-3.1-8b-instant"
 )
 
 // GroqClient is a client for the Groq API.

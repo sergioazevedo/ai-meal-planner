@@ -34,8 +34,8 @@ func main() {
 	}
 	defer geminiClient.Close()
 
-	groq70B := llm.NewGroqClient(cfg, llm.ModelGroqLlama33_70B)
-	groq8B := llm.NewGroqClient(cfg, llm.ModelGroqLlama31_8B)
+	analystModel := llm.NewGroqClient(cfg, llm.ModelAnalyst)
+	normalizerModel := llm.NewGroqClient(cfg, llm.ModelNormalizer)
 
 	// Initialize the new SQLite database
 	db, err := database.NewDB(cfg.DatabasePath)
@@ -52,13 +52,13 @@ func main() {
 	metricsStore := metrics.NewStore(db.SQL)
 	defer metricsStore.Close()
 
-	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, planRepo, groq70B, groq8B, geminiClient)
-	recipeClipper := clipper.NewClipper(ghostClient, groq8B)
+	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, planRepo, analystModel, normalizerModel, geminiClient)
+	recipeClipper := clipper.NewClipper(ghostClient, normalizerModel)
 
 	application := app.NewApp(
 		ghostClient,
-		groq8B,       // Use 8B for extraction
-		geminiClient, // embedGen
+		normalizerModel, // Use 8B for extraction
+		geminiClient,    // embedGen
 		metricsStore,
 		mealPlanner,
 		recipeClipper,
