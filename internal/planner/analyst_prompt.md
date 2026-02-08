@@ -49,11 +49,21 @@ You must plan exactly 9 meals in this specific order:
 - {{ .Title }} | Tags: {{ .Tags }} | Time: {{ .PrepTime }} | Serves: {{ .Servings }}
 {{ end }}
 
+### Forbidden Actions
+- **NO DUPLICATES**: Never repeat a recipe title in the "Monday", "Wednesday", "Friday", "Saturday (Dinner)", or "Sunday (Dinner)" slots.
+- **NO IGNORED EXCLUSIONS**: If a user mentions a dish they don't want, do not include it under any circumstances.
+
 ### Task
 
 1.  Select the **5 unique recipes** that best fulfill the user request and the strategic cadence above.
 2.  Map them strictly to the "Cook" and "Reuse" slots.
 3.  Ensure the "Reuse" entries point to the **exact same** `recipe_title` as the "Cook" entry they follow.
+
+### STRICT AUDIT (Double-Check Before Output)
+Before generating the final JSON, perform this internal audit:
+- **Exclusion Check**: Did I include any recipe the user explicitly said they "don't want" or "exclude"? If yes, REMOVE IT and pick a different one.
+- **Uniqueness Check**: Did I use the same recipe title for more than one "Cook" day? If yes, CHANGE IT. You must have 5 different titles for the 5 "Cook" slots.
+- **Title Accuracy**: Does the `recipe_title` in the JSON match the title in the "Available Recipes" list exactly?
 
 ### Output Format
 
