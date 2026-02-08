@@ -15,21 +15,30 @@ import (
 
 // Planner handles the generation of meal plans.
 type Planner struct {
-	recipeRepo *recipe.Repository
-	vectorRepo *llm.VectorRepository
-	planRepo   *PlanRepository
-	textGen    llm.TextGenerator
-	embedGen   llm.EmbeddingGenerator
+	recipeRepo       *recipe.Repository
+	vectorRepo       *llm.VectorRepository
+	planRepo         *PlanRepository
+	analystGenerator llm.TextGenerator // High-reasoning model (e.g., 70B)
+	chefGenerator    llm.TextGenerator // High-throughput model (e.g., 8B)
+	embedGen         llm.EmbeddingGenerator
 }
 
-// NewPlanner creates a new Planner instance.
-func NewPlanner(recipeRepo *recipe.Repository, vectorRepo *llm.VectorRepository, planRepo *PlanRepository, textGen llm.TextGenerator, embedGen llm.EmbeddingGenerator) *Planner {
+// NewPlanner creates a new Planner instance with separate generators for different agent roles.
+func NewPlanner(
+	recipeRepo *recipe.Repository,
+	vectorRepo *llm.VectorRepository,
+	planRepo *PlanRepository,
+	analystGen llm.TextGenerator,
+	chefGen llm.TextGenerator,
+	embedGen llm.EmbeddingGenerator,
+) *Planner {
 	return &Planner{
-		recipeRepo: recipeRepo,
-		vectorRepo: vectorRepo,
-		planRepo:   planRepo,
-		textGen:    textGen,
-		embedGen:   embedGen,
+		recipeRepo:       recipeRepo,
+		vectorRepo:       vectorRepo,
+		planRepo:         planRepo,
+		analystGenerator: analystGen,
+		chefGenerator:    chefGen,
+		embedGen:         embedGen,
 	}
 }
 

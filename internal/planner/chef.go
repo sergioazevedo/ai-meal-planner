@@ -30,7 +30,7 @@ func (p *Planner) runChef(
 		return ChefResult{}, err
 	}
 
-	resp, err := p.textGen.GenerateContent(ctx, prompt)
+	resp, err := p.chefGenerator.GenerateContent(ctx, prompt)
 	if err != nil {
 		return ChefResult{}, err
 	}

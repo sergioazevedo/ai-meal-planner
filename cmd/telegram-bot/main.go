@@ -30,7 +30,9 @@ func main() {
 	ctx := context.Background()
 
 	// 2. Initialize Infrastructure (LLMs)
-	textGen := llm.NewGroqClient(cfg)
+	groq70B := llm.NewGroqClient(cfg, llm.ModelGroqLlama33_70B)
+	groq8B := llm.NewGroqClient(cfg, llm.ModelGroqLlama31_8B)
+
 	geminiClient, err := llm.NewGeminiClient(ctx, cfg)
 	if err != nil {
 		log.Fatalf("Failed to create Gemini client: %v", err)
@@ -56,11 +58,11 @@ func main() {
 	defer metricsStore.Close()
 
 	// 5. Initialize Services
-	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, planRepo, textGen, geminiClient)
-	recipeClipper := clipper.NewClipper(ghostClient, textGen)
+	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, planRepo, groq70B, groq8B, geminiClient)
+	recipeClipper := clipper.NewClipper(ghostClient, groq8B)
 
 	// 6. Initialize Telegram Bot
-	bot, err := telegram.NewBot(cfg, mealPlanner, recipeClipper, metricsStore, textGen, geminiClient, planRepo, recipeRepo, vectorRepo)
+	bot, err := telegram.NewBot(cfg, mealPlanner, recipeClipper, metricsStore, groq8B, geminiClient, planRepo, recipeRepo, vectorRepo)
 	if err != nil {
 		log.Fatalf("Failed to initialize Telegram Bot: %v", err)
 	}

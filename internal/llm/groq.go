@@ -15,19 +15,24 @@ import (
 
 const (
 	groqAPIURL = "https://api.groq.com/openai/v1/chat/completions"
-	groqModel  = "llama-3.1-8b-instant"
+
+	// Model identifiers
+	ModelGroqLlama33_70B = "llama-3.3-70b-versatile"
+	ModelGroqLlama31_8B  = "llama-3.1-8b-instant"
 )
 
 // GroqClient is a client for the Groq API.
 type GroqClient struct {
 	apiKey     string
+	modelID    string
 	httpClient *http.Client
 }
 
-// NewGroqClient creates a new Groq API client.
-func NewGroqClient(cfg *config.Config) *GroqClient {
+// NewGroqClient creates a new Groq API client for a specific model.
+func NewGroqClient(cfg *config.Config, modelID string) *GroqClient {
 	return &GroqClient{
-		apiKey: cfg.GroqAPIKey,
+		apiKey:  cfg.GroqAPIKey,
+		modelID: modelID,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -37,7 +42,7 @@ func NewGroqClient(cfg *config.Config) *GroqClient {
 // GenerateContent sends a prompt to the Groq model and returns the generated text.
 func (c *GroqClient) GenerateContent(ctx context.Context, prompt string) (ContentResponse, error) {
 	reqBody := map[string]interface{}{
-		"model": groqModel,
+		"model": c.modelID,
 		"messages": []map[string]string{
 			{
 				"role":    "user",
@@ -99,7 +104,7 @@ func (c *GroqClient) GenerateContent(ctx context.Context, prompt string) (Conten
 			PromptTokens:     groqResp.Usage.PromptTokens,
 			CompletionTokens: groqResp.Usage.CompletionTokens,
 			TotalTokens:      groqResp.Usage.TotalTokens,
-			Model:            groqModel,
+			Model:            c.modelID,
 		},
 	}, nil
 }

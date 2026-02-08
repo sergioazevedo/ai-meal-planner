@@ -74,7 +74,7 @@ func (p *Planner) runAnalyst(
 		return AnalystResult{}, err
 	}
 
-	resp, err := p.textGen.GenerateContent(ctx, prompt)
+	resp, err := p.analystGenerator.GenerateContent(ctx, prompt)
 	if err != nil {
 		return AnalystResult{}, err
 	}

@@ -25,8 +25,8 @@ func TestAnalyst_LiveEval(t *testing.T) {
 	}
 
 	// Use Groq for fast, cheap evals
-	groqClient := llm.NewGroqClient(cfg)
-	p := &Planner{textGen: groqClient}
+	groqClient := llm.NewGroqClient(cfg, llm.ModelGroqLlama33_70B)
+	p := &Planner{analystGenerator: groqClient}
 
 	// 2. Define a "Hard" Scenario
 	userRequest := "We need high-protein meals for the week, but my kids hate spicy food."

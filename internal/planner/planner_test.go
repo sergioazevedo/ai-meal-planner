@@ -66,7 +66,8 @@ func TestGeneratePlan(t *testing.T) {
 	_ = recipeRepo.Save(ctx, rec2)
 	_ = vectorRepo.Save(ctx, rec2.ID, emb2)
 
-	p := NewPlanner(recipeRepo, vectorRepo, planRepo, &MockTextGenerator{}, &MockEmbedingGenerator{})
+	mockGen := &MockTextGenerator{}
+	p := NewPlanner(recipeRepo, vectorRepo, planRepo, mockGen, mockGen, &MockEmbedingGenerator{})
 
 	// 4. Run GeneratePlan
 	plan, metas, err := p.GeneratePlan(ctx, "test_user", "I want pasta", PlanningContext{}, time.Now())

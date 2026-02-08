@@ -116,7 +116,7 @@ func TestFullWorkflow(t *testing.T) {
 	metricsStore := metrics.NewStore(db.SQL)
 
 	// 3. Create the application instance with mocks
-	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, planRepo, mockTextGenerator, mockEmbedingGenerator)
+	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, planRepo, mockTextGenerator, mockTextGenerator, mockEmbedingGenerator)
 	recipeClipper := clipper.NewClipper(ghostClient, mockTextGenerator)
 	application := app.NewApp(ghostClient, mockTextGenerator, mockEmbedingGenerator, metricsStore, mealPlanner, recipeClipper, &config.Config{
 		DefaultAdults:           2,

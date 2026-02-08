@@ -25,8 +25,8 @@ func TestChef_LiveEval(t *testing.T) {
 		t.Skip("Skipping: No API keys found in environment")
 	}
 
-	groqClient := llm.NewGroqClient(cfg)
-	p := &Planner{textGen: groqClient}
+	groqClient := llm.NewGroqClient(cfg, llm.ModelGroqLlama31_8B)
+	p := &Planner{chefGenerator: groqClient}
 
 	// 1. Setup a Mock Proposal (The input the Chef expects from the Analyst)
 	proposal := &MealProposal{
