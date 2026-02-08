@@ -83,64 +83,73 @@ func (a *App) IngestRecipes(ctx context.Context, force bool) error {
 		}
 
 		log.Printf("Normalizing '%s'...", post.Title)
-		recipeWithEmbedding, meta, err := recipe.NormalizeHTML(
-			ctx,
-			a.textGen,
-			a.embedGen,
-			recipe.PostData{
-				ID:        post.ID,
-				Title:     post.Title,
-				UpdatedAt: post.UpdatedAt,
-				HTML:      post.HTML,
-			},
-		)
-
+		err := a.processSingleRecipe(ctx, post)
 		if err != nil {
-			log.Printf("Failed to normalize '%s': %v", post.Title, err)
-			continue
+			log.Printf("Failed to process recipe '%s': %v", post.Title, err)
+		} else {
+			log.Printf("Successfully processed '%s'.", post.Title)
 		}
 
-		// Use a transaction to ensure atomic save of recipe and embedding
-		err = func() error {
-			tx, err := a.db.SQL.BeginTx(ctx, nil)
-			if err != nil {
-				return err
-			}
-			defer tx.Rollback()
-
-			// Use WithTx to get transaction-aware repos
-			recipeRepoTx := a.recipeRepo.WithTx(tx)
-			vectorRepoTx := a.vectorRepo.WithTx(tx)
-
-			if err := recipeRepoTx.Save(ctx, recipeWithEmbedding.Recipe); err != nil {
-				return fmt.Errorf("failed to save recipe: %w", err)
-			}
-			if err := vectorRepoTx.Save(ctx, recipeWithEmbedding.ID, recipeWithEmbedding.Embedding); err != nil {
-				return fmt.Errorf("failed to save embedding: %w", err)
-			}
-
-			return tx.Commit()
-		}()
-
-		if err != nil {
-			log.Printf("Failed to save recipe '%s' to DB: %v", recipeWithEmbedding.Title, err)
-			continue
-		}
-
-		a.metricsStore.Record(metrics.ExecutionMetric{
-			AgentName:        meta.AgentName,
-			Model:            meta.Usage.Model,
-			PromptTokens:     meta.Usage.PromptTokens,
-			CompletionTokens: meta.Usage.CompletionTokens,
-			LatencyMS:        meta.Latency.Milliseconds(),
-		})
-
-		log.Printf("Successfully processed '%s'.", recipeWithEmbedding.Title)
-
-		// Wait 5 seconds to stay under Gemini Free Tier Rate Limits (15 RPM)
+		// Wait 5 seconds to stay under Rate Limits (Gemini Free Tier: 15 RPM, Groq: various)
+		// We sleep even on failure to ensure we don't hammer the API after a 429 error.
 		time.Sleep(5 * time.Second)
 	}
 	fmt.Println("Ingestion complete.")
+	return nil
+}
+
+// processSingleRecipe handles the normalization and saving of a single recipe post.
+func (a *App) processSingleRecipe(ctx context.Context, post ghost.Post) error {
+	recipeWithEmbedding, meta, err := recipe.NormalizeHTML(
+		ctx,
+		a.textGen,
+		a.embedGen,
+		recipe.PostData{
+			ID:        post.ID,
+			Title:     post.Title,
+			UpdatedAt: post.UpdatedAt,
+			HTML:      post.HTML,
+		},
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to normalize: %w", err)
+	}
+
+	// Use a transaction to ensure atomic save of recipe and embedding
+	err = func() error {
+		tx, err := a.db.SQL.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback()
+
+		// Use WithTx to get transaction-aware repos
+		recipeRepoTx := a.recipeRepo.WithTx(tx)
+		vectorRepoTx := a.vectorRepo.WithTx(tx)
+
+		if err := recipeRepoTx.Save(ctx, recipeWithEmbedding.Recipe); err != nil {
+			return fmt.Errorf("failed to save recipe: %w", err)
+		}
+		if err := vectorRepoTx.Save(ctx, recipeWithEmbedding.ID, recipeWithEmbedding.Embedding); err != nil {
+			return fmt.Errorf("failed to save embedding: %w", err)
+		}
+
+		return tx.Commit()
+	}()
+
+	if err != nil {
+		return fmt.Errorf("failed to save to DB: %w", err)
+	}
+
+	a.metricsStore.Record(metrics.ExecutionMetric{
+		AgentName:        meta.AgentName,
+		Model:            meta.Usage.Model,
+		PromptTokens:     meta.Usage.PromptTokens,
+		CompletionTokens: meta.Usage.CompletionTokens,
+		LatencyMS:        meta.Latency.Milliseconds(),
+	})
+
 	return nil
 }
 
