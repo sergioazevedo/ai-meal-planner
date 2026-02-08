@@ -61,6 +61,10 @@ func (p *Planner) GeneratePlan(ctx context.Context, userID string, userRequest s
 	recentPlans, err := p.planRepo.ListRecentByUserID(ctx, userID, 3) // Check last 3 plans
 	if err == nil {
 		for _, plan := range recentPlans {
+			// Skip the plan we are currently redoing/replacing
+			if plan.WeekStart.Equal(targetWeek) {
+				continue
+			}
 			for _, day := range plan.Plan {
 				if day.RecipeID != "" {
 					excludeIDs = append(excludeIDs, day.RecipeID)
