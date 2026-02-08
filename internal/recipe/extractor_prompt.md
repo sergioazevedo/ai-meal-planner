@@ -11,7 +11,7 @@ Please extract the following information from the HTML above:
  - Ingredients (include quantities)
  - Step-by-step instructions
  - Relevant tags
- - Preparation time (e.g., "30 mins") - **estimate if missing**
+ - Preparation time (e.g., "30 mins") - **MANDATORY: If missing from source, YOU MUST ESTIMATE based on ingredients and instructions. Do NOT return "Unknown".**
  - Number of servings (e.g., "4 people") - **estimate if missing**
 
 ### Output Format

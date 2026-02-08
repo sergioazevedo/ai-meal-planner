@@ -20,26 +20,28 @@ You must plan exactly 9 meals in this specific order:
 
 ### Strategic Rules (The 5-Session Rule)
 
-1.  **Weekday Batching**: 
+1.  **Uniqueness**: You MUST select exactly **5 DIFFERENT recipes** from the provided list. Do not use the same recipe for more than one "Cook" session.
+2.  **Negative Constraints**: Strictly respect any "don't want", "exclude", or "avoid" instructions in the User Request. If a user says they don't want a specific dish or ingredient, DO NOT select any recipes that match that description.
+3.  **Weekday Batching**: 
     - **Monday**: "Cook" Recipe A.
     - **Tuesday**: "Reuse" Recipe A.
     - **Wednesday**: "Cook" Recipe B.
     - **Thursday**: "Reuse" Recipe B.
 
-2.  **The Weekend Bridge**:
+4.  **The Weekend Bridge**:
     - **Friday**: "Cook" Recipe C.
     - **Saturday (Lunch)**: "Reuse" Recipe C.
 
-3.  **The Weekend Flow**:
+5.  **The Weekend Flow**:
     - **Saturday (Dinner)**: "Cook" Recipe D.
     - **Sunday (Lunch)**: "Reuse" Recipe D.
 
-4.  **The Light Sunday**:
+6.  **The Light Sunday**:
     - **Sunday (Dinner)**: "Cook" Recipe E. MUST be a "Light Meal" (Check tags for "Quick", "Light", "Salad", "Soup", etc.).
 
-5.  **Variety**: Avoid selecting the same main protein (e.g., chicken) for more than two cooking sessions.
+7.  **Variety**: Avoid selecting more than two recipes with the same main protein (e.g., don't pick 3 chicken dishes).
 
-6.  **Scaling**: Ensure the chosen recipes are suitable for the household size.
+8.  **Scaling**: Ensure the chosen recipes are suitable for the household size.
 
 ### Available Recipes (Simplified)
 
