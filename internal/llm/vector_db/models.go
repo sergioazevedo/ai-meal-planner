@@ -27,6 +27,7 @@ type Recipe struct {
 type RecipeEmbedding struct {
 	RecipeID  string
 	Embedding []byte
+	TextHash  string
 }
 
 type UserMealPlan struct {

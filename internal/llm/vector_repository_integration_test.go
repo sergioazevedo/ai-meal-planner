@@ -139,15 +139,23 @@ func TestVectorSearchRecallIntegration(t *testing.T) {
 		// Add more dummy recipes here to test various scenarios
 	}
 
-	// Generate and save embeddings for dummy recipes
+	// Generate and save embeddings for dummy recipes using NormalizeHTML
 	for _, r := range dummyRecipes {
-		embeddingText := r.ToEmbeddingText() // Use the updated ToEmbeddingText
-		embedding, err := cachedEmbGen.GenerateEmbedding(ctx, embeddingText)
+		// NormalizeHTML now handles embedding generation and saving with hashing
+		_, _, err := recipe.NormalizeHTML(
+			ctx,
+			cachedEmbGen, // textGen and embGen are the same for this mock
+			cachedEmbGen,
+			vectorRepo, // Pass the vectorRepo
+			recipe.PostData{
+				ID:        r.ID,
+				Title:     r.Title,
+				UpdatedAt: r.UpdatedAt,
+				HTML:      "<html><body>Dummy HTML</body></html>", // Dummy HTML content
+			},
+		)
 		if err != nil {
-			t.Fatalf("Failed to generate embedding for recipe %s: %v", r.ID, err)
-		}
-		if err := vectorRepo.Save(ctx, r.ID, embedding); err != nil {
-			t.Fatalf("Failed to save embedding for recipe %s: %v", r.ID, err)
+			t.Fatalf("Failed to normalize and save recipe %s: %v", r.ID, err)
 		}
 	}
 

@@ -327,6 +327,7 @@ func (b *Bot) ingestClippedPost(post ghost.Post) {
 		ctx,
 		b.textGen,
 		b.embedGen,
+		b.vectorRepo, // Pass vectorRepo here
 		recipe.PostData{
 			ID:        post.ID,
 			Title:     post.Title,
@@ -348,14 +349,9 @@ func (b *Bot) ingestClippedPost(post ghost.Post) {
 		return
 	}
 
-	// Save to new RecipeRepository
+	// Save to new RecipeRepository (embedding is saved within NormalizeHTML)
 	if err := b.recipeRepo.Save(ctx, recipeWithEmbedding.Recipe); err != nil {
 		log.Printf("Background Error: Failed to save recipe '%s' to DB: %v", recipeWithEmbedding.Title, err)
-		return
-	}
-	// Save embedding to new VectorRepository
-	if err := b.vectorRepo.Save(ctx, recipeWithEmbedding.ID, recipeWithEmbedding.Embedding); err != nil {
-		log.Printf("Background Error: Failed to save embedding for '%s' to DB: %v", recipeWithEmbedding.Title, err)
 		return
 	}
 

@@ -98,6 +98,7 @@ func (a *App) processSingleRecipe(ctx context.Context, post ghost.Post) error {
 		ctx,
 		a.textGen,
 		a.embedGen,
+		a.vectorRepo, // Pass vectorRepo here
 		recipe.PostData{
 			ID:        post.ID,
 			Title:     post.Title,

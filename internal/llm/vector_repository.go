@@ -31,7 +31,14 @@ func (r *VectorRepository) WithTx(tx *sql.Tx) *VectorRepository {
 	}
 }
 
-func (r *VectorRepository) Save(ctx context.Context, recipeID string, embedding []float32) error {
+// EmbeddingRecord holds an embedding and the hash of its source text.
+type EmbeddingRecord struct {
+	Embedding []float32
+	TextHash  string
+}
+
+// Save stores an embedding and its corresponding text hash for a given recipe ID.
+func (r *VectorRepository) Save(ctx context.Context, recipeID string, embedding []float32, textHash string) error {
 	embeddingBytes, err := float32SliceToByteSlice(embedding)
 	if err != nil {
 		return fmt.Errorf("failed to convert float32 slice to byte slice: %w", err)
@@ -40,12 +47,14 @@ func (r *VectorRepository) Save(ctx context.Context, recipeID string, embedding 
 	params := db.InsertEmbeddingParams{
 		RecipeID:  recipeID,
 		Embedding: embeddingBytes,
+		TextHash:  textHash,
 	}
 
 	return r.queries.InsertEmbedding(ctx, params)
 }
 
-func (r *VectorRepository) Get(ctx context.Context, recipeID string) ([]float32, error) {
+// Get retrieves an embedding and its text hash by recipe ID.
+func (r *VectorRepository) Get(ctx context.Context, recipeID string) (*EmbeddingRecord, error) {
 	dbEmbedding, err := r.queries.GetEmbeddingByRecipeID(ctx, recipeID)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -58,7 +67,10 @@ func (r *VectorRepository) Get(ctx context.Context, recipeID string) ([]float32,
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert byte slice to float32 slice: %w", err)
 	}
-	return embedding, nil
+	return &EmbeddingRecord{
+		Embedding: embedding,
+		TextHash:  dbEmbedding.TextHash,
+	}, nil
 }
 
 // FindSimilar searches for recipes with embeddings similar to the query.

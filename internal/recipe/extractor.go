@@ -5,7 +5,9 @@ import (
 	"ai-meal-planner/internal/shared"
 	"bytes"
 	"context"
+	"crypto/md5"
 	_ "embed"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"text/template"
@@ -26,6 +28,7 @@ func NormalizeHTML(
 	ctx context.Context,
 	textGen llm.TextGenerator,
 	embGen llm.EmbeddingGenerator,
+	vectorRepo *llm.VectorRepository, // Add vectorRepo here for checking existing embeddings
 	data PostData,
 ) (RecipeWithEmbedding, shared.AgentMeta, error) {
 	result, err := runExtractor(ctx, textGen, data)
@@ -33,15 +36,44 @@ func NormalizeHTML(
 		return RecipeWithEmbedding{}, shared.AgentMeta{}, err
 	}
 
-	embedding, err := embGen.GenerateEmbedding(ctx, result.Recipe.ToEmbeddingText())
-	if err != nil {
-		return RecipeWithEmbedding{}, result.Meta, fmt.Errorf("failed to generate embedding: %w", err)
+	embeddingSourceText := result.Recipe.ToEmbeddingText()
+	hasher := md5.New()
+	hasher.Write([]byte(embeddingSourceText))
+	currentTextHash := hex.EncodeToString(hasher.Sum(nil))
+
+	var embedding []float32
+	var meta = result.Meta
+
+	// Try to retrieve existing embedding and hash
+	existingEmbeddingRecord, err := vectorRepo.Get(ctx, result.Recipe.ID)
+	if err != nil && err != sql.ErrNoRows { // Handle real errors, ignore no rows
+		return RecipeWithEmbedding{}, result.Meta, fmt.Errorf("failed to get existing embedding record: %w", err)
+	}
+
+	if existingEmbeddingRecord != nil && existingEmbeddingRecord.TextHash == currentTextHash {
+		// Cache HIT: use existing embedding
+		embedding = existingEmbeddingRecord.Embedding
+		meta.Usage.PromptTokens = 0 // No tokens consumed for embedding
+		meta.Usage.CompletionTokens = 0
+		meta.Latency = 0 // No latency for embedding generation
+	} else {
+		// Cache MISS or hash mismatch: generate new embedding
+		embedding, err = embGen.GenerateEmbedding(ctx, embeddingSourceText)
+		if err != nil {
+			return RecipeWithEmbedding{}, result.Meta, fmt.Errorf("failed to generate embedding: %w", err)
+		}
+	}
+
+	// Save the embedding (will upsert in DB) with the new hash
+	// This ensures the hash is always up-to-date even if only recipe data changed.
+	if err := vectorRepo.Save(ctx, result.Recipe.ID, embedding, currentTextHash); err != nil {
+		return RecipeWithEmbedding{}, result.Meta, fmt.Errorf("failed to save embedding with hash: %w", err)
 	}
 
 	return RecipeWithEmbedding{
 		Recipe:    result.Recipe,
 		Embedding: embedding,
-	}, result.Meta, nil
+	}, meta, nil
 }
 
 func runExtractor(

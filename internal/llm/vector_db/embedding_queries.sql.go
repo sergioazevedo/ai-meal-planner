@@ -19,31 +19,33 @@ func (q *Queries) DeleteEmbeddingByRecipeID(ctx context.Context, recipeID string
 }
 
 const getEmbeddingByRecipeID = `-- name: GetEmbeddingByRecipeID :one
-SELECT recipe_id, embedding FROM recipe_embeddings
+SELECT recipe_id, embedding, text_hash FROM recipe_embeddings
 WHERE recipe_id = ?
 `
 
 func (q *Queries) GetEmbeddingByRecipeID(ctx context.Context, recipeID string) (RecipeEmbedding, error) {
 	row := q.db.QueryRowContext(ctx, getEmbeddingByRecipeID, recipeID)
 	var i RecipeEmbedding
-	err := row.Scan(&i.RecipeID, &i.Embedding)
+	err := row.Scan(&i.RecipeID, &i.Embedding, &i.TextHash)
 	return i, err
 }
 
 const insertEmbedding = `-- name: InsertEmbedding :exec
-INSERT INTO recipe_embeddings (recipe_id, embedding)
-VALUES (?, ?)
+INSERT INTO recipe_embeddings (recipe_id, embedding, text_hash)
+VALUES (?, ?, ?)
 ON CONFLICT (recipe_id) DO UPDATE SET
-    embedding = EXCLUDED.embedding
+    embedding = EXCLUDED.embedding,
+    text_hash = EXCLUDED.text_hash
 `
 
 type InsertEmbeddingParams struct {
 	RecipeID  string
 	Embedding []byte
+	TextHash  string
 }
 
 func (q *Queries) InsertEmbedding(ctx context.Context, arg InsertEmbeddingParams) error {
-	_, err := q.db.ExecContext(ctx, insertEmbedding, arg.RecipeID, arg.Embedding)
+	_, err := q.db.ExecContext(ctx, insertEmbedding, arg.RecipeID, arg.Embedding, arg.TextHash)
 	return err
 }
 
@@ -51,15 +53,20 @@ const listAllEmbeddings = `-- name: ListAllEmbeddings :many
 SELECT recipe_id, embedding FROM recipe_embeddings
 `
 
-func (q *Queries) ListAllEmbeddings(ctx context.Context) ([]RecipeEmbedding, error) {
+type ListAllEmbeddingsRow struct {
+	RecipeID  string
+	Embedding []byte
+}
+
+func (q *Queries) ListAllEmbeddings(ctx context.Context) ([]ListAllEmbeddingsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listAllEmbeddings)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []RecipeEmbedding
+	var items []ListAllEmbeddingsRow
 	for rows.Next() {
-		var i RecipeEmbedding
+		var i ListAllEmbeddingsRow
 		if err := rows.Scan(&i.RecipeID, &i.Embedding); err != nil {
 			return nil, err
 		}
