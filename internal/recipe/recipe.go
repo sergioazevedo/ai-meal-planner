@@ -28,11 +28,10 @@ type Recipe struct {
 // used for generating embeddings and similarity search.
 func (r *Recipe) ToEmbeddingText() string {
 	return fmt.Sprintf(
-		"Title: %s\nTags: %v\nIngredients: %v\nInstructions: %v\nPrep Time: %s",
+		"Title: %s\nTags: %v\nIngredients: %v\nPrep Time: %s",
 		r.Title,
 		r.Tags,
 		r.Ingredients,
-		r.Instructions,
 		r.PrepTime,
 	)
 }
