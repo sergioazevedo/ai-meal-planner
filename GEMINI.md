@@ -72,7 +72,7 @@ if err != nil {
 ```
 
 ### Generating Embeddings (Vectors)
-To generate vector embeddings for semantic search using the **embedding-001** model, use the `GenerateEmbedding` method.
+To generate vector embeddings for semantic search using the **embedding-001** model, use the `GenerateEmbedding` method. Note that the full recipe embedding generation and saving flow (including caching and vector storage interaction) is now encapsulated in the `recipe.Extractor` struct.
 
 ```go
 text := "Spaghetti Carbonara with eggs and bacon"
