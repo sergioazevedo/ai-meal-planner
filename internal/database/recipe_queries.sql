@@ -1,6 +1,10 @@
 -- name: InsertRecipe :exec
 INSERT INTO recipes (id, data, updated_at)
-VALUES (?, ?, ?);
+VALUES (?, ?, ?)
+ON CONFLICT (id) DO UPDATE SET
+    data = EXCLUDED.data,
+    updated_at = EXCLUDED.updated_at
+WHERE EXCLUDED.updated_at > recipes.updated_at;
 
 -- name: GetRecipeByID :one
 SELECT id, data, updated_at FROM recipes
@@ -25,7 +29,3 @@ DELETE FROM recipes WHERE id = ?;
 
 -- name: CountRecipes :one
 SELECT COUNT(id) FROM recipes;
-
--- name: CheckRecipeExists :one
-SELECT COUNT(*) FROM recipes
-WHERE id = ? AND updated_at = ?;

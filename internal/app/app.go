@@ -73,14 +73,8 @@ func (a *App) IngestRecipes(ctx context.Context, force bool) error {
 
 	fmt.Printf("Successfully fetched %d recipe posts from Ghost.\n", len(posts))
 	for _, post := range posts {
-		if !force {
-			// Optimization: Check if recipe already exists with the same updatedAt
-			exists, err := a.recipeRepo.Exists(ctx, post.ID, post.UpdatedAt)
-			if err == nil && exists {
-				log.Printf("Recipe '%s' is already up-to-date in DB. Skipping normalization.", post.Title)
-				continue
-			}
-		}
+		// The database-level UPSERT now handles conditional updates based on the `updated_at` timestamp.
+		// The `force` flag ensures normalization always runs, but the DB handles the save logic.
 
 		log.Printf("Normalizing '%s'...", post.Title)
 		err := a.processSingleRecipe(ctx, post)

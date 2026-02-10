@@ -137,25 +137,3 @@ func (r *Repository) Count(ctx context.Context) (int, error) {
 	}
 	return int(count), nil
 }
-
-// Exists checks if a specific version of a recipe already exists in the database.
-func (r *Repository) Exists(ctx context.Context, id string, updatedAt string) (bool, error) {
-	if updatedAt == "" {
-		return false, nil
-	}
-
-	parsedTime, err := time.Parse(time.RFC3339, updatedAt)
-	if err != nil {
-		return false, fmt.Errorf("failed to parse updatedAt: %w", err)
-	}
-
-	count, err := r.queries.CheckRecipeExists(ctx, db.CheckRecipeExistsParams{
-		ID:        id,
-		UpdatedAt: parsedTime,
-	})
-	if err != nil {
-		return false, err
-	}
-
-	return count > 0, nil
-}
