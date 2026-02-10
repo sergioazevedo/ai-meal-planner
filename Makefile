@@ -1,16 +1,19 @@
 # AI Meal Planner Makefile
 
-.PHONY: build test test-short eval ingest plan help
+.PHONY: build test test-short eval ingest plan help migrate-up migrate-down migrate-create
 
 # Default target
 help:
 	@echo "Usage:"
-	@echo "  make build         - Build all binaries"
-	@echo "  make test          - Run all unit tests (skipping live LLM evals)"
-	@echo "  make eval          - Run live LLM evaluation tests (costs money!)"
-	@echo "  make ingest        - Run local ingestion"
-	@echo "  make plan          - Run local planning"
-	@echo "  make metrics-cleanup - Clean up old metrics data (30 days)"
+	@echo "  make build             - Build all binaries"
+	@echo "  make test              - Run all unit tests (skipping live LLM evals)"
+	@echo "  make eval              - Run live LLM evaluation tests (costs money!)"
+	@echo "  make ingest            - Run local ingestion"
+	@echo "  make plan              - Run local planning"
+	@echo "  make metrics-cleanup   - Clean up old metrics data (30 days)"
+	@echo "  make migrate-up        - Apply all pending database migrations"
+	@echo "  make migrate-down      - Revert the last applied database migration"
+	@echo "  make migrate-create NAME=<name> - Create a new migration file"
 
 # --- Development ---
 
@@ -24,6 +27,16 @@ test:
 # Run only the live LLM evaluation tests
 eval:
 	go test -v ./internal/planner -run "_Eval"
+
+# Database Migrations
+migrate-up:
+	go run ./cmd/ai-meal-planner migrate up
+
+migrate-down:
+	go run ./cmd/ai-meal-planner migrate down
+
+migrate-create:
+	migrate create -ext sql -dir internal/database/migrations ${NAME}
 
 # --- Local Execution ---
 
