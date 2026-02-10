@@ -10,7 +10,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/sqlite" // Required for sqlite driver
 	_ "github.com/golang-migrate/migrate/v4/source/file"     // Required for file source
-	_ "github.com/mattn/go-sqlite3"                         // Changed from modernc.org/sqlite to be compatible with golang-migrate
+	_ "github.com/mattn/go-sqlite3"                          // Changed from modernc.org/sqlite to be compatible with golang-migrate
 )
 
 //go:generate sh -c "cd ../.. && sqlc generate"
@@ -73,4 +73,3 @@ func RunMigrations(databasePath string) error {
 	log.Println("Database migrations applied successfully!")
 	return nil
 }
-

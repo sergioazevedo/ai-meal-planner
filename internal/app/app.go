@@ -31,6 +31,8 @@ type App struct {
 	recipeRepo *recipe.Repository
 	vectorRepo *llm.VectorRepository
 	planRepo   *planner.PlanRepository
+
+	extractor *recipe.Extractor // New Extractor instance
 }
 
 // NewApp creates and initializes a new App instance.
@@ -59,6 +61,7 @@ func NewApp(
 		recipeRepo:    recipeRepo,
 		vectorRepo:    vectorRepo,
 		planRepo:      planRepo,
+		extractor:     recipe.NewExtractor(textGen, embedGen, vectorRepo), // Initialize Extractor
 	}
 }
 
@@ -72,13 +75,22 @@ func (a *App) IngestRecipes(ctx context.Context, force bool) error {
 	}
 
 	fmt.Printf("Successfully fetched %d recipe posts from Ghost.\n", len(posts))
+
+	// Ingest recipes within the loop, inlining the previous processSingleRecipe logic
 	for _, post := range posts {
 		// The database-level UPSERT now handles conditional updates based on the `updated_at` timestamp.
 		// The `force` flag ensures normalization always runs, but the DB handles the save logic.
 
 		log.Printf("Normalizing '%s'...", post.Title)
-		err := a.processSingleRecipe(ctx, post)
-		if err != nil {
+
+		// Inlined logic from processSingleRecipe
+		if err := ProcessAndSaveRecipe(
+			ctx,
+			a.extractor, // Pass the extractor
+			a.recipeRepo,
+			a.metricsStore,
+			post,
+		); err != nil {
 			log.Printf("Failed to process recipe '%s': %v", post.Title, err)
 		} else {
 			log.Printf("Successfully processed '%s'.", post.Title)
@@ -89,62 +101,6 @@ func (a *App) IngestRecipes(ctx context.Context, force bool) error {
 		time.Sleep(5 * time.Second)
 	}
 	fmt.Println("Ingestion complete.")
-	return nil
-}
-
-// processSingleRecipe handles the normalization and saving of a single recipe post.
-func (a *App) processSingleRecipe(ctx context.Context, post ghost.Post) error {
-	recipeWithEmbedding, meta, err := recipe.NormalizeHTML(
-		ctx,
-		a.textGen,
-		a.embedGen,
-		a.vectorRepo, // Pass vectorRepo here
-		recipe.PostData{
-			ID:        post.ID,
-			Title:     post.Title,
-			UpdatedAt: post.UpdatedAt,
-			HTML:      post.HTML,
-		},
-	)
-
-	if err != nil {
-		return fmt.Errorf("failed to normalize: %w", err)
-	}
-
-	// Use a transaction to ensure atomic save of recipe and embedding
-	err = func() error {
-		tx, err := a.db.SQL.BeginTx(ctx, nil)
-		if err != nil {
-			return err
-		}
-		defer tx.Rollback()
-
-		// Use WithTx to get transaction-aware repos
-		recipeRepoTx := a.recipeRepo.WithTx(tx)
-		vectorRepoTx := a.vectorRepo.WithTx(tx)
-
-		if err := recipeRepoTx.Save(ctx, recipeWithEmbedding.Recipe); err != nil {
-			return fmt.Errorf("failed to save recipe: %w", err)
-		}
-		if err := vectorRepoTx.Save(ctx, recipeWithEmbedding.ID, recipeWithEmbedding.Embedding); err != nil {
-			return fmt.Errorf("failed to save embedding: %w", err)
-		}
-
-		return tx.Commit()
-	}()
-
-	if err != nil {
-		return fmt.Errorf("failed to save to DB: %w", err)
-	}
-
-	a.metricsStore.Record(metrics.ExecutionMetric{
-		AgentName:        meta.AgentName,
-		Model:            meta.Usage.Model,
-		PromptTokens:     meta.Usage.PromptTokens,
-		CompletionTokens: meta.Usage.CompletionTokens,
-		LatencyMS:        meta.Latency.Milliseconds(),
-	})
-
 	return nil
 }
 

@@ -7,9 +7,7 @@ import (
 	"ai-meal-planner/internal/recipe" // Import the recipe package
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
-	"os"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -34,29 +32,31 @@ func TestVectorSearchRecallIntegration(t *testing.T) {
 	// 1. Load configuration
 	cfg, err := config.NewFromEnv()
 	if err != nil {
-		t.Fatalf("Failed to load config: %v", err)
+		t.Fatalf("Failed to load config: %v\n", err)
 	}
 
 	// Determine which LLM client to use based on config
 	var realEmbeddingGenerator llm.EmbeddingGenerator
+	var realTextGenerator llm.TextGenerator // Also need TextGenerator for NormalizeHTML
 	if cfg.GeminiAPIKey != "" {
 		geminiClient, err := llm.NewGeminiClient(ctx, cfg)
 		if err != nil {
-			t.Skipf("Skipping Gemini integration test: failed to create Gemini client: %v", err)
+			t.Skipf("Skipping Gemini integration test: failed to create Gemini client: %v\n", err)
 		}
 		defer geminiClient.Close()
 		realEmbeddingGenerator = geminiClient
-		t.Log("Using Gemini for embedding generation.")
+		realTextGenerator = geminiClient // Gemini client implements both
+		t.Log("Using Gemini for embedding and text generation.\n")
 	} else if cfg.GroqAPIKey != "" {
-		groqClient, err := llm.NewGroqClient(ctx, cfg)
-		if err != nil {
-			t.Skipf("Skipping Groq integration test: failed to create Groq client: %v", err)
-		}
-		defer groqClient.Close()
-		realEmbeddingGenerator = groqClient
-		t.Log("Using Groq for embedding generation (not recommended for embeddings).") // Groq does not have embedding models.
+		groqClient := llm.NewGroqClient(cfg, llm.ModelNormalizer)
+		realTextGenerator = groqClient
+		// For Groq, if it doesn't have an embedding model, we might need a dummy or skip
+		// For this test, let's assume embedding is always realEmbeddingGenerator for now
+		t.Log("Using Groq for text generation (no embedding model).\n")
+		// If Groq only for text, need a fallback for embedding.
+		t.Skip("Skipping integration test: Groq does not provide embedding models suitable for this test setup. Please configure GEMINI_API_KEY.\n")
 	} else {
-		t.Skip("Skipping integration test: No GEMINI_API_KEY or GROQ_API_KEY found in environment.")
+		t.Skip("Skipping integration test: No GEMINI_API_KEY or GROQ_API_KEY found in environment.\n")
 	}
 
 	// Set up cache for embeddings
@@ -64,28 +64,29 @@ func TestVectorSearchRecallIntegration(t *testing.T) {
 	cacheFilePath := filepath.Join(cacheDir, "embeddings_cache.json")
 	cachedEmbGen, err := llm.NewCachedEmbeddingGenerator(realEmbeddingGenerator, cacheFilePath)
 	if err != nil {
-		t.Fatalf("Failed to create cached embedding generator: %v", err)
+		t.Fatalf("Failed to create cached embedding generator: %v\n", err)
 	}
 	t.Cleanup(func() {
 		if err := cachedEmbGen.SaveCache(); err != nil {
-			log.Printf("Failed to save embedding cache: %v", err)
+			log.Printf("Failed to save embedding cache: %v\n", err)
 		}
 	})
 
 	// Setup in-memory SQLite database
 	db, err := sql.Open("sqlite3", "file::memory:?cache=shared")
 	if err != nil {
-		t.Fatalf("Failed to open in-memory database: %v", err)
+		t.Fatalf("Failed to open in-memory database: %v\n", err)
 	}
 	defer db.Close()
 
 	// Create tables for embeddings
-	_, err = db.Exec(vector_db.Schema)
+	_, err = db.Exec(vectordb.Schema) // Corrected to vectordb.Schema
 	if err != nil {
-		t.Fatalf("Failed to execute schema: %v", err)
+		t.Fatalf("Failed to execute schema: %v\n", err)
 	}
 
 	vectorRepo := llm.NewVectorRepository(db)
+	extractor := recipe.NewExtractor(realTextGenerator, cachedEmbGen, vectorRepo) // New Extractor instance
 
 	// --- Golden Set Definition ---
 	// IMPORTANT: You MUST replace this with your actual queries and expected RecipeIDs.
@@ -134,19 +135,15 @@ func TestVectorSearchRecallIntegration(t *testing.T) {
 			Title:       "Hearty Three-Bean Vegetarian Chili",
 			Ingredients: []string{"kidney beans", "black beans", "pinto beans", "tomatoes", "peppers", "onions", "chili powder"},
 			Tags:        []string{"vegetarian", "comfort food", "chili", "easy"},
-			PrepTime:    "45 min",
-		},
+			PrepTime:    "45 min, cook time 25 min"},
 		// Add more dummy recipes here to test various scenarios
 	}
 
 	// Generate and save embeddings for dummy recipes using NormalizeHTML
 	for _, r := range dummyRecipes {
-		// NormalizeHTML now handles embedding generation and saving with hashing
-		_, _, err := recipe.NormalizeHTML(
+		// NormalizeHTML now handles only extraction
+		extractorResult, err := extractor.ExtractRecipe( // Use extractor instance
 			ctx,
-			cachedEmbGen, // textGen and embGen are the same for this mock
-			cachedEmbGen,
-			vectorRepo, // Pass the vectorRepo
 			recipe.PostData{
 				ID:        r.ID,
 				Title:     r.Title,
@@ -155,7 +152,13 @@ func TestVectorSearchRecallIntegration(t *testing.T) {
 			},
 		)
 		if err != nil {
-			t.Fatalf("Failed to normalize and save recipe %s: %v", r.ID, err)
+			t.Fatalf("Failed to extract recipe %s: %v\n", r.ID, err)
+		}
+
+		// Process and save embedding separately
+		_, _, err = extractor.ProcessAndSaveEmbedding(ctx, extractorResult.Recipe) // Use extractor instance
+		if err != nil {
+			t.Fatalf("Failed to process and save embedding for recipe %s: %v\n", r.ID, err)
 		}
 	}
 
@@ -164,14 +167,14 @@ func TestVectorSearchRecallIntegration(t *testing.T) {
 		t.Run(gt.name, func(t *testing.T) {
 			queryEmbedding, err := cachedEmbGen.GenerateEmbedding(ctx, gt.query)
 			if err != nil {
-				t.Fatalf("Failed to generate embedding for query "%s": %v", gt.query, err)
+				t.Fatalf("Failed to generate embedding for query \"%s\": %v\n", gt.query, err)
 			}
 
 			// Find similar recipes. We'll retrieve a larger number than expected
 			// to calculate recall@K, where K is the number of expected IDs.
 			retrievedIDs, err := vectorRepo.FindSimilar(ctx, queryEmbedding, 10, nil) // Retrieve top 10
 			if err != nil {
-				t.Fatalf("Failed to find similar recipes for query "%s": %v", gt.query, err)
+				t.Fatalf("Failed to find similar recipes for query \"%s\": %v\n", gt.query, err)
 			}
 
 			// Calculate Recall@K
@@ -183,11 +186,11 @@ func TestVectorSearchRecallIntegration(t *testing.T) {
 			}
 
 			recall := float64(foundCount) / float64(len(gt.expectedIDs))
-			t.Logf("Query: "%s", Expected: %v, Retrieved (Top %d): %v, Recall: %.2f",
+			t.Logf("Query: \"%s\", Expected: %v, Retrieved (Top %d): %v, Recall: %.2f\n",
 				gt.query, gt.expectedIDs, len(retrievedIDs), retrievedIDs, recall)
 
 			if recall < gt.minRecall {
-				t.Errorf("Recall (%.2f) for query "%s" is below minimum acceptable (%.2f)", recall, gt.query, gt.minRecall)
+				t.Errorf("Recall (%.2f) for query \"%s\" is below minimum acceptable (%.2f)\n", recall, gt.query, gt.minRecall)
 			}
 		})
 	}

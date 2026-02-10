@@ -32,10 +32,10 @@ func (r *PlanRepository) Save(ctx context.Context, userID string, planData *Meal
 	}
 
 	params := db.InsertMealPlanParams{
-		UserID:         userID,
-		PlanData:       string(planJSON),
-		WeekStartDate:  planData.WeekStart,
-		CreatedAt:      time.Now().UTC(),
+		UserID:        userID,
+		PlanData:      string(planJSON),
+		WeekStartDate: planData.WeekStart,
+		CreatedAt:     time.Now().UTC(),
 	}
 	return r.queries.InsertMealPlan(ctx, params)
 }

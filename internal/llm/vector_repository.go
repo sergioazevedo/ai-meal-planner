@@ -11,6 +11,13 @@ import (
 	db "ai-meal-planner/internal/llm/vector_db"
 )
 
+type VectorRepositoryInterface interface {
+	Save(ctx context.Context, recipeID string, embedding []float32, textHash string) error
+	Get(ctx context.Context, recipeID string) (*EmbeddingRecord, error)
+	FindSimilar(ctx context.Context, queryEmbedding []float32, limit int, excludeIDs []string) ([]string, error)
+	WithTx(tx *sql.Tx) *VectorRepository
+}
+
 type VectorRepository struct {
 	queries *db.Queries
 	db      *sql.DB

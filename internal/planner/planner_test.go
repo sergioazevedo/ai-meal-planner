@@ -61,10 +61,10 @@ func TestGeneratePlan(t *testing.T) {
 	emb2 := []float32{0.0, 1.0}
 
 	_ = recipeRepo.Save(ctx, rec1)
-	_ = vectorRepo.Save(ctx, rec1.ID, emb1)
+	_ = vectorRepo.Save(ctx, rec1.ID, emb1, "dummy-hash-1")
 
 	_ = recipeRepo.Save(ctx, rec2)
-	_ = vectorRepo.Save(ctx, rec2.ID, emb2)
+	_ = vectorRepo.Save(ctx, rec2.ID, emb2, "dummy-hash-2")
 
 	mockGen := &MockTextGenerator{}
 	p := NewPlanner(recipeRepo, vectorRepo, planRepo, mockGen, mockGen, &MockEmbedingGenerator{})

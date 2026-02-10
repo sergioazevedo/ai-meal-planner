@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"ai-meal-planner/internal/app"
 	"ai-meal-planner/internal/clipper"
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/ghost"
@@ -33,6 +34,7 @@ type Bot struct {
 	planRepo   *planner.PlanRepository
 	recipeRepo *recipe.Repository
 	vectorRepo *llm.VectorRepository
+	extractor  *recipe.Extractor // Added extractor
 }
 
 // NewBot initializes the Telegram Bot and sets the Webhook.
@@ -44,7 +46,7 @@ func NewBot(
 	textGen llm.TextGenerator,
 	embedGen llm.EmbeddingGenerator,
 	planRepo *planner.PlanRepository, // New parameter
-	recipeRepo *recipe.Repository,    // New parameter
+	recipeRepo *recipe.Repository, // New parameter
 	vectorRepo *llm.VectorRepository, // New parameter
 ) (*Bot, error) {
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramBotToken)
@@ -62,6 +64,8 @@ func NewBot(
 	}
 	log.Printf("Webhook set response: %s", resp.Description)
 
+	extractor := recipe.NewExtractor(textGen, embedGen, vectorRepo)
+
 	return &Bot{
 		api:          bot,
 		planner:      planner,
@@ -73,6 +77,7 @@ func NewBot(
 		planRepo:     planRepo,
 		recipeRepo:   recipeRepo,
 		vectorRepo:   vectorRepo,
+		extractor:    extractor,
 	}, nil
 }
 
@@ -323,35 +328,14 @@ func (b *Bot) ingestClippedPost(post ghost.Post) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
-	recipeWithEmbedding, meta, err := recipe.NormalizeHTML(
+	if err := app.ProcessAndSaveRecipe(
 		ctx,
-		b.textGen,
-		b.embedGen,
-		b.vectorRepo, // Pass vectorRepo here
-		recipe.PostData{
-			ID:        post.ID,
-			Title:     post.Title,
-			UpdatedAt: post.UpdatedAt,
-			HTML:      post.HTML,
-		},
-	)
-
-	b.metricsStore.Record(metrics.ExecutionMetric{
-		AgentName:        meta.AgentName,
-		Model:            meta.Usage.Model,
-		PromptTokens:     meta.Usage.PromptTokens,
-		CompletionTokens: meta.Usage.CompletionTokens,
-		LatencyMS:        meta.Latency.Milliseconds(),
-	})
-
-	if err != nil {
-		log.Printf("Background Error: Failed to normalize '%s': %v", post.Title, err)
-		return
-	}
-
-	// Save to new RecipeRepository (embedding is saved within NormalizeHTML)
-	if err := b.recipeRepo.Save(ctx, recipeWithEmbedding.Recipe); err != nil {
-		log.Printf("Background Error: Failed to save recipe '%s' to DB: %v", recipeWithEmbedding.Title, err)
+		b.extractor,
+		b.recipeRepo,
+		b.metricsStore,
+		post,
+	); err != nil {
+		log.Printf("Background Error: Failed to process and save clipped post '%s': %v", post.Title, err)
 		return
 	}
 

@@ -66,7 +66,7 @@ func TestFetchAndCleanHTML(t *testing.T) {
 	c := NewClipper(&MockGhostClient{}, &MockTextGenerator{})
 
 	// 3. Run the private method (using export_test.go trick or just testing public ClipURL if preferred)
-	// Since go doesn't allow testing private methods easily from external test package, 
+	// Since go doesn't allow testing private methods easily from external test package,
 	// we are in package clipper, so we can access it.
 	cleanText, err := c.fetchAndCleanHTML(ts.URL)
 	if err != nil {
@@ -93,7 +93,7 @@ func TestFetchAndCleanHTML(t *testing.T) {
 
 func TestFormatToHTML(t *testing.T) {
 	c := NewClipper(nil, nil)
-	
+
 	recipe := ExtractedRecipe{
 		Title:       "Pancakes",
 		Ingredients: []string{"Flour", "Milk"},
@@ -101,7 +101,7 @@ func TestFormatToHTML(t *testing.T) {
 		PrepTime:    "10m",
 		Servings:    "2",
 	}
-	
+
 	html := c.formatToHTML(recipe, "http://test.com")
 
 	expectedSubstrings := []string{

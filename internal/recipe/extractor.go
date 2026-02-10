@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
+	"database/sql" // Added for sql.ErrNoRows
 	_ "embed"
 	"encoding/hex"
 	"encoding/json"
@@ -22,65 +23,36 @@ type ExtractorResult struct {
 	Meta   shared.AgentMeta
 }
 
-// NormalizeHTML takes raw recipe data (usually HTML), extracts structured information
-// using an LLM, and generates vector embeddings for semantic search.
-func NormalizeHTML(
-	ctx context.Context,
-	textGen llm.TextGenerator,
-	embGen llm.EmbeddingGenerator,
-	vectorRepo *llm.VectorRepository, // Add vectorRepo here for checking existing embeddings
-	data PostData,
-) (RecipeWithEmbedding, shared.AgentMeta, error) {
-	result, err := runExtractor(ctx, textGen, data)
-	if err != nil {
-		return RecipeWithEmbedding{}, shared.AgentMeta{}, err
-	}
-
-	embeddingSourceText := result.Recipe.ToEmbeddingText()
-	hasher := md5.New()
-	hasher.Write([]byte(embeddingSourceText))
-	currentTextHash := hex.EncodeToString(hasher.Sum(nil))
-
-	var embedding []float32
-	var meta = result.Meta
-
-	// Try to retrieve existing embedding and hash
-	existingEmbeddingRecord, err := vectorRepo.Get(ctx, result.Recipe.ID)
-	if err != nil && err != sql.ErrNoRows { // Handle real errors, ignore no rows
-		return RecipeWithEmbedding{}, result.Meta, fmt.Errorf("failed to get existing embedding record: %w", err)
-	}
-
-	if existingEmbeddingRecord != nil && existingEmbeddingRecord.TextHash == currentTextHash {
-		// Cache HIT: use existing embedding
-		embedding = existingEmbeddingRecord.Embedding
-		meta.Usage.PromptTokens = 0 // No tokens consumed for embedding
-		meta.Usage.CompletionTokens = 0
-		meta.Latency = 0 // No latency for embedding generation
-	} else {
-		// Cache MISS or hash mismatch: generate new embedding
-		embedding, err = embGen.GenerateEmbedding(ctx, embeddingSourceText)
-		if err != nil {
-			return RecipeWithEmbedding{}, result.Meta, fmt.Errorf("failed to generate embedding: %w", err)
-		}
-	}
-
-	// Save the embedding (will upsert in DB) with the new hash
-	// This ensures the hash is always up-to-date even if only recipe data changed.
-	if err := vectorRepo.Save(ctx, result.Recipe.ID, embedding, currentTextHash); err != nil {
-		return RecipeWithEmbedding{}, result.Meta, fmt.Errorf("failed to save embedding with hash: %w", err)
-	}
-
-	return RecipeWithEmbedding{
-		Recipe:    result.Recipe,
-		Embedding: embedding,
-	}, meta, nil
+// Extractor encapsulates dependencies for recipe extraction and embedding processes.
+type Extractor struct {
+	textGen    llm.TextGenerator
+	embGen     llm.EmbeddingGenerator
+	vectorRepo llm.VectorRepositoryInterface
 }
 
-func runExtractor(
-	ctx context.Context,
-	textGen llm.TextGenerator,
-	data PostData,
+// NewExtractor creates a new Extractor instance.
+func NewExtractor(textGen llm.TextGenerator, embGen llm.EmbeddingGenerator, vectorRepo llm.VectorRepositoryInterface) *Extractor {
+	return &Extractor{
+		textGen:    textGen,
+		embGen:     embGen,
+		vectorRepo: vectorRepo,
+	}
+}
 
+// NormalizeHTML takes raw recipe data (usually HTML) and extracts structured information
+// using an LLM. This is now a wrapper for e.ExtractRecipe.
+// NOTE: This function is kept for backward compatibility with previous call sites.
+func (e *Extractor) NormalizeHTML(
+	ctx context.Context,
+	data PostData,
+) (ExtractorResult, error) {
+	return e.ExtractRecipe(ctx, data)
+}
+
+// ExtractRecipe takes raw recipe data and extracts structured information using an LLM.
+func (e *Extractor) ExtractRecipe(
+	ctx context.Context,
+	data PostData,
 ) (ExtractorResult, error) {
 	start := time.Now()
 
@@ -89,15 +61,15 @@ func runExtractor(
 		return ExtractorResult{}, err
 	}
 
-	llmResp, err := textGen.GenerateContent(ctx, prompt)
+	llmResp, err := e.textGen.GenerateContent(ctx, prompt)
 	if err != nil {
 		return ExtractorResult{}, fmt.Errorf("failed to get LLM response: %w", err)
 	}
 
-	recipe := Recipe{}
-	if err := json.Unmarshal([]byte(llmResp.Content), &recipe); err != nil {
+	rec := Recipe{}
+	if err := json.Unmarshal([]byte(llmResp.Content), &rec); err != nil {
 		return ExtractorResult{
-				Recipe: recipe,
+				Recipe: rec,
 				Meta: shared.AgentMeta{
 					AgentName: "Extractor",
 					Usage:     llmResp.Usage,
@@ -108,16 +80,65 @@ func runExtractor(
 			)
 	}
 
-	recipe.ID = data.ID
-	recipe.UpdatedAt = data.UpdatedAt
+	rec.ID = data.ID
+	rec.UpdatedAt = data.UpdatedAt
 	return ExtractorResult{
-		Recipe: recipe,
+		Recipe: rec,
 		Meta: shared.AgentMeta{
 			AgentName: "Extractor",
 			Usage:     llmResp.Usage,
 			Latency:   time.Since(start),
 		},
 	}, nil
+}
+
+// ProcessAndSaveEmbedding generates and saves the embedding for a given recipe,
+// utilizing a caching mechanism.
+func (e *Extractor) ProcessAndSaveEmbedding(
+	ctx context.Context,
+	rec Recipe, // Already extracted recipe
+) (embedding []float32, meta shared.AgentMeta, err error) {
+	embeddingSourceText := rec.ToEmbeddingText()
+	hasher := md5.New()
+	hasher.Write([]byte(embeddingSourceText))
+	currentTextHash := hex.EncodeToString(hasher.Sum(nil))
+
+	// Initialize meta for embedding generation
+	embedMeta := shared.AgentMeta{AgentName: "Embedding"}
+
+	// Try to retrieve existing embedding and hash
+	existingEmbeddingRecord, err := e.vectorRepo.Get(ctx, rec.ID)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, embedMeta, fmt.Errorf("failed to get existing embedding record: %w", err)
+	}
+
+	if existingEmbeddingRecord != nil && existingEmbeddingRecord.TextHash == currentTextHash {
+		// Cache HIT: use existing embedding
+		embedding = existingEmbeddingRecord.Embedding
+		embedMeta.Usage.PromptTokens = 0 // No tokens consumed
+		embedMeta.Usage.CompletionTokens = 0
+		embedMeta.Latency = 0 // No latency
+	} else {
+		// Cache MISS or hash mismatch: generate new embedding
+		start := time.Now()
+		embedding, err = e.embGen.GenerateEmbedding(ctx, embeddingSourceText)
+		if err != nil {
+			return nil, embedMeta, fmt.Errorf("failed to generate embedding: %w", err)
+		}
+		embedMeta.Latency = time.Since(start)
+		// Assume 1 token per character for simplicity for metrics, or retrieve actual usage from embGen if available
+		// A more accurate metric would come from the LLM client itself if exposed.
+		embedMeta.Usage.PromptTokens = len(embeddingSourceText) // Placeholder
+		embedMeta.Usage.CompletionTokens = 0                    // Embeddings don't have completion tokens in this context
+	}
+
+	// Save the embedding (will upsert in DB) with the new hash
+	// This ensures the hash is always up-to-date even if only recipe data changed.
+	if err := e.vectorRepo.Save(ctx, rec.ID, embedding, currentTextHash); err != nil {
+		return nil, embedMeta, fmt.Errorf("failed to save embedding with hash: %w", err)
+	}
+
+	return embedding, embedMeta, nil
 }
 
 func buildExtractorPrompt(data PostData) (string, error) {

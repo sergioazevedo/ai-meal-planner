@@ -37,8 +37,7 @@ func NewCachedEmbeddingGenerator(realGen EmbeddingGenerator, cacheFilePath strin
 	data, err := os.ReadFile(cacheFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			fmt.Printf("Cache file not found, starting with empty cache: %s
-", cacheFilePath)
+			fmt.Printf("Cache file not found, starting with empty cache: %s\n", cacheFilePath)
 			return c, nil
 		}
 		return nil, fmt.Errorf("failed to read cache file %s: %w", cacheFilePath, err)
@@ -48,8 +47,7 @@ func NewCachedEmbeddingGenerator(realGen EmbeddingGenerator, cacheFilePath strin
 		return nil, fmt.Errorf("failed to unmarshal cache data from %s: %w", cacheFilePath, err)
 	}
 
-	fmt.Printf("Loaded %d embeddings from cache: %s
-", len(c.cache), cacheFilePath)
+	fmt.Printf("Loaded %d embeddings from cache: %s\n", len(c.cache), cacheFilePath)
 	return c, nil
 }
 
@@ -60,13 +58,11 @@ func (c *CachedEmbeddingGenerator) GenerateEmbedding(ctx context.Context, text s
 	defer c.mu.Unlock()
 
 	if embedding, ok := c.cache[text]; ok {
-		// fmt.Printf("Cache HIT for text: "%s"
-", text)
+		// fmt.Printf("Cache HIT for text: \"%s\"\n", text)
 		return embedding, nil
 	}
 
-	// fmt.Printf("Cache MISS for text: "%s", calling real generator...
-", text)
+	// fmt.Printf("Cache MISS for text: \"%s\", calling real generator...\n", text)
 	embedding, err := c.realGen.GenerateEmbedding(ctx, text)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate embedding using real generator: %w", err)
@@ -90,7 +86,6 @@ func (c *CachedEmbeddingGenerator) SaveCache() error {
 		return fmt.Errorf("failed to write cache file %s: %w", c.cacheFilePath, err)
 	}
 
-	fmt.Printf("Saved %d embeddings to cache: %s
-", len(c.cache), c.cacheFilePath)
+	fmt.Printf("Saved %d embeddings to cache: %s\n", len(c.cache), c.cacheFilePath)
 	return nil
 }

@@ -9,6 +9,23 @@ import (
 	"database/sql"
 )
 
+const Schema = `
+-- recipes table (document store approach)
+CREATE TABLE IF NOT EXISTS recipes (
+    id TEXT PRIMARY KEY NOT NULL,         -- Unique recipe ID
+    data TEXT NOT NULL,                   -- Full recipe JSON as text
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+-- recipe_embeddings table
+CREATE TABLE IF NOT EXISTS recipe_embeddings (
+    recipe_id TEXT PRIMARY KEY NOT NULL,  -- Foreign key to recipes.id
+    embedding BLOB NOT NULL,              -- Serialized []float32 vector
+    text_hash TEXT NOT NULL DEFAULT '',   -- Hash of the text used to generate the embedding
+    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
+);
+`
+
 type DBTX interface {
 	ExecContext(context.Context, string, ...interface{}) (sql.Result, error)
 	PrepareContext(context.Context, string) (*sql.Stmt, error)
