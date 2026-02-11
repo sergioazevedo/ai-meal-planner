@@ -39,16 +39,6 @@ func NewExtractor(textGen llm.TextGenerator, embGen llm.EmbeddingGenerator, vect
 	}
 }
 
-// NormalizeHTML takes raw recipe data (usually HTML) and extracts structured information
-// using an LLM. This is now a wrapper for e.ExtractRecipe.
-// NOTE: This function is kept for backward compatibility with previous call sites.
-func (e *Extractor) NormalizeHTML(
-	ctx context.Context,
-	data PostData,
-) (ExtractorResult, error) {
-	return e.ExtractRecipe(ctx, data)
-}
-
 // ExtractRecipe takes raw recipe data and extracts structured information using an LLM.
 func (e *Extractor) ExtractRecipe(
 	ctx context.Context,

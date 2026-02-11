@@ -64,21 +64,18 @@ func (r *Repository) Save(ctx context.Context, rec Recipe) error {
 }
 
 // Get retrieves a recipe by its ID.
-func (r *Repository) Get(ctx context.Context, id string) (*Recipe, error) {
+func (r *Repository) Get(ctx context.Context, id string) (Recipe, error) {
 	dbRecipe, err := r.queries.GetRecipeByID(ctx, id)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil // Recipe not found
-		}
-		return nil, fmt.Errorf("failed to get recipe by ID: %w", err)
+		return Recipe{}, err
 	}
 
 	var rec Recipe
 	if err := json.Unmarshal([]byte(dbRecipe.Data), &rec); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal recipe JSON: %w", err)
+		return Recipe{}, fmt.Errorf("failed to unmarshal recipe JSON: %w", err)
 	}
 
-	return &rec, nil
+	return rec, nil
 }
 
 // GetByIds retrieves multiple recipes by their IDs.

@@ -2,16 +2,21 @@ package database
 
 import (
 	"database/sql"
+	"embed"
 	"fmt"
+	"io/fs"
 	"log" // Added log for migration messages
 	"os"
 	"path/filepath"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/sqlite" // Required for sqlite driver
-	_ "github.com/golang-migrate/migrate/v4/source/file"     // Required for file source
-	_ "github.com/mattn/go-sqlite3"                          // Changed from modernc.org/sqlite to be compatible with golang-migrate
+	"github.com/golang-migrate/migrate/v4/source/iofs"
+	_ "github.com/mattn/go-sqlite3" // Changed from modernc.org/sqlite to be compatible with golang-migrate
 )
+
+//go:embed migrations/*.sql
+var migrationsFS embed.FS
 
 //go:generate sh -c "cd ../.. && sqlc generate"
 
@@ -53,12 +58,18 @@ func (d *DB) Close() error {
 
 // RunMigrations applies database migrations using golang-migrate.
 func RunMigrations(databasePath string) error {
+	d, err := iofs.New(migrationsFS, "migrations")
+	if err != nil {
+		return fmt.Errorf("failed to create iofs driver: %w", err)
+	}
+
 	// Migrate expects a URL-like string for the database source
 	// For SQLite, it's "sqlite3://<path_to_db>"
 	databaseURL := fmt.Sprintf("sqlite3://%s", databasePath)
 
-	m, err := migrate.New(
-		"file://internal/database/migrations", // Path to migration files
+	m, err := migrate.NewWithSourceInstance(
+		"iofs",
+		d,
 		databaseURL,
 	)
 	if err != nil {

@@ -247,11 +247,6 @@ func (b *Bot) generateAndSendPlan(ctx context.Context, userID string, chatID int
 		CookingFrequency: b.cfg.DefaultCookingFrequency,
 	}
 
-	// Basic extraction for demo purposes
-	if strings.Contains(strings.ToLower(request), "adults") {
-		fmt.Sscanf(request, "%d adults", &pCtx.Adults)
-	}
-
 	plan, metas, err := b.planner.GeneratePlan(ctx, userID, request, pCtx, targetWeek)
 
 	// Record Metrics even if it errored (if we have metas)
