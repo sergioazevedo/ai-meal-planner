@@ -49,6 +49,14 @@ func (s *Store) Record(m ExecutionMetric) error {
 	})
 }
 
+// RecordMeta records metrics directly from shared.AgentMeta.
+func (s *Store) RecordMeta(meta shared.AgentMeta) error {
+	if meta.Usage.PromptTokens == 0 && meta.Usage.CompletionTokens == 0 {
+		return nil
+	}
+	return s.Record(MapUsage(meta.AgentName, meta.Usage, meta.Latency))
+}
+
 // Close closes the database connection.
 func (s *Store) Close() error {
 	return s.db.Close()

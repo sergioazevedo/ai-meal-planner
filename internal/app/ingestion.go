@@ -5,6 +5,8 @@ import (
 	"ai-meal-planner/internal/metrics"
 	"ai-meal-planner/internal/recipe"
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 )
 
@@ -12,61 +14,59 @@ import (
 // generating/caching its embedding, and saving it to the database.
 func ProcessAndSaveRecipe(
 	ctx context.Context,
-	extractor *recipe.Extractor, // Use Extractor struct
+	extractor *recipe.Extractor,
 	recipeRepo *recipe.Repository,
 	metricsStore *metrics.Store,
 	post ghost.Post,
 ) error {
-	// 1. Extract Recipe (Normalization)
-	extractorResult, err := extractor.ExtractRecipe(
-		ctx,
-		recipe.PostData{
-			ID:        post.ID,
-			Title:     post.Title,
-			UpdatedAt: post.UpdatedAt,
-			HTML:      post.HTML,
-		},
-	)
+	rec, err := ensureRecipe(ctx, extractor, recipeRepo, metricsStore, post)
 	if err != nil {
-		return fmt.Errorf("failed to extract recipe: %w", err)
+		return err
 	}
 
-	// 2. Generate and Save Embedding
-	embedding, embeddingMeta, err := extractor.ProcessAndSaveEmbedding(
-		ctx,
-		extractorResult.Recipe,
-	)
+	// Generate and Save Embedding
+	_, meta, err := extractor.ProcessAndSaveEmbedding(ctx, rec)
 	if err != nil {
 		return fmt.Errorf("failed to process and save embedding: %w", err)
 	}
-	_ = embedding // embedding is currently unused after saving in ProcessAndSaveEmbedding
 
-	// 3. Save Recipe to DB
-	// The recipe struct in extractorResult already contains the ID and UpdatedAt set by ExtractRecipe
-	if err := recipeRepo.Save(ctx, extractorResult.Recipe); err != nil {
-		return fmt.Errorf("failed to save recipe: %w", err)
+	return metricsStore.RecordMeta(meta)
+}
+
+// ensureRecipe retrieves a recipe from the repository or extracts it from the post if missing.
+func ensureRecipe(
+	ctx context.Context,
+	extractor *recipe.Extractor,
+	recipeRepo *recipe.Repository,
+	metricsStore *metrics.Store,
+	post ghost.Post,
+) (recipe.Recipe, error) {
+	rec, err := recipeRepo.Get(ctx, post.ID)
+	if err == nil {
+		return rec, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return recipe.Recipe{}, fmt.Errorf("failed to get recipe from repo: %w", err)
 	}
 
-	// 4. Record Metrics
-	// Record Extractor metrics
-	metricsStore.Record(metrics.ExecutionMetric{
-		AgentName:        extractorResult.Meta.AgentName,
-		Model:            extractorResult.Meta.Usage.Model,
-		PromptTokens:     extractorResult.Meta.Usage.PromptTokens,
-		CompletionTokens: extractorResult.Meta.Usage.CompletionTokens,
-		LatencyMS:        extractorResult.Meta.Latency.Milliseconds(),
+	// Extraction required
+	res, err := extractor.ExtractRecipe(ctx, recipe.PostData{
+		ID:        post.ID,
+		Title:     post.Title,
+		UpdatedAt: post.UpdatedAt,
+		HTML:      post.HTML,
 	})
-
-	// Record Embedding metrics (if tokens were actually used)
-	if embeddingMeta.Usage.PromptTokens > 0 { // Only record if not a cache hit
-		metricsStore.Record(metrics.ExecutionMetric{
-			AgentName:        embeddingMeta.AgentName,
-			Model:            embeddingMeta.Usage.Model,
-			PromptTokens:     embeddingMeta.Usage.PromptTokens,
-			CompletionTokens: embeddingMeta.Usage.CompletionTokens,
-			LatencyMS:        embeddingMeta.Latency.Milliseconds(),
-		})
+	if err != nil {
+		return recipe.Recipe{}, fmt.Errorf("failed to extract recipe: %w", err)
 	}
 
-	return nil
+	if err := recipeRepo.Save(ctx, res.Recipe); err != nil {
+		return recipe.Recipe{}, fmt.Errorf("failed to save recipe: %w", err)
+	}
+
+	if err := metricsStore.RecordMeta(res.Meta); err != nil {
+		return res.Recipe, fmt.Errorf("failed to record extraction metrics: %w", err)
+	}
+
+	return res.Recipe, nil
 }

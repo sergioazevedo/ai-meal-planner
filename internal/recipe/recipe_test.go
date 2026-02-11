@@ -239,7 +239,11 @@ func TestExtractor_ProcessAndSaveEmbedding(t *testing.T) {
 
 	t.Run("VectorRepoSaveError", func(t *testing.T) {
 		mockEmbGen := &MockEmbedingGenerator{}
-		mockVectorRepo := &MockVectorRepository{shouldError: true} // Simulate save error
+		mockVectorRepo := &MockVectorRepository{
+			mockSave: func(ctx context.Context, recipeID string, embedding []float32, textHash string) error {
+				return errors.New("mock vector repo error")
+			},
+		} // Simulate save error
 		extractor := NewExtractor(nil, mockEmbGen, mockVectorRepo)
 
 		_, _, err := extractor.ProcessAndSaveEmbedding(ctx, sampleRecipe)
