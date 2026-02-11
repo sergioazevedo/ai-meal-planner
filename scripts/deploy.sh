@@ -17,8 +17,8 @@ fi
 
 echo "Building binaries for Linux..."
 mkdir -p bin
-GOOS=linux GOARCH=amd64 go build -o "bin/$CLI_BINARY" ./cmd/ai-meal-planner
-GOOS=linux GOARCH=amd64 go build -o "bin/$BOT_BINARY" ./cmd/telegram-bot
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o "bin/$CLI_BINARY" ./cmd/ai-meal-planner
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o "bin/$BOT_BINARY" ./cmd/telegram-bot
 
 echo "Stopping remote service to allow binary update..."
 CMD_STOP="sudo systemctl stop meal-planner-bot || true"

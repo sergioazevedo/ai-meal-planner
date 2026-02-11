@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 
 	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/sqlite3" // Required for sqlite3 driver
+	_ "github.com/golang-migrate/migrate/v4/database/sqlite" // Pure Go sqlite driver
 	"github.com/golang-migrate/migrate/v4/source/iofs"
-	_ "github.com/mattn/go-sqlite3" // Changed from modernc.org/sqlite to be compatible with golang-migrate
+	_ "modernc.org/sqlite"
 )
 
 //go:embed migrations/*.sql
@@ -63,8 +63,8 @@ func RunMigrations(databasePath string) error {
 	}
 
 	// Migrate expects a URL-like string for the database source
-	// For SQLite, it's "sqlite3://<path_to_db>"
-	databaseURL := fmt.Sprintf("sqlite3://%s", databasePath)
+	// For modernc.org/sqlite, it's "sqlite://<path_to_db>"
+	databaseURL := fmt.Sprintf("sqlite://%s", databasePath)
 
 	m, err := migrate.NewWithSourceInstance(
 		"iofs",

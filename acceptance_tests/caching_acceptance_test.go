@@ -15,6 +15,7 @@ import (
 	"ai-meal-planner/internal/metrics"
 	"ai-meal-planner/internal/planner"
 	"ai-meal-planner/internal/recipe"
+
 	_ "modernc.org/sqlite"
 )
 
@@ -138,7 +139,7 @@ func TestFullWorkflow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get recipe from DB: %v", err)
 	}
-	if rec == nil {
+	if rec.Title == "" {
 		t.Errorf("Expected recipe to be in DB")
 	}
 
