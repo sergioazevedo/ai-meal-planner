@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/sqlite" // Required for sqlite driver
+	_ "github.com/golang-migrate/migrate/v4/database/sqlite3" // Required for sqlite3 driver
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	_ "github.com/mattn/go-sqlite3" // Changed from modernc.org/sqlite to be compatible with golang-migrate
 )
