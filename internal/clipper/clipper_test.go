@@ -22,11 +22,15 @@ func (m *MockGhostClient) FetchRecipes() ([]ghost.Post, error) {
 	return nil, nil
 }
 
-func (m *MockGhostClient) CreatePost(title, html string, publish bool) (*ghost.Post, error) {
+func (m *MockGhostClient) CreatePost(title, html string, tags []string, publish bool) (*ghost.Post, error) {
 	if m.ShouldError {
 		return nil, fmt.Errorf("mock error")
 	}
-	m.CreatedPost = &ghost.Post{ID: "123", Title: title, HTML: html}
+	ghostTags := make([]ghost.Tag, len(tags))
+	for i, t := range tags {
+		ghostTags[i] = ghost.Tag{Name: t}
+	}
+	m.CreatedPost = &ghost.Post{ID: "123", Title: title, HTML: html, Tags: ghostTags}
 	return m.CreatedPost, nil
 }
 
@@ -132,7 +136,7 @@ func TestClipURL_Success(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	post, err := c.ClipURL(context.Background(), ts.URL)
+	post, err := c.ClipURL(context.Background(), ts.URL, nil)
 	if err != nil {
 		t.Fatalf("ClipURL failed: %v", err)
 	}

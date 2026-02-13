@@ -27,6 +27,7 @@ type ExtractedRecipe struct {
 	Steps       []string `json:"steps"`
 	PrepTime    string   `json:"prep_time"`
 	Servings    string   `json:"servings"`
+	Tags        []string `json:"tags"`
 }
 
 // NewClipper creates a new Clipper instance.
@@ -38,7 +39,7 @@ func NewClipper(ghostClient ghost.Client, textGen llm.TextGenerator) *Clipper {
 }
 
 // ClipURL fetches the URL, extracts the recipe using AI, and saves it to Ghost.
-func (c *Clipper) ClipURL(ctx context.Context, url string) (*ghost.Post, error) {
+func (c *Clipper) ClipURL(ctx context.Context, url string, manualTags []string) (*ghost.Post, error) {
 	// 1. Fetch and Clean HTML
 	content, err := c.fetchAndCleanHTML(url)
 	if err != nil {
@@ -54,7 +55,8 @@ Return the result strictly as a JSON object with this structure:
   "ingredients": ["item 1", "item 2", ...],
   "steps": ["Step 1 description", "Step 2 description", ...],
   "prep_time": "e.g. 30 mins",
-  "servings": "e.g. 4 people"
+  "servings": "e.g. 4 people",
+  "tags": ["tag1", "tag2"]
 }
 
 HTML Content:
@@ -81,8 +83,22 @@ HTML Content:
 	// 3. Format as Ghost HTML
 	html := c.formatToHTML(extracted, url)
 
-	// 4. Save to Ghost (Published)
-	post, err := c.ghostClient.CreatePost(extracted.Title, html, true)
+	// 4. Merge Tags (AI + Manual)
+	tagMap := make(map[string]struct{})
+	for _, t := range extracted.Tags {
+		tagMap[strings.ToLower(strings.TrimSpace(t))] = struct{}{}
+	}
+	for _, t := range manualTags {
+		tagMap[strings.ToLower(strings.TrimSpace(t))] = struct{}{}
+	}
+
+	finalTags := make([]string, 0, len(tagMap))
+	for t := range tagMap {
+		finalTags = append(finalTags, t)
+	}
+
+	// 5. Save to Ghost (Published)
+	post, err := c.ghostClient.CreatePost(extracted.Title, html, finalTags, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save to ghost: %w", err)
 	}

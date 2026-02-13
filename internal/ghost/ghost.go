@@ -19,6 +19,14 @@ type Post struct {
 	Title     string `json:"title"`
 	HTML      string `json:"html"`
 	UpdatedAt string `json:"updated_at"`
+	Tags      []Tag  `json:"tags,omitempty"`
+}
+
+// Tag represents a tag in Ghost.
+type Tag struct {
+	ID   string `json:"id,omitempty"`
+	Name string `json:"name"`
+	Slug string `json:"slug,omitempty"`
 }
 
 // PostsResponse is the top-level structure of the Ghost API response for posts.
@@ -29,7 +37,7 @@ type PostsResponse struct {
 // Client is an interface for a Ghost API client (Content & Admin).
 type Client interface {
 	FetchRecipes() ([]Post, error)
-	CreatePost(title, html string, publish bool) (*Post, error)
+	CreatePost(title, html string, tags []string, publish bool) (*Post, error)
 }
 
 // ghostClient is the concrete implementation of the Ghost API client.
@@ -76,7 +84,7 @@ func (c *ghostClient) FetchRecipes() ([]Post, error) {
 }
 
 // CreatePost creates a new post using the Ghost Admin API.
-func (c *ghostClient) CreatePost(title, html string, publish bool) (*Post, error) {
+func (c *ghostClient) CreatePost(title, html string, tags []string, publish bool) (*Post, error) {
 	token, err := c.createAdminToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create admin token: %w", err)
@@ -87,12 +95,18 @@ func (c *ghostClient) CreatePost(title, html string, publish bool) (*Post, error
 		status = "published"
 	}
 
+	ghostTags := make([]Tag, len(tags))
+	for i, t := range tags {
+		ghostTags[i] = Tag{Name: t}
+	}
+
 	newPost := map[string]interface{}{
 		"posts": []map[string]interface{}{
 			{
 				"title":  title,
 				"html":   html,
 				"status": status,
+				"tags":   ghostTags,
 			},
 		},
 	}

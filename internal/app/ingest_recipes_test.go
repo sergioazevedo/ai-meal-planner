@@ -23,7 +23,7 @@ func (m *mockGhostClientForIngest) FetchRecipes() ([]ghost.Post, error) {
 	return m.posts, m.err
 }
 
-func (m *mockGhostClientForIngest) CreatePost(title, html string, publish bool) (*ghost.Post, error) {
+func (m *mockGhostClientForIngest) CreatePost(title, html string, tags []string, publish bool) (*ghost.Post, error) {
 	return nil, nil
 }
 

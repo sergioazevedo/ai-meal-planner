@@ -160,15 +160,46 @@ func (b *Bot) handleClipperRequest(msg *tgbotapi.Message) {
 
 	ctx := context.Background()
 
+	// Parse URL and optional tags
+	// Format: http://url tag: t1, t2
+	parts := strings.Split(msg.Text, " ")
+	url := parts[0]
+	var manualTags []string
+
+	for i, p := range parts {
+		if strings.ToLower(p) == "tag:" && i+1 < len(parts) {
+			tagStr := strings.Join(parts[i+1:], " ")
+			// Split by comma or space
+			rawTags := strings.FieldsFunc(tagStr, func(r rune) bool {
+				return r == ',' || r == ' '
+			})
+			for _, t := range rawTags {
+				trimmed := strings.TrimSpace(t)
+				if trimmed != "" {
+					manualTags = append(manualTags, trimmed)
+				}
+			}
+			break
+		}
+	}
+
 	// --- Clipper Flow ---
-	post, err := b.clipper.ClipURL(ctx, msg.Text)
+	post, err := b.clipper.ClipURL(ctx, url, manualTags)
 	var finalText string
 	if err != nil {
 		log.Printf("Error clipping recipe: %v", err)
 		safeErr := strings.ReplaceAll(err.Error(), "`", "'")
 		finalText = fmt.Sprintf("❌ *Error clipping recipe:*\n```\n%v\n```", safeErr)
 	} else {
-		finalText = fmt.Sprintf("✅ *Recipe Saved!*\n\n*Title:* %s\n*URL:* %s/%s", post.Title, b.cfg.GhostURL, post.ID)
+		tagDisplay := ""
+		if len(post.Tags) > 0 {
+			var tagNames []string
+			for _, t := range post.Tags {
+				tagNames = append(tagNames, t.Name)
+			}
+			tagDisplay = "\n*Tags:* " + strings.Join(tagNames, ", ")
+		}
+		finalText = fmt.Sprintf("✅ *Recipe Saved!*\n\n*Title:* %s\n*URL:* %s/%s%s", post.Title, b.cfg.GhostURL, post.ID, tagDisplay)
 		// Trigger background ingestion so it becomes searchable for future plans
 		go b.ingestClippedPost(*post)
 	}
