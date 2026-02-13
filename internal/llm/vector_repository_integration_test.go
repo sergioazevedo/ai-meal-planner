@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"os"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -29,15 +30,22 @@ func TestVectorSearchRecallIntegration(t *testing.T) {
 	// --- Test Setup ---
 	ctx := context.Background()
 
-	// 1. Load configuration
-	cfg, err := config.NewFromEnv()
-	if err != nil {
-		t.Fatalf("Failed to load config: %v\n", err)
+	// 1. Load configuration (permissively for integration test)
+	geminiKey := os.Getenv("GEMINI_API_KEY")
+	groqKey := os.Getenv("GROQ_API_KEY")
+
+	if geminiKey == "" && groqKey == "" {
+		t.Skip("Skipping integration test: No GEMINI_API_KEY or GROQ_API_KEY found in environment.")
+	}
+
+	cfg := &config.Config{
+		GeminiAPIKey: geminiKey,
+		GroqAPIKey:   groqKey,
 	}
 
 	// Determine which LLM client to use based on config
 	var realEmbeddingGenerator llm.EmbeddingGenerator
-	var realTextGenerator llm.TextGenerator // Also need TextGenerator for NormalizeHTML
+	var realTextGenerator llm.TextGenerator
 	if cfg.GeminiAPIKey != "" {
 		geminiClient, err := llm.NewGeminiClient(ctx, cfg)
 		if err != nil {
