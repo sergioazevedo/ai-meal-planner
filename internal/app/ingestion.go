@@ -50,11 +50,17 @@ func ensureRecipe(
 	}
 
 	// Extraction required
+	var tags []string
+	for _, t := range post.Tags {
+		tags = append(tags, t.Name)
+	}
+
 	res, err := extractor.ExtractRecipe(ctx, recipe.PostData{
 		ID:        post.ID,
 		Title:     post.Title,
 		UpdatedAt: post.UpdatedAt,
 		HTML:      post.HTML,
+		Tags:      tags,
 	})
 	if err != nil {
 		return recipe.Recipe{}, fmt.Errorf("failed to extract recipe: %w", err)

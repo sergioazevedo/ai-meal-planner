@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"text/template"
 	"time"
 )
@@ -72,6 +73,24 @@ func (e *Extractor) ExtractRecipe(
 
 	rec.ID = data.ID
 	rec.UpdatedAt = data.UpdatedAt
+
+	// Merge manual tags from Ghost if they exist
+	if len(data.Tags) > 0 {
+		tagMap := make(map[string]struct{})
+		for _, t := range rec.Tags {
+			tagMap[strings.ToLower(strings.TrimSpace(t))] = struct{}{}
+		}
+		for _, t := range data.Tags {
+			tagMap[strings.ToLower(strings.TrimSpace(t))] = struct{}{}
+		}
+
+		finalTags := make([]string, 0, len(tagMap))
+		for t := range tagMap {
+			finalTags = append(finalTags, t)
+		}
+		rec.Tags = finalTags
+	}
+
 	return ExtractorResult{
 		Recipe: rec,
 		Meta: shared.AgentMeta{

@@ -27,7 +27,6 @@ type ExtractedRecipe struct {
 	Steps       []string `json:"steps"`
 	PrepTime    string   `json:"prep_time"`
 	Servings    string   `json:"servings"`
-	Tags        []string `json:"tags"`
 }
 
 // NewClipper creates a new Clipper instance.
@@ -55,8 +54,7 @@ Return the result strictly as a JSON object with this structure:
   "ingredients": ["item 1", "item 2", ...],
   "steps": ["Step 1 description", "Step 2 description", ...],
   "prep_time": "e.g. 30 mins",
-  "servings": "e.g. 4 people",
-  "tags": ["tag1", "tag2"]
+  "servings": "e.g. 4 people"
 }
 
 HTML Content:
@@ -83,13 +81,13 @@ HTML Content:
 	// 3. Format as Ghost HTML
 	html := c.formatToHTML(extracted, url)
 
-	// 4. Merge Tags (AI + Manual)
+	// 4. Use only Manual Tags (AI tags are ignored per user preference)
 	tagMap := make(map[string]struct{})
-	for _, t := range extracted.Tags {
-		tagMap[strings.ToLower(strings.TrimSpace(t))] = struct{}{}
-	}
 	for _, t := range manualTags {
-		tagMap[strings.ToLower(strings.TrimSpace(t))] = struct{}{}
+		trimmed := strings.ToLower(strings.TrimSpace(t))
+		if trimmed != "" {
+			tagMap[trimmed] = struct{}{}
+		}
 	}
 
 	finalTags := make([]string, 0, len(tagMap))

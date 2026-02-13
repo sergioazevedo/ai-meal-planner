@@ -10,6 +10,7 @@ type PostData struct {
 	Title     string
 	UpdatedAt string
 	HTML      string
+	Tags      []string
 }
 
 // Recipe represents a recipe after being normalized by the LLM.
