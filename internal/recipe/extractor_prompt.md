@@ -19,7 +19,7 @@ Please extract the following information from the HTML above:
     - Include all ingredients for the main dish.
     - **IMPORTANT**: You MUST also add the basic ingredients for the side dish and salad (whether they were in the source or suggested by you).
  - Step-by-step instructions (primarily for the main dish; keep them concise).
- - Relevant tags.
+ - **Relevant tags**: (e.g., "Massa", "Peixe", "Rápido", "Jantar", "Vegetariano").
  - Preparation time (e.g., "30 mins") - **MANDATORY: If missing from source, YOU MUST ESTIMATE based on ingredients and instructions. Do NOT return "Unknown".**
  - Number of servings (e.g., "4 people") - **estimate if missing**.
 
