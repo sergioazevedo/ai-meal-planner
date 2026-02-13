@@ -22,7 +22,17 @@ func TestFetchRecipes(t *testing.T) {
 				"posts": [
 					{"id": "1", "title": "Recipe 1", "html": "<h1>Recipe 1</h1>", "updated_at": "2023-10-27T10:00:00Z"},
 					{"id": "2", "title": "Recipe 2", "html": "<h1>Recipe 2</h1>", "updated_at": "2023-10-28T10:00:00Z"}
-				]
+				],
+				"meta": {
+					"pagination": {
+						"page": 1,
+						"limit": 15,
+						"pages": 1,
+						"total": 2,
+						"next": null,
+						"prev": null
+					}
+				}
 			}`)
 		}))
 		defer server.Close()

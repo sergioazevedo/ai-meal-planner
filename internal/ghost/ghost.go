@@ -32,6 +32,22 @@ type Tag struct {
 // PostsResponse is the top-level structure of the Ghost API response for posts.
 type PostsResponse struct {
 	Posts []Post `json:"posts"`
+	Meta  Meta   `json:"meta"`
+}
+
+// Meta contains metadata about the response, including pagination.
+type Meta struct {
+	Pagination Pagination `json:"pagination"`
+}
+
+// Pagination contains details about the current page and total pages.
+type Pagination struct {
+	Page  int  `json:"page"`
+	Limit int  `json:"limit"`
+	Pages int  `json:"pages"`
+	Total int  `json:"total"`
+	Next  *int `json:"next"`
+	Prev  *int `json:"prev"`
 }
 
 // Client is an interface for a Ghost API client (Content & Admin).
@@ -56,31 +72,43 @@ func NewClient(cfg *config.Config) Client {
 	}
 }
 
-// FetchRecipes fetches all posts (recipes) from the Ghost Content API.
+// FetchRecipes fetches all posts (recipes) from the Ghost Content API, handling pagination.
 func (c *ghostClient) FetchRecipes() ([]Post, error) {
-	url := fmt.Sprintf("%s/ghost/api/v3/content/posts/?key=%s", c.config.GhostURL, c.config.GhostContentKey)
+	var allPosts []Post
+	currentPage := 1
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+	for {
+		url := fmt.Sprintf("%s/ghost/api/v3/content/posts/?key=%s&page=%d&include=tags", c.config.GhostURL, c.config.GhostContentKey, currentPage)
+
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create request: %w", err)
+		}
+
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to execute request: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("content api error: status %d", resp.StatusCode)
+		}
+
+		var postsResponse PostsResponse
+		if err := json.NewDecoder(resp.Body).Decode(&postsResponse); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+
+		allPosts = append(allPosts, postsResponse.Posts...)
+
+		if postsResponse.Meta.Pagination.Next == nil {
+			break
+		}
+		currentPage = *postsResponse.Meta.Pagination.Next
 	}
 
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("content api error: status %d", resp.StatusCode)
-	}
-
-	var postsResponse PostsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&postsResponse); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return postsResponse.Posts, nil
+	return allPosts, nil
 }
 
 // CreatePost creates a new post using the Ghost Admin API.
