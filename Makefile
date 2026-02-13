@@ -6,10 +6,10 @@
 help:
 	@echo "Usage:"
 	@echo "  make build             - Build all binaries"
+	@echo "  make build-linux       - Build all linux binaries"
 	@echo "  make test              - Run all unit tests (skipping live LLM evals)"
 	@echo "  make eval              - Run live LLM evaluation tests (costs money!)"
 	@echo "  make ingest            - Run local ingestion"
-	@echo "  make plan              - Run local planning"
 	@echo "  make metrics-cleanup   - Clean up old metrics data (30 days)"
 	@echo "  make migrate-up        - Apply all pending database migrations"
 	@echo "  make migrate-down      - Revert the last applied database migration"
@@ -20,6 +20,10 @@ help:
 build:
 	go build -o bin/ai-meal-planner ./cmd/ai-meal-planner
 	go build -o bin/telegram-bot ./cmd/telegram-bot
+
+build-linux:
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o "bin/ai-meal-planner-linux" ./cmd/ai-meal-planner
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o "bin/telegram-bot-linux" ./cmd/telegram-bot
 
 test:
 	go test -short -v ./internal/...
@@ -42,10 +46,6 @@ migrate-create:
 
 ingest:
 	go run cmd/ai-meal-planner/main.go ingest
-
-plan:
-	@read -p "What would you like to eat? " prompt; \
-	go run cmd/ai-meal-planner/main.go plan -request "$$prompt"
 
 metrics-cleanup:
 	go run cmd/ai-meal-planner/main.go metrics-cleanup -days 30
