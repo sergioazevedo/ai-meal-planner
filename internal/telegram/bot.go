@@ -126,24 +126,30 @@ func (b *Bot) handleWebhook(w http.ResponseWriter, r *http.Request) {
 func (b *Bot) processMessage(msg *tgbotapi.Message) {
 	// 0. Handle Admin Commands
 	if msg.Text == "/metrics" {
-		if msg.From.ID != b.cfg.AdminTelegramID {
-			b.api.Send(tgbotapi.NewMessage(msg.Chat.ID, "⛔ *Access Denied*: Admin only."))
-			return
-		}
-		b.handleMetricsCommand(msg.Chat.ID)
+		b.handleMetricsRequest(msg)
 		return
 	}
 
 	// 1. Detect if it's a URL (Clipper mode) or a request (Planner mode)
-	isURL := strings.HasPrefix(msg.Text, "http://") || strings.HasPrefix(msg.Text, "https://")
-
-	var statusText string
-	if isURL {
-		statusText = "✂️ *Clipping recipe...* \n(Extracting and saving to your blog)"
-	} else {
-		statusText = "🧑‍🍳 *Thinking...* \n(Analyzing recipes and generating your plan)"
+	if strings.HasPrefix(msg.Text, "http://") || strings.HasPrefix(msg.Text, "https://") {
+		b.handleClipperRequest(msg)
+		return
 	}
 
+	// 2. Default to Planner mode
+	b.handlePlannerRequest(msg)
+}
+
+func (b *Bot) handleMetricsRequest(msg *tgbotapi.Message) {
+	if msg.From.ID != b.cfg.AdminTelegramID {
+		b.api.Send(tgbotapi.NewMessage(msg.Chat.ID, "⛔ *Access Denied*: Admin only."))
+		return
+	}
+	b.handleMetricsCommand(msg.Chat.ID)
+}
+
+func (b *Bot) handleClipperRequest(msg *tgbotapi.Message) {
+	statusText := "✂️ *Clipping recipe...* \n(Extracting and saving to your blog)"
 	replyMsg := tgbotapi.NewMessage(msg.Chat.ID, statusText)
 	replyMsg.ParseMode = "Markdown"
 	sentMsg, err := b.api.Send(replyMsg)
@@ -154,57 +160,68 @@ func (b *Bot) processMessage(msg *tgbotapi.Message) {
 
 	ctx := context.Background()
 
-	if isURL {
-		// --- Clipper Flow ---
-		post, err := b.clipper.ClipURL(ctx, msg.Text)
-		var finalText string
-		if err != nil {
-			log.Printf("Error clipping recipe: %v", err)
-			safeErr := strings.ReplaceAll(err.Error(), "`", "'")
-			finalText = fmt.Sprintf("❌ *Error clipping recipe:*\n```\n%v\n```", safeErr)
-		} else {
-			finalText = fmt.Sprintf("✅ *Recipe Saved!*\n\n*Title:* %s\n*URL:* %s/%s", post.Title, b.cfg.GhostURL, post.ID)
-			// Trigger background ingestion so it becomes searchable for future plans
-			go b.ingestClippedPost(*post)
-		}
-		edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, finalText)
-		edit.ParseMode = "Markdown"
-		b.api.Send(edit)
+	// --- Clipper Flow ---
+	post, err := b.clipper.ClipURL(ctx, msg.Text)
+	var finalText string
+	if err != nil {
+		log.Printf("Error clipping recipe: %v", err)
+		safeErr := strings.ReplaceAll(err.Error(), "`", "'")
+		finalText = fmt.Sprintf("❌ *Error clipping recipe:*\n```\n%v\n```", safeErr)
 	} else {
-		// --- Planner Flow ---
-		log.Printf("Generating plan for request: %s", msg.Text)
+		finalText = fmt.Sprintf("✅ *Recipe Saved!*\n\n*Title:* %s\n*URL:* %s/%s", post.Title, b.cfg.GhostURL, post.ID)
+		// Trigger background ingestion so it becomes searchable for future plans
+		go b.ingestClippedPost(*post)
+	}
+	edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, finalText)
+	edit.ParseMode = "Markdown"
+	b.api.Send(edit)
+}
 
-		userID := fmt.Sprintf("%d", msg.From.ID)
-		nextMonday := planner.GetNextMonday(time.Now())
+func (b *Bot) handlePlannerRequest(msg *tgbotapi.Message) {
+	statusText := "🧑‍🍳 *Thinking...* \n(Analyzing recipes and generating your plan)"
+	replyMsg := tgbotapi.NewMessage(msg.Chat.ID, statusText)
+	replyMsg.ParseMode = "Markdown"
+	sentMsg, err := b.api.Send(replyMsg)
+	if err != nil {
+		log.Printf("Failed to send initial reply: %v", err)
+		return
+	}
 
-		// Check if plan already exists for next week
-		exists, _ := b.planRepo.ExistsForWeek(ctx, userID, nextMonday)
-		if exists {
-			// Ask user what to do
-			promptText := fmt.Sprintf("🗓️ A plan already exists for next week (starting *%s*).\nWhat would you like to do?", nextMonday.Format("2006-01-02"))
+	ctx := context.Background()
 
-			// We need to keep the user request. Callback data is limited to 64 bytes.
-			shortReq := msg.Text
-			if len(shortReq) > 32 {
-				shortReq = shortReq[:32]
-			}
+	// --- Planner Flow ---
+	log.Printf("Generating plan for request: %s", msg.Text)
 
-			keyboard := tgbotapi.NewInlineKeyboardMarkup(
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("🔄 Redo Next Week", "redo|"+shortReq),
-					tgbotapi.NewInlineKeyboardButtonData("⏭️ Plan Following Week", "next|"+shortReq),
-				),
-			)
+	userID := fmt.Sprintf("%d", msg.From.ID)
+	nextMonday := planner.GetNextMonday(time.Now())
 
-			edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, promptText)
-			edit.ParseMode = "Markdown"
-			edit.ReplyMarkup = &keyboard
-			b.api.Send(edit)
-			return
+	// Check if plan already exists for next week
+	exists, _ := b.planRepo.ExistsForWeek(ctx, userID, nextMonday)
+	if exists {
+		// Ask user what to do
+		promptText := fmt.Sprintf("🗓️ A plan already exists for next week (starting *%s*).\nWhat would you like to do?", nextMonday.Format("2006-01-02"))
+
+		// We need to keep the user request. Callback data is limited to 64 bytes.
+		shortReq := msg.Text
+		if len(shortReq) > 32 {
+			shortReq = shortReq[:32]
 		}
 
-		b.generateAndSendPlan(ctx, userID, msg.Chat.ID, sentMsg.MessageID, msg.Text, nextMonday)
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("🔄 Redo Next Week", "redo|"+shortReq),
+				tgbotapi.NewInlineKeyboardButtonData("⏭️ Plan Following Week", "next|"+shortReq),
+			),
+		)
+
+		edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, promptText)
+		edit.ParseMode = "Markdown"
+		edit.ReplyMarkup = &keyboard
+		b.api.Send(edit)
+		return
 	}
+
+	b.generateAndSendPlan(ctx, userID, msg.Chat.ID, sentMsg.MessageID, msg.Text, nextMonday)
 }
 
 func (b *Bot) handleCallbackQuery(query *tgbotapi.CallbackQuery) {
