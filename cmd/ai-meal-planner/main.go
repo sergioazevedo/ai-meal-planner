@@ -83,6 +83,20 @@ func main() {
 		if err := application.IngestRecipes(ctx, *force); err != nil {
 			log.Fatalf("Ingestion failed: %v", err)
 		}
+	case "reingest":
+		reingestCmd := flag.NewFlagSet("reingest", flag.ExitOnError)
+		id := reingestCmd.String("id", "", "The Ghost ID of the recipe to re-ingest")
+		reingestCmd.Parse(os.Args[2:])
+
+		if *id == "" {
+			fmt.Println("Error: -id is required")
+			reingestCmd.Usage()
+			os.Exit(1)
+		}
+
+		if err := application.IngestRecipeByID(ctx, *id); err != nil {
+			log.Fatalf("Re-ingestion failed: %v", err)
+		}
 	case "plan":
 		planCmd := flag.NewFlagSet("plan", flag.ExitOnError)
 		request := planCmd.String("request", "", "What would you like to eat?")

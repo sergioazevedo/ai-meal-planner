@@ -22,6 +22,10 @@ func (m *MockGhostClient) FetchRecipes() ([]ghost.Post, error) {
 	return nil, nil
 }
 
+func (m *MockGhostClient) FetchRecipeByID(id string) (*ghost.Post, error) {
+	return nil, nil
+}
+
 func (m *MockGhostClient) CreatePost(title, html string, tags []string, publish bool) (*ghost.Post, error) {
 	if m.ShouldError {
 		return nil, fmt.Errorf("mock error")

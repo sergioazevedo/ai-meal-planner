@@ -53,6 +53,7 @@ type Pagination struct {
 // Client is an interface for a Ghost API client (Content & Admin).
 type Client interface {
 	FetchRecipes() ([]Post, error)
+	FetchRecipeByID(id string) (*Post, error)
 	CreatePost(title, html string, tags []string, publish bool) (*Post, error)
 }
 
@@ -109,6 +110,41 @@ func (c *ghostClient) FetchRecipes() ([]Post, error) {
 	}
 
 	return allPosts, nil
+}
+
+// FetchRecipeByID fetches a single post by ID from the Ghost Content API.
+func (c *ghostClient) FetchRecipeByID(id string) (*Post, error) {
+	url := fmt.Sprintf("%s/ghost/api/v3/content/posts/%s/?key=%s&include=tags", c.config.GhostURL, id, c.config.GhostContentKey)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("post with ID %s not found", id)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("content api error: status %d", resp.StatusCode)
+	}
+
+	var postsResponse PostsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&postsResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if len(postsResponse.Posts) == 0 {
+		return nil, fmt.Errorf("no post found with ID %s", id)
+	}
+
+	return &postsResponse.Posts[0], nil
 }
 
 // CreatePost creates a new post using the Ghost Admin API.

@@ -126,6 +126,31 @@ func (a *App) IngestRecipes(ctx context.Context, force bool) error {
 	return nil
 }
 
+// IngestRecipeByID fetches and re-processes a single recipe from Ghost by its ID.
+func (a *App) IngestRecipeByID(ctx context.Context, id string) error {
+	fmt.Printf("Fetching and processing recipe ID: %s...\n", id)
+
+	post, err := a.ghostClient.FetchRecipeByID(id)
+	if err != nil {
+		return fmt.Errorf("failed to fetch recipe %s from ghost: %w", id, err)
+	}
+
+	log.Printf("Normalizing '%s'...", post.Title)
+
+	if err := ProcessAndSaveRecipe(
+		ctx,
+		a.extractor,
+		a.recipeRepo,
+		a.metricsStore,
+		*post,
+	); err != nil {
+		return fmt.Errorf("failed to process recipe '%s': %w", post.Title, err)
+	}
+
+	fmt.Printf("Successfully re-ingested '%s'.\n", post.Title)
+	return nil
+}
+
 // GenerateMealPlan creates a meal plan based on user request and prints it.
 func (a *App) GenerateMealPlan(ctx context.Context, userID string, request string) error {
 	fmt.Printf("Generating meal plan for: \"%s\"...\n", request)
