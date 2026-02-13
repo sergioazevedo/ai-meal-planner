@@ -134,3 +134,10 @@ func (r *Repository) Count(ctx context.Context) (int, error) {
 	}
 	return int(count), nil
 }
+
+func (r *Repository) Delete(ctx context.Context, id string) error {
+	if err := r.queries.DeleteRecipeByID(ctx, id); err != nil {
+		return fmt.Errorf("failed to delete recipe: %w", err)
+	}
+	return nil
+}

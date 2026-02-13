@@ -76,8 +76,13 @@ func (a *App) IngestRecipes(ctx context.Context, force bool) error {
 
 	fmt.Printf("Successfully fetched %d recipe posts from Ghost.\n", len(posts))
 
+	// Track fetched IDs for cleanup
+	fetchedIDs := make(map[string]struct{})
+
 	// Ingest recipes within the loop, inlining the previous processSingleRecipe logic
 	for _, post := range posts {
+		fetchedIDs[post.ID] = struct{}{}
+
 		// The database-level UPSERT now handles conditional updates based on the `updated_at` timestamp.
 		// The `force` flag ensures normalization always runs, but the DB handles the save logic.
 
@@ -100,6 +105,23 @@ func (a *App) IngestRecipes(ctx context.Context, force bool) error {
 		// We sleep even on failure to ensure we don't hammer the API after a 429 error.
 		time.Sleep(5 * time.Second)
 	}
+
+	// Cleanup phase: remove recipes that are no longer in Ghost
+	fmt.Println("Cleaning up orphaned recipes...")
+	localRecipes, err := a.recipeRepo.List(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to list local recipes for cleanup: %w", err)
+	}
+
+	for _, rec := range localRecipes {
+		if _, exists := fetchedIDs[rec.ID]; !exists {
+			log.Printf("Removing orphaned recipe '%s' (ID: %s)...", rec.Title, rec.ID)
+			if err := a.recipeRepo.Delete(ctx, rec.ID); err != nil {
+				log.Printf("Failed to delete orphaned recipe %s: %v", rec.ID, err)
+			}
+		}
+	}
+
 	fmt.Println("Ingestion complete.")
 	return nil
 }
