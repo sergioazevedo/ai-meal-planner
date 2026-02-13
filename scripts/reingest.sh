@@ -13,5 +13,10 @@ fi
 make build
 
 # Run the command with environment variables
+if [ ! -f .env ]; then
+    echo "Error: .env file not found. Please create one based on .env.example."
+    exit 1
+fi
+
 export $(grep -v '^#' .env | xargs)
 ./bin/ai-meal-planner reingest -id "$ID"
