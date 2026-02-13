@@ -34,8 +34,8 @@ func main() {
 	}
 	defer geminiClient.Close()
 
-	analystModel := llm.NewGroqClient(cfg, llm.ModelAnalyst)
-	normalizerModel := llm.NewGroqClient(cfg, llm.ModelNormalizer)
+	analystModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
+	normalizerModel := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.3)
 
 	// Initialize the new SQLite database
 	db, err := database.NewDB(cfg.DatabasePath)

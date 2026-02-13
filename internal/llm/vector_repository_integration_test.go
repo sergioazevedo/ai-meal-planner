@@ -48,7 +48,7 @@ func TestVectorSearchRecallIntegration(t *testing.T) {
 		realTextGenerator = geminiClient // Gemini client implements both
 		t.Log("Using Gemini for embedding and text generation.\n")
 	} else if cfg.GroqAPIKey != "" {
-		groqClient := llm.NewGroqClient(cfg, llm.ModelNormalizer)
+		groqClient := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.1)
 		realTextGenerator = groqClient
 		// For Groq, if it doesn't have an embedding model, we might need a dummy or skip
 		// For this test, let's assume embedding is always realEmbeddingGenerator for now

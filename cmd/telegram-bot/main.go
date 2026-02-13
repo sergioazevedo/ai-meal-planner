@@ -30,8 +30,8 @@ func main() {
 	ctx := context.Background()
 
 	// 2. Initialize Infrastructure (LLMs)
-	analystModel := llm.NewGroqClient(cfg, llm.ModelAnalyst)
-	normalizerModel := llm.NewGroqClient(cfg, llm.ModelNormalizer)
+	analystModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
+	normalizerModel := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.3)
 
 	geminiClient, err := llm.NewGeminiClient(ctx, cfg)
 	if err != nil {

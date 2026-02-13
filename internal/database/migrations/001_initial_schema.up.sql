@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS execution_metrics (
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_execution_metrics_timestamp ON execution_metrics(timestamp);
-CREATE INDEX IF NOT EXISTS idx_execution_metrics_agent_model ON execution_name, model);
+CREATE INDEX IF NOT EXISTS idx_execution_metrics_agent_model ON execution_metrics(agent_name, model);
 
 
 -- recipes table (document store approach)
@@ -29,7 +29,6 @@ CREATE INDEX IF NOT EXISTS idx_recipes_updated_at ON recipes(updated_at);
 CREATE TABLE IF NOT EXISTS recipe_embeddings (
     recipe_id TEXT PRIMARY KEY NOT NULL,  -- Foreign key to recipes.id
     embedding BLOB NOT NULL,              -- Serialized []float32 vector
-    text_hash TEXT NOT NULL DEFAULT '',   -- Hash of the text used to generate the embedding
     FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
 );
 -- No additional index needed for recipe_id as it's the PRIMARY KEY

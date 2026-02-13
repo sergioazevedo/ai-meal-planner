@@ -45,12 +45,12 @@ type MockTextGenerator struct {
 
 func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (llm.ContentResponse, error) {
 	m.generateContentCalls++
-	if strings.Contains(prompt, "extract structured recipe information") {
+	if strings.Contains(prompt, "ingredients\": [\"quantity + name") {
 		return llm.ContentResponse{
 			Content: `{
 				"title": "Test Recipe",
 				"ingredients": ["1 cup testing"],
-				"instructions": "Write a test.",
+				"instructions": ["Write a test."],
 				"tags": ["go", "test"],
 				"prep_time": "10 mins",
 				"servings": "1"

@@ -24,16 +24,18 @@ const (
 
 // GroqClient is a client for the Groq API.
 type GroqClient struct {
-	apiKey     string
-	modelID    string
-	httpClient *http.Client
+	apiKey      string
+	modelID     string
+	temperature float64
+	httpClient  *http.Client
 }
 
-// NewGroqClient creates a new Groq API client for a specific model.
-func NewGroqClient(cfg *config.Config, modelID string) *GroqClient {
+// NewGroqClient creates a new Groq API client for a specific model and temperature.
+func NewGroqClient(cfg *config.Config, modelID string, temperature float64) *GroqClient {
 	return &GroqClient{
-		apiKey:  cfg.GroqAPIKey,
-		modelID: modelID,
+		apiKey:      cfg.GroqAPIKey,
+		modelID:     modelID,
+		temperature: temperature,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -54,7 +56,7 @@ func (c *GroqClient) GenerateContent(ctx context.Context, prompt string) (Conten
 					"content": prompt,
 				},
 			},
-			"temperature":     0.1,
+			"temperature":     c.temperature,
 			"response_format": map[string]string{"type": "json_object"},
 		}
 
