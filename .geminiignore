@@ -1,0 +1,29 @@
+# Dependency & Lock Files
+go.sum
+vendor/
+
+# Binaries & Build Artifacts
+bin/
+*.exe
+*.test
+*.prof
+
+# Secrets & Local Configs
+.env
+.env.*
+!.env.example
+.vscode/
+.idea/
+.continue/
+
+# Git internals
+.git/
+
+# Database Migrations
+internal/database/migrations/
+
+# Logs & Temporaries
+*.log
+tmp/
+temp/
+.tmp/
