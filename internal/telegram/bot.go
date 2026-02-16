@@ -441,20 +441,47 @@ func (b *Bot) sendAdminAlert(text string) {
 	b.api.Send(msg)
 }
 
-// formatDraftPlanMarkdown formats a draft plan in concise format
+// formatDraftPlanMarkdown formats a draft plan in a concise, grouped format.
 func formatDraftPlanMarkdown(plan *planner.MealPlan) string {
 	var sb strings.Builder
 	sb.WriteString("📋 *DRAFT Meal Plan*\n\n")
 
-	for _, dp := range plan.Plan {
-		// Format: [Weekday1]-[Weekday2] - [Recipe Title] - [Prep time]
-		sb.WriteString(fmt.Sprintf("*%s*: %s", dp.Day, dp.RecipeTitle))
-		if dp.PrepTime != "" {
-			sb.WriteString(fmt.Sprintf(" (%s)", dp.PrepTime))
+	for i := 0; i < len(plan.Plan); i++ {
+		currentDay := plan.Plan[i]
+		isCookDay := strings.HasPrefix(currentDay.RecipeTitle, "Cook: ")
+		isLeftoverPair := false
+		var nextDay planner.DayPlan
+
+		// Check if the next day is a leftover of the current day
+		if isCookDay && i+1 < len(plan.Plan) {
+			nextDay = plan.Plan[i+1]
+			baseTitleCurrent := strings.TrimPrefix(currentDay.RecipeTitle, "Cook: ")
+			baseTitleNext := strings.TrimPrefix(nextDay.RecipeTitle, "Leftovers: ")
+
+			if strings.HasPrefix(nextDay.RecipeTitle, "Leftovers: ") && baseTitleCurrent == baseTitleNext {
+				isLeftoverPair = true
+			}
 		}
-		sb.WriteString("\n")
-		if dp.Note != "" {
-			sb.WriteString(fmt.Sprintf("_%s_\n", dp.Note))
+
+		if isLeftoverPair {
+			// Grouped format: Monday/Tuesday: Recipe Title (Prep Time)
+			dayRange := fmt.Sprintf("%s/%s", currentDay.Day, nextDay.Day)
+			baseTitle := strings.TrimPrefix(currentDay.RecipeTitle, "Cook: ")
+			sb.WriteString(fmt.Sprintf("*%s*: %s", dayRange, baseTitle))
+			if currentDay.PrepTime != "" {
+				sb.WriteString(fmt.Sprintf(" (%s)", currentDay.PrepTime))
+			}
+			sb.WriteString("\n")
+			i++ // Skip the next day since it's already processed
+		} else {
+			// Single day format: Friday: Recipe Title (Prep Time)
+			title := strings.TrimPrefix(currentDay.RecipeTitle, "Cook: ")
+			title = strings.TrimPrefix(title, "Leftovers: ")
+			sb.WriteString(fmt.Sprintf("*%s*: %s", currentDay.Day, title))
+			if currentDay.PrepTime != "" {
+				sb.WriteString(fmt.Sprintf(" (%s)", currentDay.PrepTime))
+			}
+			sb.WriteString("\n")
 		}
 	}
 
