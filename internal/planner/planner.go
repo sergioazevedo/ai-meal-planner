@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"strings"
 	"time"
 
 	"ai-meal-planner/internal/llm"
@@ -142,4 +143,61 @@ func (p *Planner) GeneratePlan(ctx context.Context, userID string, userRequest s
 	metas = append(metas, chefResult.Meta)
 
 	return chefResult.Plan, metas, nil
+}
+
+// GenerateShoppingList generates a shopping list for an existing meal plan
+// This is used when confirming a draft plan or after adjustments
+func (p *Planner) GenerateShoppingList(ctx context.Context, plan *MealPlan, pCtx PlanningContext) ([]string, error) {
+	// 1. Extract unique recipe IDs from the plan
+	recipeIDMap := make(map[string]bool)
+	var plannedMeals []PlannedMeal
+
+	for _, day := range plan.Plan {
+		if day.RecipeID != "" {
+			recipeIDMap[day.RecipeID] = true
+
+			// Determine action based on day title
+			action := MealActionCook
+			if strings.Contains(strings.ToLower(day.RecipeTitle), "leftover") ||
+			   strings.Contains(strings.ToLower(day.RecipeTitle), "reuse") {
+				action = MealActionLeftOvers
+			}
+
+			plannedMeals = append(plannedMeals, PlannedMeal{
+				Day:         day.Day,
+				RecipeID:    day.RecipeID,
+				Action:      action,
+				RecipeTitle: day.RecipeTitle,
+				Note:        day.Note,
+			})
+		}
+	}
+
+	// 2. Fetch all recipes
+	var recipeIDs []string
+	for id := range recipeIDMap {
+		recipeIDs = append(recipeIDs, id)
+	}
+
+	recipes, err := p.recipeRepo.GetByIds(ctx, recipeIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch recipes: %w", err)
+	}
+
+	// 3. Create a MealProposal
+	proposal := &MealProposal{
+		PlannedMeals: plannedMeals,
+		Recipes:      recipes,
+		Adults:       pCtx.Adults,
+		Children:     pCtx.Children,
+		ChildrenAges: pCtx.ChildrenAges,
+	}
+
+	// 4. Call Chef to generate the shopping list
+	chefResult, err := p.runChef(ctx, proposal, plan.WeekStart)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate shopping list: %w", err)
+	}
+
+	return chefResult.Plan.ShoppingList, nil
 }

@@ -517,17 +517,37 @@ func (b *Bot) handleConfirmDraft(ctx context.Context, query *tgbotapi.CallbackQu
 		return
 	}
 
+	// Generate shopping list for the confirmed plan
+	pCtx := planner.PlanningContext{
+		Adults:           b.cfg.DefaultAdults,
+		Children:         b.cfg.DefaultChildren,
+		ChildrenAges:     b.cfg.DefaultChildrenAges,
+		CookingFrequency: b.cfg.DefaultCookingFrequency,
+	}
+
+	shoppingListItems, err := b.planner.GenerateShoppingList(ctx, plan, pCtx)
+	if err != nil {
+		log.Printf("Error generating shopping list: %v", err)
+		edit := tgbotapi.NewEditMessageText(query.Message.Chat.ID, query.Message.MessageID, "❌ *Error:* Could not generate shopping list.")
+		edit.ParseMode = "Markdown"
+		b.api.Send(edit)
+		return
+	}
+
+	// Update plan's shopping list
+	plan.ShoppingList = shoppingListItems
+
 	// Update status to FINAL
 	if err := b.planRepo.UpdateStatus(ctx, planID, planner.StatusFinal); err != nil {
 		log.Printf("Error updating plan status: %v", err)
 	}
 
-	// Generate and save shopping list
-	if len(plan.ShoppingList) > 0 {
+	// Save shopping list
+	if len(shoppingListItems) > 0 {
 		shoppingList := &shopping.ShoppingList{
 			UserID:     userID,
 			MealPlanID: planID,
-			Items:      plan.ShoppingList,
+			Items:      shoppingListItems,
 		}
 		if _, err := b.shoppingRepo.Save(ctx, shoppingList); err != nil {
 			log.Printf("Warning: failed to save shopping list: %v", err)
