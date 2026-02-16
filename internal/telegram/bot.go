@@ -446,38 +446,40 @@ func formatDraftPlanMarkdown(plan *planner.MealPlan) string {
 	var sb strings.Builder
 	sb.WriteString("📋 *DRAFT Meal Plan*\n\n")
 
+	// Helper to normalize titles for comparison
+	normalize := func(s string) string {
+		s = strings.TrimPrefix(s, "Cook: ")
+		s = strings.TrimPrefix(s, "Leftovers: ")
+		return strings.TrimSpace(s)
+	}
+
 	for i := 0; i < len(plan.Plan); i++ {
 		currentDay := plan.Plan[i]
-		isCookDay := strings.HasPrefix(currentDay.RecipeTitle, "Cook: ")
-		isLeftoverPair := false
-		var nextDay planner.DayPlan
+		currentTitle := normalize(currentDay.RecipeTitle)
+		isGrouped := false
 
-		// Check if the next day is a leftover of the current day
-		if isCookDay && i+1 < len(plan.Plan) {
-			nextDay = plan.Plan[i+1]
-			baseTitleCurrent := strings.TrimPrefix(currentDay.RecipeTitle, "Cook: ")
-			baseTitleNext := strings.TrimPrefix(nextDay.RecipeTitle, "Leftovers: ")
+		// Check if the next day has the SAME recipe title
+		if i+1 < len(plan.Plan) {
+			nextDay := plan.Plan[i+1]
+			nextTitle := normalize(nextDay.RecipeTitle)
 
-			if strings.HasPrefix(nextDay.RecipeTitle, "Leftovers: ") && baseTitleCurrent == baseTitleNext {
-				isLeftoverPair = true
+			if currentTitle == nextTitle {
+				isGrouped = true
+				// Grouped format: Monday/Tuesday: Recipe Title (Prep Time)
+				// We use the prep time from the first day (the "Cook" day)
+				dayRange := fmt.Sprintf("%s/%s", currentDay.Day, nextDay.Day)
+				sb.WriteString(fmt.Sprintf("*%s*: %s", dayRange, currentTitle))
+				if currentDay.PrepTime != "" {
+					sb.WriteString(fmt.Sprintf(" (%s)", currentDay.PrepTime))
+				}
+				sb.WriteString("\n")
+				i++ // Skip the next day since we just grouped it
 			}
 		}
 
-		if isLeftoverPair {
-			// Grouped format: Monday/Tuesday: Recipe Title (Prep Time)
-			dayRange := fmt.Sprintf("%s/%s", currentDay.Day, nextDay.Day)
-			baseTitle := strings.TrimPrefix(currentDay.RecipeTitle, "Cook: ")
-			sb.WriteString(fmt.Sprintf("*%s*: %s", dayRange, baseTitle))
-			if currentDay.PrepTime != "" {
-				sb.WriteString(fmt.Sprintf(" (%s)", currentDay.PrepTime))
-			}
-			sb.WriteString("\n")
-			i++ // Skip the next day since it's already processed
-		} else {
+		if !isGrouped {
 			// Single day format: Friday: Recipe Title (Prep Time)
-			title := strings.TrimPrefix(currentDay.RecipeTitle, "Cook: ")
-			title = strings.TrimPrefix(title, "Leftovers: ")
-			sb.WriteString(fmt.Sprintf("*%s*: %s", currentDay.Day, title))
+			sb.WriteString(fmt.Sprintf("*%s*: %s", currentDay.Day, currentTitle))
 			if currentDay.PrepTime != "" {
 				sb.WriteString(fmt.Sprintf(" (%s)", currentDay.PrepTime))
 			}
