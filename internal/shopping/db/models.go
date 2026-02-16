@@ -2,7 +2,7 @@
 // versions:
 //   sqlc v1.30.0
 
-package vectordb
+package shoppingdb
 
 import (
 	"time"

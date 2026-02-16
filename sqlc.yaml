@@ -28,3 +28,10 @@ sql:
       go:
         package: "metricsdb"
         out: "internal/metrics/metrics_db"
+  - engine: "sqlite"
+    schema: "internal/database/schema.sql"
+    queries: "internal/database/shopping_queries.sql"
+    gen:
+      go:
+        package: "shoppingdb"
+        out: "internal/shopping/db"

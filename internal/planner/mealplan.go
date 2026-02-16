@@ -2,6 +2,15 @@ package planner
 
 import "time"
 
+// PlanStatus represents the lifecycle state of a meal plan.
+type PlanStatus string
+
+const (
+	StatusDraft     PlanStatus = "DRAFT"
+	StatusFinal     PlanStatus = "FINAL"
+	StatusAdjusting PlanStatus = "ADJUSTING"
+)
+
 // DayPlan represents the plan for a single day.
 type DayPlan struct {
 	Day         string `json:"day"`
@@ -13,7 +22,9 @@ type DayPlan struct {
 
 // MealPlan represents a full weekly meal plan.
 type MealPlan struct {
-	WeekStart    time.Time `json:"week_start"`
-	Plan         []DayPlan `json:"plan"`
-	ShoppingList []string  `json:"shopping_list"`
+	ID           int64      `json:"id,omitempty"`     // Database ID for referencing
+	WeekStart    time.Time  `json:"week_start"`
+	Status       PlanStatus `json:"status"`
+	Plan         []DayPlan  `json:"plan"`
+	ShoppingList []string   `json:"shopping_list,omitempty"` // Optional, only populated for FINAL plans
 }

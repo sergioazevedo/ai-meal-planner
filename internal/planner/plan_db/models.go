@@ -30,10 +30,19 @@ type RecipeEmbedding struct {
 	TextHash  string
 }
 
+type ShoppingList struct {
+	ID         int64
+	UserID     string
+	MealPlanID int64
+	Items      string
+	CreatedAt  time.Time
+}
+
 type UserMealPlan struct {
 	ID            int64
 	UserID        string
 	PlanData      string
 	WeekStartDate time.Time
+	Status        string
 	CreatedAt     time.Time
 }

@@ -2,11 +2,10 @@ package llm_test
 
 import (
 	"ai-meal-planner/internal/config"
+	"ai-meal-planner/internal/database"
 	"ai-meal-planner/internal/llm"
-	"ai-meal-planner/internal/llm/vector_db"
 	"ai-meal-planner/internal/recipe" // Import the recipe package
 	"context"
-	"database/sql"
 	"log"
 	"os"
 	"path/filepath"
@@ -80,20 +79,15 @@ func TestVectorSearchRecallIntegration(t *testing.T) {
 		}
 	})
 
-	// Setup in-memory SQLite database
-	db, err := sql.Open("sqlite3", "file::memory:?cache=shared")
+	// Setup in-memory SQLite database with migrations
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+	dbInstance, err := database.NewDB(dbPath)
 	if err != nil {
-		t.Fatalf("Failed to open in-memory database: %v\n", err)
+		t.Fatalf("Failed to initialize database: %v\n", err)
 	}
-	defer db.Close()
+	defer dbInstance.Close()
 
-	// Create tables for embeddings
-	_, err = db.Exec(vectordb.Schema) // Corrected to vectordb.Schema
-	if err != nil {
-		t.Fatalf("Failed to execute schema: %v\n", err)
-	}
-
-	vectorRepo := llm.NewVectorRepository(db)
+	vectorRepo := llm.NewVectorRepository(dbInstance.SQL)
 	extractor := recipe.NewExtractor(realTextGenerator, cachedEmbGen, vectorRepo) // New Extractor instance
 
 	// --- Golden Set Definition ---

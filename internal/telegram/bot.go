@@ -16,6 +16,7 @@ import (
 	"ai-meal-planner/internal/metrics"
 	"ai-meal-planner/internal/planner"
 	"ai-meal-planner/internal/recipe"
+	"ai-meal-planner/internal/shopping"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -31,10 +32,11 @@ type Bot struct {
 	cfg          *config.Config
 
 	// New repositories
-	planRepo   *planner.PlanRepository
-	recipeRepo *recipe.Repository
-	vectorRepo *llm.VectorRepository
-	extractor  *recipe.Extractor // Added extractor
+	planRepo     *planner.PlanRepository
+	recipeRepo   *recipe.Repository
+	vectorRepo   *llm.VectorRepository
+	shoppingRepo *shopping.Repository
+	extractor    *recipe.Extractor // Added extractor
 }
 
 // NewBot initializes the Telegram Bot and sets the Webhook.
@@ -45,9 +47,10 @@ func NewBot(
 	metricsStore *metrics.Store,
 	textGen llm.TextGenerator,
 	embedGen llm.EmbeddingGenerator,
-	planRepo *planner.PlanRepository, // New parameter
-	recipeRepo *recipe.Repository, // New parameter
-	vectorRepo *llm.VectorRepository, // New parameter
+	planRepo *planner.PlanRepository,     // New parameter
+	recipeRepo *recipe.Repository,        // New parameter
+	vectorRepo *llm.VectorRepository,     // New parameter
+	shoppingRepo *shopping.Repository,    // New parameter
 ) (*Bot, error) {
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramBotToken)
 	if err != nil {
@@ -77,6 +80,7 @@ func NewBot(
 		planRepo:     planRepo,
 		recipeRepo:   recipeRepo,
 		vectorRepo:   vectorRepo,
+		shoppingRepo: shoppingRepo,
 		extractor:    extractor,
 	}, nil
 }
@@ -258,7 +262,7 @@ func (b *Bot) handlePlannerRequest(msg *tgbotapi.Message) {
 func (b *Bot) handleCallbackQuery(query *tgbotapi.CallbackQuery) {
 	ctx := context.Background()
 	userID := fmt.Sprintf("%d", query.From.ID)
-	data := query.Data // "redo|request" or "next|request"
+	data := query.Data
 
 	parts := strings.Split(data, "|")
 	if len(parts) < 2 {
@@ -266,24 +270,31 @@ func (b *Bot) handleCallbackQuery(query *tgbotapi.CallbackQuery) {
 	}
 
 	action := parts[0]
-	request := parts[1]
-
-	var targetWeek time.Time
-	if action == "redo" {
-		targetWeek = planner.GetNextMonday(time.Now())
-	} else {
-		targetWeek = planner.GetNextMonday(planner.GetNextMonday(time.Now())) // Next next Monday
-	}
 
 	// Answer callback to remove spinner
 	b.api.Request(tgbotapi.NewCallback(query.ID, ""))
 
-	// Edit original message to show "Thinking..." again
-	edit := tgbotapi.NewEditMessageText(query.Message.Chat.ID, query.Message.MessageID, "🧑‍🍳 *Thinking...*")
-	edit.ParseMode = "Markdown"
-	b.api.Send(edit)
-
-	b.generateAndSendPlan(ctx, userID, query.Message.Chat.ID, query.Message.MessageID, request, targetWeek)
+	switch action {
+	case "confirm":
+		b.handleConfirmDraft(ctx, query, userID, parts)
+	case "adjust":
+		b.handleAdjustDraft(ctx, query, userID, parts)
+	case "startover":
+		b.handleStartOver(ctx, query, userID, parts)
+	case "redo", "next":
+		// Legacy handlers for existing week conflict resolution
+		request := parts[1]
+		var targetWeek time.Time
+		if action == "redo" {
+			targetWeek = planner.GetNextMonday(time.Now())
+		} else {
+			targetWeek = planner.GetNextMonday(planner.GetNextMonday(time.Now()))
+		}
+		edit := tgbotapi.NewEditMessageText(query.Message.Chat.ID, query.Message.MessageID, "🧑‍🍳 *Thinking...*")
+		edit.ParseMode = "Markdown"
+		b.api.Send(edit)
+		b.generateAndSendPlan(ctx, userID, query.Message.Chat.ID, query.Message.MessageID, request, targetWeek)
+	}
 }
 
 func (b *Bot) generateAndSendPlan(ctx context.Context, userID string, chatID int64, messageID int, request string, targetWeek time.Time) {
@@ -321,22 +332,47 @@ func (b *Bot) generateAndSendPlan(ctx context.Context, userID string, chatID int
 		edit.ParseMode = "Markdown"
 		b.api.Send(edit)
 	} else {
-		// Save the generated meal plan to user memory
-		if err := b.planRepo.Save(ctx, userID, plan); err != nil {
+		// Set plan as DRAFT and clear shopping list (will be generated on confirm)
+		plan.Status = planner.StatusDraft
+		shoppingList := plan.ShoppingList // Save for later
+		plan.ShoppingList = nil           // Clear from draft
+
+		// Save the draft plan to database
+		planID, err := b.planRepo.Save(ctx, userID, plan)
+		if err != nil {
 			log.Printf("Warning: failed to save meal plan to user memory for user %s: %v", userID, err)
 		}
+		plan.ID = planID
 
-		planText, shoppingListText := formatPlanMarkdownParts(plan)
+		// Store original request and shopping list in callback data
+		// Format: confirm|planID|request (truncated to fit 64 byte limit)
+		shortReq := request
+		if len(shortReq) > 20 {
+			shortReq = shortReq[:20]
+		}
 
-		// Edit message with the Plan
+		callbackData := fmt.Sprintf("%d|%s", planID, shortReq)
+
+		// Restore shopping list for potential later use
+		plan.ShoppingList = shoppingList
+
+		// Format plan text in concise format
+		planText := formatDraftPlanMarkdown(plan)
+
+		// Add feedback buttons
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("✅ Confirm", "confirm|"+callbackData),
+				tgbotapi.NewInlineKeyboardButtonData("✏️ Adjust", "adjust|"+callbackData),
+				tgbotapi.NewInlineKeyboardButtonData("🔄 Start Over", "startover|"+callbackData),
+			),
+		)
+
+		// Edit message with the draft plan and buttons
 		edit := tgbotapi.NewEditMessageText(chatID, messageID, planText)
 		edit.ParseMode = "Markdown"
+		edit.ReplyMarkup = &keyboard
 		b.api.Send(edit)
-
-		// Send second message with the Shopping List
-		shoppingMsg := tgbotapi.NewMessage(chatID, shoppingListText)
-		shoppingMsg.ParseMode = "Markdown"
-		b.api.Send(shoppingMsg)
 	}
 }
 
@@ -422,4 +458,118 @@ func (b *Bot) sendAdminAlert(text string) {
 	msg := tgbotapi.NewMessage(b.cfg.AdminTelegramID, text)
 	msg.ParseMode = "Markdown"
 	b.api.Send(msg)
+}
+
+// formatDraftPlanMarkdown formats a draft plan in concise format
+func formatDraftPlanMarkdown(plan *planner.MealPlan) string {
+	var sb strings.Builder
+	sb.WriteString("📋 *DRAFT Meal Plan*\n\n")
+
+	for _, dp := range plan.Plan {
+		// Format: [Weekday1]-[Weekday2] - [Recipe Title] - [Prep time]
+		sb.WriteString(fmt.Sprintf("*%s*: %s", dp.Day, dp.RecipeTitle))
+		if dp.PrepTime != "" {
+			sb.WriteString(fmt.Sprintf(" (%s)", dp.PrepTime))
+		}
+		sb.WriteString("\n")
+		if dp.Note != "" {
+			sb.WriteString(fmt.Sprintf("_%s_\n", dp.Note))
+		}
+	}
+
+	sb.WriteString("\n_Review your plan and choose an action below:_")
+	return sb.String()
+}
+
+// handleConfirmDraft finalizes the draft plan and generates the shopping list
+func (b *Bot) handleConfirmDraft(ctx context.Context, query *tgbotapi.CallbackQuery, userID string, parts []string) {
+	if len(parts) < 2 {
+		return
+	}
+
+	// Parse planID from callback data
+	var planID int64
+	fmt.Sscanf(parts[1], "%d|", &planID)
+
+	// Get the draft plan from database
+	plan, err := b.planRepo.GetByID(ctx, planID)
+	if err != nil || plan == nil {
+		log.Printf("Error retrieving plan: %v", err)
+		edit := tgbotapi.NewEditMessageText(query.Message.Chat.ID, query.Message.MessageID, "❌ *Error:* Could not retrieve plan.")
+		edit.ParseMode = "Markdown"
+		b.api.Send(edit)
+		return
+	}
+
+	// Update status to FINAL
+	if err := b.planRepo.UpdateStatus(ctx, planID, planner.StatusFinal); err != nil {
+		log.Printf("Error updating plan status: %v", err)
+	}
+
+	// Generate and save shopping list
+	if len(plan.ShoppingList) > 0 {
+		shoppingList := &shopping.ShoppingList{
+			UserID:     userID,
+			MealPlanID: planID,
+			Items:      plan.ShoppingList,
+		}
+		if _, err := b.shoppingRepo.Save(ctx, shoppingList); err != nil {
+			log.Printf("Warning: failed to save shopping list: %v", err)
+		}
+	}
+
+	// Format and send finalized plan
+	planText, shoppingListText := formatPlanMarkdownParts(plan)
+
+	// Edit message to show finalized plan (remove buttons)
+	edit := tgbotapi.NewEditMessageText(query.Message.Chat.ID, query.Message.MessageID, "✅ *Plan Confirmed!*\n\n"+planText)
+	edit.ParseMode = "Markdown"
+	b.api.Send(edit)
+
+	// Send shopping list as second message
+	shoppingMsg := tgbotapi.NewMessage(query.Message.Chat.ID, shoppingListText)
+	shoppingMsg.ParseMode = "Markdown"
+	b.api.Send(shoppingMsg)
+}
+
+// handleAdjustDraft allows the user to request adjustments to the draft plan
+func (b *Bot) handleAdjustDraft(ctx context.Context, query *tgbotapi.CallbackQuery, userID string, parts []string) {
+	// TODO: Implement in Phase 3 - will introduce PlanReviewer agent
+	edit := tgbotapi.NewEditMessageText(query.Message.Chat.ID, query.Message.MessageID, "✏️ *Adjust feature coming soon!*\n\nFor now, please use 'Start Over' to generate a new plan.")
+	edit.ParseMode = "Markdown"
+	b.api.Send(edit)
+}
+
+// handleStartOver deletes the draft and allows user to start fresh
+func (b *Bot) handleStartOver(ctx context.Context, query *tgbotapi.CallbackQuery, userID string, parts []string) {
+	// Parse planID and request from callback data
+	var planID int64
+	var request string
+	if len(parts) >= 2 {
+		dataParts := strings.SplitN(parts[1], "|", 2)
+		fmt.Sscanf(dataParts[0], "%d", &planID)
+		if len(dataParts) > 1 {
+			request = dataParts[1]
+		}
+	}
+
+	// Get the plan to find its week
+	plan, err := b.planRepo.GetByID(ctx, planID)
+	if err != nil || plan == nil {
+		log.Printf("Error retrieving plan for start over: %v", err)
+		edit := tgbotapi.NewEditMessageText(query.Message.Chat.ID, query.Message.MessageID, "❌ *Error:* Could not retrieve plan.")
+		edit.ParseMode = "Markdown"
+		b.api.Send(edit)
+		return
+	}
+
+	targetWeek := plan.WeekStart
+
+	// Edit message to show "Thinking..."
+	edit := tgbotapi.NewEditMessageText(query.Message.Chat.ID, query.Message.MessageID, "🔄 *Starting over...*\n🧑‍🍳 *Thinking...*")
+	edit.ParseMode = "Markdown"
+	b.api.Send(edit)
+
+	// Use the original request to generate a new plan
+	b.generateAndSendPlan(ctx, userID, query.Message.Chat.ID, query.Message.MessageID, request, targetWeek)
 }

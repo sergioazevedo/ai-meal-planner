@@ -42,30 +42,79 @@ func (q *Queries) DeleteOldMealPlansByUserID(ctx context.Context, arg DeleteOldM
 	return err
 }
 
-const insertMealPlan = `-- name: InsertMealPlan :exec
-INSERT INTO user_meal_plans (user_id, plan_data, week_start_date, created_at)
-VALUES (?, ?, ?, ?)
+const getDraftPlanByUserAndWeek = `-- name: GetDraftPlanByUserAndWeek :one
+SELECT id, user_id, plan_data, week_start_date, status, created_at FROM user_meal_plans
+WHERE user_id = ? AND week_start_date = ? AND status = 'DRAFT'
+LIMIT 1
+`
+
+type GetDraftPlanByUserAndWeekParams struct {
+	UserID        string
+	WeekStartDate time.Time
+}
+
+func (q *Queries) GetDraftPlanByUserAndWeek(ctx context.Context, arg GetDraftPlanByUserAndWeekParams) (UserMealPlan, error) {
+	row := q.db.QueryRowContext(ctx, getDraftPlanByUserAndWeek, arg.UserID, arg.WeekStartDate)
+	var i UserMealPlan
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.PlanData,
+		&i.WeekStartDate,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getMealPlanByID = `-- name: GetMealPlanByID :one
+SELECT id, user_id, plan_data, week_start_date, status, created_at FROM user_meal_plans
+WHERE id = ?
+`
+
+func (q *Queries) GetMealPlanByID(ctx context.Context, id int64) (UserMealPlan, error) {
+	row := q.db.QueryRowContext(ctx, getMealPlanByID, id)
+	var i UserMealPlan
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.PlanData,
+		&i.WeekStartDate,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const insertMealPlan = `-- name: InsertMealPlan :one
+INSERT INTO user_meal_plans (user_id, plan_data, week_start_date, status, created_at)
+VALUES (?, ?, ?, ?, ?)
+RETURNING id
 `
 
 type InsertMealPlanParams struct {
 	UserID        string
 	PlanData      string
 	WeekStartDate time.Time
+	Status        string
 	CreatedAt     time.Time
 }
 
-func (q *Queries) InsertMealPlan(ctx context.Context, arg InsertMealPlanParams) error {
-	_, err := q.db.ExecContext(ctx, insertMealPlan,
+func (q *Queries) InsertMealPlan(ctx context.Context, arg InsertMealPlanParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, insertMealPlan,
 		arg.UserID,
 		arg.PlanData,
 		arg.WeekStartDate,
+		arg.Status,
 		arg.CreatedAt,
 	)
-	return err
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const listRecentMealPlansByUserID = `-- name: ListRecentMealPlansByUserID :many
-SELECT id, user_id, plan_data, week_start_date, created_at FROM user_meal_plans
+SELECT id, user_id, plan_data, week_start_date, status, created_at FROM user_meal_plans
 WHERE user_id = ?
 ORDER BY week_start_date DESC
 LIMIT ?
@@ -90,6 +139,7 @@ func (q *Queries) ListRecentMealPlansByUserID(ctx context.Context, arg ListRecen
 			&i.UserID,
 			&i.PlanData,
 			&i.WeekStartDate,
+			&i.Status,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -103,4 +153,20 @@ func (q *Queries) ListRecentMealPlansByUserID(ctx context.Context, arg ListRecen
 		return nil, err
 	}
 	return items, nil
+}
+
+const updatePlanStatus = `-- name: UpdatePlanStatus :exec
+UPDATE user_meal_plans
+SET status = ?
+WHERE id = ?
+`
+
+type UpdatePlanStatusParams struct {
+	Status string
+	ID     int64
+}
+
+func (q *Queries) UpdatePlanStatus(ctx context.Context, arg UpdatePlanStatusParams) error {
+	_, err := q.db.ExecContext(ctx, updatePlanStatus, arg.Status, arg.ID)
+	return err
 }

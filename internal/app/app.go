@@ -177,7 +177,7 @@ func (a *App) GenerateMealPlan(ctx context.Context, userID string, request strin
 	}
 
 	// Save the generated meal plan to user memory
-	if err := a.planRepo.Save(ctx, userID, plan); err != nil {
+	if _, err := a.planRepo.Save(ctx, userID, plan); err != nil {
 		log.Printf("Warning: failed to save meal plan to user memory: %v", err)
 	}
 
