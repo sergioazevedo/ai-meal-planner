@@ -600,9 +600,17 @@ func (b *Bot) handleAdjustDraft(ctx context.Context, query *tgbotapi.CallbackQue
 
 	log.Printf("Created adjustment session %d for user %s, plan %d", sessionID, userID, planID)
 
-	edit := tgbotapi.NewEditMessageText(query.Message.Chat.ID, query.Message.MessageID, adjustmentPrompt)
-	edit.ParseMode = "Markdown"
-	b.api.Send(edit)
+	// 1. Update original message to remove buttons (so user can't click again)
+	// We keep the text exactly as is, just remove the markup
+	editMarkup := tgbotapi.NewEditMessageReplyMarkup(query.Message.Chat.ID, query.Message.MessageID, tgbotapi.InlineKeyboardMarkup{
+		InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{}, // Empty keyboard
+	})
+	b.api.Send(editMarkup)
+
+	// 2. Send the prompt as a NEW message
+	promptMsg := tgbotapi.NewMessage(query.Message.Chat.ID, adjustmentPrompt)
+	promptMsg.ParseMode = "Markdown"
+	b.api.Send(promptMsg)
 }
 
 // handleStartOver deletes the draft and allows user to start fresh
