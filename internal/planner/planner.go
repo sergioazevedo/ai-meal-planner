@@ -112,6 +112,7 @@ func (p *Planner) GeneratePlan(ctx context.Context, userID string, userRequest s
 	if err != nil {
 		return nil, metas, fmt.Errorf("failed to generate meal plan: %w", err)
 	}
+	chefResult.Plan.OriginalRequest = userRequest
 	metas = append(metas, chefResult.Meta)
 
 	return chefResult.Plan, metas, nil

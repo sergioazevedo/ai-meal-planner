@@ -81,6 +81,7 @@ func (p *Planner) RunPlanReviewer(
 	result.Plan = rawResponse.Plan
 	result.WeekStart = currentPlan.WeekStart
 	result.Status = currentPlan.Status
+	result.OriginalRequest = userRequest
 
 	return PlanReviewerResult{
 		RevisedPlan: result,

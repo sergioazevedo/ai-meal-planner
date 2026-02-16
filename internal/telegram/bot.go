@@ -354,7 +354,7 @@ func (b *Bot) generateAndSendPlan(ctx context.Context, userID string, chatID int
 		return
 	}
 
-	b.saveAndSendDraftPlan(ctx, chatID, messageID, userID, plan, request)
+	b.saveAndSendDraftPlan(ctx, chatID, messageID, userID, plan)
 }
 
 func formatPlanMarkdownParts(plan *planner.MealPlan) (string, string) {
@@ -498,8 +498,9 @@ func (b *Bot) handleConfirmDraft(ctx context.Context, query *tgbotapi.CallbackQu
 	}
 
 	// Parse planID from callback data
+	// Format is now "confirm|planID"
 	var planID int64
-	fmt.Sscanf(parts[1], "%d|", &planID)
+	fmt.Sscanf(parts[1], "%d", &planID)
 
 	// Get the draft plan from database
 	plan, err := b.planRepo.GetByID(ctx, planID)
@@ -565,8 +566,9 @@ func (b *Bot) handleConfirmDraft(ctx context.Context, query *tgbotapi.CallbackQu
 // handleAdjustDraft initiates the adjustment workflow by creating a session and prompting for feedback
 func (b *Bot) handleAdjustDraft(ctx context.Context, query *tgbotapi.CallbackQuery, userID string, parts []string) {
 	// Parse planID from callback data
+	// Format is now "adjust|planID"
 	var planID int64
-	fmt.Sscanf(parts[1], "%d|", &planID)
+	fmt.Sscanf(parts[1], "%d", &planID)
 
 	// Get the plan to extract original request
 	plan, err := b.planRepo.GetByID(ctx, planID)
@@ -617,18 +619,14 @@ func (b *Bot) handleAdjustDraft(ctx context.Context, query *tgbotapi.CallbackQue
 
 // handleStartOver deletes the draft and allows user to start fresh
 func (b *Bot) handleStartOver(ctx context.Context, query *tgbotapi.CallbackQuery, userID string, parts []string) {
-	// Parse planID and request from callback data
+	// Parse planID from callback data
 	var planID int64
-	var request string
+	// Callback data is now simplified to just "startover|planID"
 	if len(parts) >= 2 {
-		dataParts := strings.SplitN(parts[1], "|", 2)
-		fmt.Sscanf(dataParts[0], "%d", &planID)
-		if len(dataParts) > 1 {
-			request = dataParts[1]
-		}
+		fmt.Sscanf(parts[1], "%d", &planID)
 	}
 
-	// Get the plan to find its week
+	// Get the plan to find its week and original request
 	plan, err := b.planRepo.GetByID(ctx, planID)
 	if err != nil || plan == nil {
 		log.Printf("Error retrieving plan for start over: %v", err)
@@ -639,6 +637,12 @@ func (b *Bot) handleStartOver(ctx context.Context, query *tgbotapi.CallbackQuery
 	}
 
 	targetWeek := plan.WeekStart
+	request := plan.OriginalRequest
+
+	// Fallback if original request is missing (e.g., from old plans)
+	if request == "" {
+		request = "generate a meal plan"
+	}
 
 	// Edit message to show "Thinking..."
 	edit := tgbotapi.NewEditMessageText(query.Message.Chat.ID, query.Message.MessageID, "🔄 *Starting over...*\n🧑‍🍳 *Thinking...*")
@@ -732,11 +736,11 @@ func (b *Bot) handleAdjustmentFeedback(ctx context.Context, msg *tgbotapi.Messag
 	}
 
 	// Save and send the revised plan
-	b.saveAndSendDraftPlan(ctx, msg.Chat.ID, sentMsg.MessageID, userID, reviewerResult.RevisedPlan, userRequest)
+	b.saveAndSendDraftPlan(ctx, msg.Chat.ID, sentMsg.MessageID, userID, reviewerResult.RevisedPlan)
 }
 
 // saveAndSendDraftPlan saves the plan as a draft and updates the user's message with the plan content and action buttons.
-func (b *Bot) saveAndSendDraftPlan(ctx context.Context, chatID int64, messageID int, userID string, plan *planner.MealPlan, requestContext string) {
+func (b *Bot) saveAndSendDraftPlan(ctx context.Context, chatID int64, messageID int, userID string, plan *planner.MealPlan) {
 	// Set plan as DRAFT and clear shopping list (will be generated on confirm)
 	plan.Status = planner.StatusDraft
 	shoppingList := plan.ShoppingList // Save for later
@@ -752,14 +756,8 @@ func (b *Bot) saveAndSendDraftPlan(ctx context.Context, chatID int64, messageID 
 	// though the draft view doesn't usually show it.
 	plan.ShoppingList = shoppingList
 
-	// Store original request and shopping list in callback data
-	// Format: confirm|planID|request (truncated to fit 64 byte limit)
-	shortReq := requestContext
-	if len(shortReq) > 20 {
-		shortReq = shortReq[:20]
-	}
-
-	callbackData := fmt.Sprintf("%d|%s", planID, shortReq)
+	// Use just the PlanID for callback data. We can fetch the request from DB if needed.
+	callbackData := fmt.Sprintf("%d", planID)
 
 	// Format plan text in concise format
 	planText := formatDraftPlanMarkdown(plan)
