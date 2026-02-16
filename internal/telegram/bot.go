@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"log"
 	"net/http"
@@ -20,6 +21,9 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
+
+//go:embed adjustment_prompt.md
+var adjustmentPrompt string
 
 // Bot wraps the Telegram API, Meal Planner, and Clipper.
 type Bot struct {
@@ -48,11 +52,11 @@ func NewBot(
 	metricsStore *metrics.Store,
 	textGen llm.TextGenerator,
 	embedGen llm.EmbeddingGenerator,
-	planRepo *planner.PlanRepository,     // New parameter
-	recipeRepo *recipe.Repository,        // New parameter
-	vectorRepo *llm.VectorRepository,     // New parameter
-	shoppingRepo *shopping.Repository,    // New parameter
-	sessionRepo *SessionRepository,       // New parameter
+	planRepo *planner.PlanRepository, // New parameter
+	recipeRepo *recipe.Repository, // New parameter
+	vectorRepo *llm.VectorRepository, // New parameter
+	shoppingRepo *shopping.Repository, // New parameter
+	sessionRepo *SessionRepository, // New parameter
 ) (*Bot, error) {
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramBotToken)
 	if err != nil {
@@ -347,49 +351,10 @@ func (b *Bot) generateAndSendPlan(ctx context.Context, userID string, chatID int
 		edit := tgbotapi.NewEditMessageText(chatID, messageID, finalText)
 		edit.ParseMode = "Markdown"
 		b.api.Send(edit)
-	} else {
-		// Set plan as DRAFT and clear shopping list (will be generated on confirm)
-		plan.Status = planner.StatusDraft
-		shoppingList := plan.ShoppingList // Save for later
-		plan.ShoppingList = nil           // Clear from draft
-
-		// Save the draft plan to database
-		planID, err := b.planRepo.Save(ctx, userID, plan)
-		if err != nil {
-			log.Printf("Warning: failed to save meal plan to user memory for user %s: %v", userID, err)
-		}
-		plan.ID = planID
-
-		// Store original request and shopping list in callback data
-		// Format: confirm|planID|request (truncated to fit 64 byte limit)
-		shortReq := request
-		if len(shortReq) > 20 {
-			shortReq = shortReq[:20]
-		}
-
-		callbackData := fmt.Sprintf("%d|%s", planID, shortReq)
-
-		// Restore shopping list for potential later use
-		plan.ShoppingList = shoppingList
-
-		// Format plan text in concise format
-		planText := formatDraftPlanMarkdown(plan)
-
-		// Add feedback buttons
-		keyboard := tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("✅ Confirm", "confirm|"+callbackData),
-				tgbotapi.NewInlineKeyboardButtonData("✏️ Adjust", "adjust|"+callbackData),
-				tgbotapi.NewInlineKeyboardButtonData("🔄 Start Over", "startover|"+callbackData),
-			),
-		)
-
-		// Edit message with the draft plan and buttons
-		edit := tgbotapi.NewEditMessageText(chatID, messageID, planText)
-		edit.ParseMode = "Markdown"
-		edit.ReplyMarkup = &keyboard
-		b.api.Send(edit)
+		return
 	}
+
+	b.saveAndSendDraftPlan(ctx, chatID, messageID, userID, plan, request)
 }
 
 func formatPlanMarkdownParts(plan *planner.MealPlan) (string, string) {
@@ -608,23 +573,7 @@ func (b *Bot) handleAdjustDraft(ctx context.Context, query *tgbotapi.CallbackQue
 
 	log.Printf("Created adjustment session %d for user %s, plan %d", sessionID, userID, planID)
 
-	// Send a message asking for adjustment feedback
-	feedbackPrompt := `✏️ *Plan Adjustment Mode*
-
-Please describe what you'd like to change about your plan. Be specific about:
-
-• *Which days* (e.g., "Monday", "Tuesday and Wednesday", "midweek")
-• *What changes* (e.g., "make it vegetarian", "something faster", "no pasta", "use seasonal ingredients")
-
-*Examples:*
-- "Make Monday and Tuesday vegetarian"
-- "Something faster for midweek"
-- "No pasta recipes"
-- "Use more seasonal ingredients"
-
-Type your feedback below (or reply to this message):`
-
-	edit := tgbotapi.NewEditMessageText(query.Message.Chat.ID, query.Message.MessageID, feedbackPrompt)
+	edit := tgbotapi.NewEditMessageText(query.Message.Chat.ID, query.Message.MessageID, adjustmentPrompt)
 	edit.ParseMode = "Markdown"
 	b.api.Send(edit)
 }
@@ -665,6 +614,13 @@ func (b *Bot) handleStartOver(ctx context.Context, query *tgbotapi.CallbackQuery
 
 // handleAdjustmentFeedback processes user feedback to revise a meal plan
 func (b *Bot) handleAdjustmentFeedback(ctx context.Context, msg *tgbotapi.Message, session *Session) {
+	defer func() {
+		// Clean up session at the end
+		if err := b.sessionRepo.Delete(ctx, session.ID); err != nil {
+			log.Printf("Error cleaning up session %d: %v", session.ID, err)
+		}
+	}()
+
 	userID := fmt.Sprintf("%d", msg.From.ID)
 	adjustmentFeedback := msg.Text
 
@@ -685,7 +641,6 @@ func (b *Bot) handleAdjustmentFeedback(ctx context.Context, msg *tgbotapi.Messag
 		edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, "❌ *Error:* Invalid session data.")
 		edit.ParseMode = "Markdown"
 		b.api.Send(edit)
-		b.sessionRepo.Delete(ctx, session.ID) // Clean up
 		return
 	}
 
@@ -698,7 +653,6 @@ func (b *Bot) handleAdjustmentFeedback(ctx context.Context, msg *tgbotapi.Messag
 		edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, "❌ *Error:* Could not retrieve plan.")
 		edit.ParseMode = "Markdown"
 		b.api.Send(edit)
-		b.sessionRepo.Delete(ctx, session.ID) // Clean up
 		return
 	}
 
@@ -706,65 +660,7 @@ func (b *Bot) handleAdjustmentFeedback(ctx context.Context, msg *tgbotapi.Messag
 	// For now, we'll use a generic request since we don't store it in the plan
 	userRequest := "meal plan"
 
-	// Perform RAG search for recipe candidates
-	count, err := b.recipeRepo.Count(ctx)
-	if err != nil {
-		log.Printf("Error counting recipes: %v", err)
-		edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, "❌ *Error:* Could not search recipes.")
-		edit.ParseMode = "Markdown"
-		b.api.Send(edit)
-		b.sessionRepo.Delete(ctx, session.ID) // Clean up
-		return
-	}
-
-	var recipes []recipe.Recipe
-	if count <= 20 {
-		// For small pools, fetch all recipes
-		recipes, err = b.recipeRepo.List(ctx, nil)
-		if err != nil {
-			log.Printf("Error listing recipes: %v", err)
-			edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, "❌ *Error:* Could not search recipes.")
-			edit.ParseMode = "Markdown"
-			b.api.Send(edit)
-			b.sessionRepo.Delete(ctx, session.ID) // Clean up
-			return
-		}
-	} else {
-		// For larger pools, use semantic search based on feedback
-		queryEmbedding, err := b.embedGen.GenerateEmbedding(ctx, adjustmentFeedback)
-		if err != nil {
-			log.Printf("Error generating embedding: %v", err)
-			edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, "❌ *Error:* Could not search recipes.")
-			edit.ParseMode = "Markdown"
-			b.api.Send(edit)
-			b.sessionRepo.Delete(ctx, session.ID) // Clean up
-			return
-		}
-
-		recipeIDs, err := b.vectorRepo.FindSimilar(ctx, queryEmbedding, 40, nil)
-		if err != nil {
-			log.Printf("Error searching similar recipes: %v", err)
-			edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, "❌ *Error:* Could not search recipes.")
-			edit.ParseMode = "Markdown"
-			b.api.Send(edit)
-			b.sessionRepo.Delete(ctx, session.ID) // Clean up
-			return
-		}
-
-		recipes, err = b.recipeRepo.GetByIds(ctx, recipeIDs)
-		if err != nil {
-			log.Printf("Error fetching recipes: %v", err)
-			edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, "❌ *Error:* Could not search recipes.")
-			edit.ParseMode = "Markdown"
-			b.api.Send(edit)
-			b.sessionRepo.Delete(ctx, session.ID) // Clean up
-			return
-		}
-	}
-
-	log.Printf("PlanReviewer will choose from %d available recipes", len(recipes))
-
-	// Call PlanReviewer agent
+	// Call Planner to revise the plan
 	pCtx := planner.PlanningContext{
 		Adults:           b.cfg.DefaultAdults,
 		Children:         b.cfg.DefaultChildren,
@@ -772,7 +668,7 @@ func (b *Bot) handleAdjustmentFeedback(ctx context.Context, msg *tgbotapi.Messag
 		CookingFrequency: b.cfg.DefaultCookingFrequency,
 	}
 
-	reviewerResult, err := b.planner.RunPlanReviewer(ctx, currentPlan, userRequest, adjustmentFeedback, pCtx, recipes)
+	reviewerResult, err := b.planner.RevisePlan(ctx, currentPlan, userRequest, adjustmentFeedback, pCtx)
 	if err != nil {
 		log.Printf("Error revising plan: %v", err)
 		safeErr := strings.ReplaceAll(err.Error(), "`", "'")
@@ -780,7 +676,6 @@ func (b *Bot) handleAdjustmentFeedback(ctx context.Context, msg *tgbotapi.Messag
 		edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, finalText)
 		edit.ParseMode = "Markdown"
 		b.api.Send(edit)
-		b.sessionRepo.Delete(ctx, session.ID) // Clean up
 		return
 	}
 
@@ -799,28 +694,38 @@ func (b *Bot) handleAdjustmentFeedback(ctx context.Context, msg *tgbotapi.Messag
 		b.sendAdminAlert(alert)
 	}
 
-	// Update the plan with revised version (keep as DRAFT)
-	revisedPlan := reviewerResult.RevisedPlan
-	revisedPlan.Status = planner.StatusDraft
-	shoppingList := revisedPlan.ShoppingList
-	revisedPlan.ShoppingList = nil // Clear from draft
+	// Save and send the revised plan
+	b.saveAndSendDraftPlan(ctx, msg.Chat.ID, sentMsg.MessageID, userID, reviewerResult.RevisedPlan, userRequest)
+}
 
-	// Save revised plan (creates a new plan record)
-	newPlanID, err := b.planRepo.Save(ctx, userID, revisedPlan)
+// saveAndSendDraftPlan saves the plan as a draft and updates the user's message with the plan content and action buttons.
+func (b *Bot) saveAndSendDraftPlan(ctx context.Context, chatID int64, messageID int, userID string, plan *planner.MealPlan, requestContext string) {
+	// Set plan as DRAFT and clear shopping list (will be generated on confirm)
+	plan.Status = planner.StatusDraft
+	shoppingList := plan.ShoppingList // Save for later
+	plan.ShoppingList = nil           // Clear from draft
+
+	// Save the draft plan to database
+	planID, err := b.planRepo.Save(ctx, userID, plan)
 	if err != nil {
-		log.Printf("Warning: failed to save revised meal plan: %v", err)
+		log.Printf("Warning: failed to save meal plan to user memory for user %s: %v", userID, err)
 	}
-	revisedPlan.ID = newPlanID
-	revisedPlan.ShoppingList = shoppingList
+	plan.ID = planID
+	// Restore shopping list (in memory) if needed for immediate display or logic,
+	// though the draft view doesn't usually show it.
+	plan.ShoppingList = shoppingList
 
-	// Format the revised plan
-	shortReq := userRequest
+	// Store original request and shopping list in callback data
+	// Format: confirm|planID|request (truncated to fit 64 byte limit)
+	shortReq := requestContext
 	if len(shortReq) > 20 {
 		shortReq = shortReq[:20]
 	}
-	callbackData := fmt.Sprintf("%d|%s", newPlanID, shortReq)
 
-	planText := formatDraftPlanMarkdown(revisedPlan)
+	callbackData := fmt.Sprintf("%d|%s", planID, shortReq)
+
+	// Format plan text in concise format
+	planText := formatDraftPlanMarkdown(plan)
 
 	// Add feedback buttons
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
@@ -831,12 +736,9 @@ func (b *Bot) handleAdjustmentFeedback(ctx context.Context, msg *tgbotapi.Messag
 		),
 	)
 
-	// Edit message with the revised draft plan
-	edit := tgbotapi.NewEditMessageText(msg.Chat.ID, sentMsg.MessageID, planText)
+	// Edit message with the draft plan and buttons
+	edit := tgbotapi.NewEditMessageText(chatID, messageID, planText)
 	edit.ParseMode = "Markdown"
 	edit.ReplyMarkup = &keyboard
 	b.api.Send(edit)
-
-	// Delete the session (adjustment feedback processed)
-	_ = b.sessionRepo.Delete(ctx, session.ID)
 }

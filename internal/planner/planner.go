@@ -16,13 +16,13 @@ import (
 
 // Planner handles the generation of meal plans.
 type Planner struct {
-	recipeRepo       *recipe.Repository
-	vectorRepo       *llm.VectorRepository
-	planRepo         *PlanRepository
-	analystGenerator llm.TextGenerator // High-reasoning model (e.g., 70B)
-	chefGenerator    llm.TextGenerator // High-throughput model (e.g., 8B)
+	recipeRepo        *recipe.Repository
+	vectorRepo        *llm.VectorRepository
+	planRepo          *PlanRepository
+	analystGenerator  llm.TextGenerator // High-reasoning model (e.g., 70B)
+	chefGenerator     llm.TextGenerator // High-throughput model (e.g., 8B)
 	reviewerGenerator llm.TextGenerator // High-reasoning model for plan revision
-	embedGen         llm.EmbeddingGenerator
+	embedGen          llm.EmbeddingGenerator
 }
 
 // NewPlanner creates a new Planner instance with separate generators for different agent roles.
@@ -87,38 +87,10 @@ func (p *Planner) GeneratePlan(ctx context.Context, userID string, userRequest s
 		}
 	}
 
-	// 1. Decide retrieval strategy based on total recipe count
-	count, err := p.recipeRepo.Count(ctx)
+	// 1. Fetch candidates using the helper
+	recipes, err = p.getRecipeCandidates(ctx, userRequest, excludeIDs)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to count recipes: %w", err)
-	}
-
-	if count <= 20 {
-		// For small pools, give everything to the Analyst to maximize variety
-		recipes, err = p.recipeRepo.List(ctx, excludeIDs)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to list recipes: %w", err)
-		}
-		// Shuffle to avoid positional bias in the LLM
-		r := rand.New(rand.NewSource(time.Now().UnixNano()))
-		r.Shuffle(len(recipes), func(i, j int) {
-			recipes[i], recipes[j] = recipes[j], recipes[i]
-		})
-	} else {
-		// 2. For larger pools, use embedding search to find top 20 relevant recipes
-		queryEmbedding, err := p.embedGen.GenerateEmbedding(ctx, userRequest)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to generate embedding for request: %w", err)
-		}
-
-		recipeIds, err := p.vectorRepo.FindSimilar(ctx, queryEmbedding, 40, excludeIDs)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to retrieve similar recipes: %w", err)
-		}
-		recipes, err = p.recipeRepo.GetByIds(ctx, recipeIds)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to retrieve recipes: %w", err)
-		}
+		return nil, nil, err
 	}
 
 	log.Printf("Analyst will choose from %d available recipes", len(recipes))
@@ -127,7 +99,7 @@ func (p *Planner) GeneratePlan(ctx context.Context, userID string, userRequest s
 		return nil, nil, fmt.Errorf("no recipes found to create a plan")
 	}
 
-	// 4. Call Analyst agent to create a meal schedule
+	// 2. Call Analyst agent to create a meal schedule
 	analystResult, err := p.runAnalyst(ctx, userRequest, pCtx, recipes)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to generate meal schedule: %w", err)
@@ -159,7 +131,7 @@ func (p *Planner) GenerateShoppingList(ctx context.Context, plan *MealPlan, pCtx
 			// Determine action based on day title
 			action := MealActionCook
 			if strings.Contains(strings.ToLower(day.RecipeTitle), "leftover") ||
-			   strings.Contains(strings.ToLower(day.RecipeTitle), "reuse") {
+				strings.Contains(strings.ToLower(day.RecipeTitle), "reuse") {
 				action = MealActionLeftOvers
 			}
 
@@ -200,4 +172,66 @@ func (p *Planner) GenerateShoppingList(ctx context.Context, plan *MealPlan, pCtx
 	}
 
 	return chefResult.Plan.ShoppingList, nil
+}
+
+// RevisePlan revises an existing meal plan based on user feedback.
+func (p *Planner) RevisePlan(
+	ctx context.Context,
+	currentPlan *MealPlan,
+	originalRequest string,
+	feedback string,
+	pCtx PlanningContext,
+) (PlanReviewerResult, error) {
+	// Find relevant recipes based on feedback
+	recipes, err := p.getRecipeCandidates(ctx, feedback, nil)
+	if err != nil {
+		return PlanReviewerResult{}, fmt.Errorf("failed to find recipe candidates: %w", err)
+	}
+
+	log.Printf("PlanReviewer will choose from %d available recipes", len(recipes))
+
+	// Run the reviewer agent
+	return p.RunPlanReviewer(ctx, currentPlan, originalRequest, feedback, pCtx, recipes)
+}
+
+// getRecipeCandidates retrieves recipe candidates based on a query string.
+// It uses semantic search if the total recipe count exceeds a threshold, otherwise returns all recipes (shuffled).
+func (p *Planner) getRecipeCandidates(ctx context.Context, query string, excludeIDs []string) ([]recipe.Recipe, error) {
+	// Decide retrieval strategy based on total recipe count
+	count, err := p.recipeRepo.Count(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count recipes: %w", err)
+	}
+
+	var recipes []recipe.Recipe
+
+	if count <= 20 {
+		// For small pools, give everything to maximize variety
+		recipes, err = p.recipeRepo.List(ctx, excludeIDs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list recipes: %w", err)
+		}
+		// Shuffle to avoid positional bias in the LLM
+		r := rand.New(rand.NewSource(time.Now().UnixNano()))
+		r.Shuffle(len(recipes), func(i, j int) {
+			recipes[i], recipes[j] = recipes[j], recipes[i]
+		})
+	} else {
+		// For larger pools, use embedding search to find top relevant recipes
+		queryEmbedding, err := p.embedGen.GenerateEmbedding(ctx, query)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate embedding for request: %w", err)
+		}
+
+		recipeIds, err := p.vectorRepo.FindSimilar(ctx, queryEmbedding, 40, excludeIDs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve similar recipes: %w", err)
+		}
+		recipes, err = p.recipeRepo.GetByIds(ctx, recipeIds)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve recipes: %w", err)
+		}
+	}
+
+	return recipes, nil
 }
