@@ -113,6 +113,18 @@ func main() {
 		if err := application.GenerateMealPlan(ctx, *userID, *request); err != nil {
 			log.Fatalf("Meal planning failed: %v", err)
 		}
+	case "migrate":
+		migrateCmd := flag.NewFlagSet("migrate", flag.ExitOnError)
+		direction := migrateCmd.String("direction", "up", "Migration direction (e.g., 'up', 'down')")
+		migrateCmd.Parse(os.Args[2:])
+
+		if *direction == "up" {
+			if err := db.MigrateUp(cfg.DatabasePath); err != nil {
+				log.Fatalf("Migration failed: %v", err)
+			}
+		} else {
+			log.Fatalf("Unsupported migration direction: %s", *direction)
+		}
 	case "metrics-cleanup":
 		cleanupCmd := flag.NewFlagSet("metrics-cleanup", flag.ExitOnError)
 		days := cleanupCmd.Int("days", 30, "Keep records for the last N days")
@@ -134,5 +146,6 @@ func printUsage() {
 	fmt.Println("Usage: ai-meal-planner <command> [arguments]")
 	fmt.Println("\nCommands:")
 	fmt.Println("  ingest             Fetch and normalize recipes from Ghost")
+	fmt.Println("  migrate            Run database migrations")
 	fmt.Println("  metrics-cleanup    Remove old metric records")
 }

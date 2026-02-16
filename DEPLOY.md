@@ -55,6 +55,17 @@ From your **local machine**, use the deployment script:
 ./scripts/deploy.sh your-server-alias
 ```
 
+### 2.5. Run Database Migrations (Important!)
+After deploying new code, you will often need to apply database schema changes. This must be run **separately** after deployment and before starting the bot.
+
+```bash
+# Using an IP and PEM key
+./scripts/remote-migrate.sh <REMOTE_IP> /path/to/key.pem
+
+# OR Using an SSH config alias
+./scripts/remote-migrate.sh your-server-alias
+```
+
 ### 3. Remote Management
 Use the remote control scripts to manage the app without manually SSHing in:
 
@@ -206,8 +217,8 @@ sudo systemctl reload nginx
 ### 4. Deploy Updates
 The `./scripts/deploy.sh` script is now configured to build both binaries, upload them, and automatically restart the `meal-planner-bot` service.
 
-```bash
-./scripts/deploy.sh your-server-alias
-```
+**Recommended Workflow:**
+1.  **Deploy Code:** `./scripts/deploy.sh your-server-alias`
+2.  **Run Migrations:** `./scripts/remote-migrate.sh your-server-alias` (if database changes are present)
 
 *Note: The very first time you deploy, you must manually create the systemd service file as described in Step 2 above.*
