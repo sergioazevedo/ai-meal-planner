@@ -20,6 +20,7 @@ type Planner struct {
 	planRepo         *PlanRepository
 	analystGenerator llm.TextGenerator // High-reasoning model (e.g., 70B)
 	chefGenerator    llm.TextGenerator // High-throughput model (e.g., 8B)
+	reviewerGenerator llm.TextGenerator // High-reasoning model for plan revision
 	embedGen         llm.EmbeddingGenerator
 }
 
@@ -30,15 +31,17 @@ func NewPlanner(
 	planRepo *PlanRepository,
 	analystGen llm.TextGenerator,
 	chefGen llm.TextGenerator,
+	reviewerGen llm.TextGenerator,
 	embedGen llm.EmbeddingGenerator,
 ) *Planner {
 	return &Planner{
-		recipeRepo:       recipeRepo,
-		vectorRepo:       vectorRepo,
-		planRepo:         planRepo,
-		analystGenerator: analystGen,
-		chefGenerator:    chefGen,
-		embedGen:         embedGen,
+		recipeRepo:        recipeRepo,
+		vectorRepo:        vectorRepo,
+		planRepo:          planRepo,
+		analystGenerator:  analystGen,
+		chefGenerator:     chefGen,
+		reviewerGenerator: reviewerGen,
+		embedGen:          embedGen,
 	}
 }
 

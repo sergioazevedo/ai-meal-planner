@@ -58,3 +58,15 @@ CREATE TABLE IF NOT EXISTS shopping_lists (
 CREATE INDEX IF NOT EXISTS idx_shopping_lists_user_id ON shopping_lists(user_id);
 CREATE INDEX IF NOT EXISTS idx_shopping_lists_meal_plan_id ON shopping_lists(meal_plan_id);
 CREATE INDEX IF NOT EXISTS idx_shopping_lists_user_plan ON shopping_lists(user_id, meal_plan_id);
+
+-- user_sessions table (for tracking conversation state during plan adjustments)
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    session_type TEXT NOT NULL,
+    state TEXT NOT NULL,
+    context_data TEXT NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user_active ON user_sessions(user_id, expires_at);

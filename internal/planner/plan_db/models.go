@@ -46,3 +46,13 @@ type UserMealPlan struct {
 	Status        string
 	CreatedAt     time.Time
 }
+
+type UserSession struct {
+	ID          int64
+	UserID      string
+	SessionType string
+	State       string
+	ContextData string
+	ExpiresAt   time.Time
+	CreatedAt   time.Time
+}

@@ -60,11 +60,17 @@ func main() {
 	defer metricsStore.Close()
 
 	// 5. Initialize Services
-	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, planRepo, analystModel, normalizerModel, geminiClient)
+	// Create reviewer model (use same high-reasoning model as Analyst for plan revision)
+	reviewerModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
+
+	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, planRepo, analystModel, normalizerModel, reviewerModel, geminiClient)
 	recipeClipper := clipper.NewClipper(ghostClient, normalizerModel)
 
-	// 6. Initialize Telegram Bot
-	bot, err := telegram.NewBot(cfg, mealPlanner, recipeClipper, metricsStore, normalizerModel, geminiClient, planRepo, recipeRepo, vectorRepo, shoppingRepo)
+	// 6. Initialize Session Repository for conversation state tracking
+	sessionRepo := telegram.NewSessionRepository(db.SQL)
+
+	// 7. Initialize Telegram Bot
+	bot, err := telegram.NewBot(cfg, mealPlanner, recipeClipper, metricsStore, normalizerModel, geminiClient, planRepo, recipeRepo, vectorRepo, shoppingRepo, sessionRepo)
 	if err != nil {
 		log.Fatalf("Failed to initialize Telegram Bot: %v", err)
 	}

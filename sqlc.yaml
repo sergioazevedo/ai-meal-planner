@@ -35,3 +35,10 @@ sql:
       go:
         package: "shoppingdb"
         out: "internal/shopping/db"
+  - engine: "sqlite"
+    schema: "internal/database/schema.sql"
+    queries: "internal/database/session_queries.sql"
+    gen:
+      go:
+        package: "sessiondb"
+        out: "internal/telegram/session_db"

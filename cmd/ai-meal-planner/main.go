@@ -36,6 +36,7 @@ func main() {
 
 	analystModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
 	normalizerModel := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.3)
+	reviewerModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
 
 	// Initialize the new SQLite database
 	db, err := database.NewDB(cfg.DatabasePath)
@@ -52,7 +53,7 @@ func main() {
 	metricsStore := metrics.NewStore(db.SQL)
 	defer metricsStore.Close()
 
-	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, planRepo, analystModel, normalizerModel, geminiClient)
+	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, planRepo, analystModel, normalizerModel, reviewerModel, geminiClient)
 	recipeClipper := clipper.NewClipper(ghostClient, normalizerModel)
 
 	application := app.NewApp(
