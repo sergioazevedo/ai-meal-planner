@@ -48,6 +48,10 @@ func TestGeneratePlan(t *testing.T) {
 		t.Fatalf("Failed to create test DB: %v", err)
 	}
 	defer db.Close()
+	
+	if err := db.MigrateUp(dbPath); err != nil {
+		t.Fatalf("Failed to migrate test DB: %v", err)
+	}
 
 	recipeRepo := recipe.NewRepository(db.SQL)
 	vectorRepo := llm.NewVectorRepository(db.SQL)

@@ -114,6 +114,10 @@ func TestFullWorkflow(t *testing.T) {
 	}
 	defer db.Close()
 
+	if err := db.MigrateUp(dbPath); err != nil {
+		t.Fatalf("Failed to migrate test database: %v", err)
+	}
+
 	recipeRepo := recipe.NewRepository(db.SQL)
 	vectorRepo := llm.NewVectorRepository(db.SQL)
 	planRepo := planner.NewPlanRepository(db.SQL)

@@ -87,6 +87,10 @@ func TestVectorSearchRecallIntegration(t *testing.T) {
 	}
 	defer dbInstance.Close()
 
+	if err := dbInstance.MigrateUp(dbPath); err != nil {
+		t.Fatalf("Failed to migrate database: %v\n", err)
+	}
+
 	vectorRepo := llm.NewVectorRepository(dbInstance.SQL)
 	extractor := recipe.NewExtractor(realTextGenerator, cachedEmbGen, vectorRepo) // New Extractor instance
 
