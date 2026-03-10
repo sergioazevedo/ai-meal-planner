@@ -34,6 +34,14 @@ To evaluate an LLM's reasoning, the environment must be tightly controlled. We c
 **The Solution:**
 We will maintain a static, curated dataset in `testdata/golden_recipes.json`.
 
+**How to Create the Golden Set from Production:**
+The most accurate way to build this dataset is by extracting real recipes from the production database. You can export a raw sample using the `sqlite3` CLI tool on your production server:
+
+```bash
+sqlite3 your_production_database.db "SELECT data FROM recipes LIMIT 50;" > raw_recipes_export.txt
+```
+Once exported, this raw JSON text can be reviewed, hand-picked for the edge cases below, and formatted into `testdata/golden_recipes.json`.
+
 **Requirements for the Golden Set:**
 *   **Size:** ~20-30 highly diverse recipes.
 *   **Edge Cases:**
