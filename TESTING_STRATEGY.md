@@ -42,6 +42,12 @@ sqlite3 your_production_database.db "SELECT data FROM recipes LIMIT 50;" > raw_r
 ```
 Once exported, this raw JSON text can be reviewed, hand-picked for the edge cases below, and formatted into `testdata/golden_recipes.json`.
 
+**Important Data Minimization Step:**
+When curating this JSON, you should **empty the `instructions` array** for every recipe (e.g., `"instructions": []`).
+1. **Token Savings:** Instructions are the largest part of the recipe. Stripping them drastically reduces the context size sent to Groq/Gemini, making tests much faster and cheaper.
+2. **Proprietary Protection:** The step-by-step techniques are often the intellectual property of a recipe. Removing them ensures no proprietary logic is uploaded or processed during automated CI/CD runs.
+3. **Agent Independence:** The Analyst and Chef agents only require `Title`, `Tags`, `Ingredients`, and `Prep Time` to successfully construct meal plans and embeddings. They do not need to know *how* to cook the food.
+
 **Requirements for the Golden Set:**
 *   **Size:** ~20-30 highly diverse recipes.
 *   **Edge Cases:**
