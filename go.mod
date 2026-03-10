@@ -1,6 +1,6 @@
 module ai-meal-planner
 
-go 1.24.4
+go 1.26.1
 
 require (
 	github.com/PuerkitoBio/goquery v1.11.0

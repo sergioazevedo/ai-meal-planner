@@ -82,3 +82,15 @@
 - [ ] **Enhanced Testing**
     - [ ] Add unit tests for each agent's specialized prompt and output.
 
+## Phase 8: Advanced RAG & Search Optimization
+- [ ] **Metadata Pre-filtering**
+    - [ ] Update `NormalizedRecipe` to include strict dietary flags (e.g., `is_vegan`, `is_vegetarian`, `is_gluten_free`, `is_dairy_free`).
+    - [ ] Update the Normalization prompt to accurately extract these flags.
+    - [ ] Modify the search logic to apply SQL `WHERE` filters *before* calculating vector similarity to ensure dietary constraints are 100% respected.
+- [ ] **In-Database Vector Search**
+    - [ ] Migrate from the current in-memory Go similarity loop to a native SQLite vector extension (e.g., `sqlite-vec`).
+    - [ ] This will improve performance and reduce RAM usage as the number of recipes grows.
+- [ ] **Hybrid Search (Keyword + Vector)**
+    - [ ] Enable SQLite FTS5 (Full Text Search) for recipe titles and ingredient lists.
+    - [ ] Combine keyword matches with semantic vector results (using a technique like Reciprocal Rank Fusion) to handle specific ingredient requests more accurately.
+

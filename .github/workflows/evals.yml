@@ -1,0 +1,50 @@
+name: AI Agent Evals
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  unit-tests:
+    name: Run Unit Tests (Fast)
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.26'
+
+    - name: Install Dependencies
+      run: go mod download
+
+    - name: Run Standard Unit Tests
+      run: go test -short -v ./...
+
+  ai-evals:
+    name: Run Live AI Evals (Slow)
+    needs: unit-tests # Only run evals if basic code logic passes
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.26'
+
+    - name: Install Dependencies
+      run: go mod download
+
+    - name: Run Live AI Evals
+      env:
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      run: go test -v ./internal/planner -run LiveEval
