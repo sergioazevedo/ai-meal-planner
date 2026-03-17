@@ -88,7 +88,30 @@ We will replace hardcoded Go assertions (`if plan.Contains("Chicken")`) with a s
 
 ---
 
-## 4. Immediate Action Items
+## 4. Mocking Strategy (The `llmtest` Package)
+
+To ensure consistency and avoid code duplication, all LLM mocks live in the dedicated `internal/llm/llmtest` package.
+
+### Why a dedicated package?
+- **Separation of Concerns**: Test code (mocks) is kept out of the production `llm` package.
+- **Consistency**: All packages (`planner`, `recipe`, `clipper`) use the same mock implementation.
+- **Flexibility**: The `MockTextGenerator` provides a `GenerateFn` hook to allow tests to inject custom JSON responses based on specific prompts.
+
+### Usage Example:
+```go
+mockGen := &llmtest.MockTextGenerator{
+    GenerateFn: func(prompt string) string {
+        if strings.Contains(prompt, "Analyst") {
+            return `{"planned_meals": [...]}`
+        }
+        return `{"plan": [...]}`
+    },
+}
+```
+
+---
+
+## 5. Immediate Action Items
 
 - [ ] Create `testdata/golden_recipes.json` with the first 10 edge-case recipes.
 - [ ] Refactor `analyst_eval_test.go` to load from the Golden Set instead of using inline Go structs.
