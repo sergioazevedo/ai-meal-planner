@@ -12,15 +12,6 @@ import (
 	"testing"
 )
 
-type MockEmbedingGenerator struct {
-	shouldError bool
-}
-
-type MockTextGenerator struct {
-	shouldError bool
-	response    string
-}
-
 type MockVectorRepository struct {
 	// For testing specific scenarios if needed
 	mockGet     func(ctx context.Context, recipeID string) (*llm.EmbeddingRecord, error)
@@ -54,13 +45,6 @@ func (m *MockVectorRepository) FindSimilar(ctx context.Context, queryEmbedding [
 }
 func (m *MockVectorRepository) WithTx(tx *sql.Tx) *llm.VectorRepository {
 	return nil // Return nil for mock as real transaction not needed for this mock
-}
-
-func (m *MockEmbedingGenerator) GenerateEmbedding(_ context.Context, _ string) ([]float32, error) {
-	if m.shouldError {
-		return nil, errors.New("LLM error")
-	}
-	return []float32{0.1, 0.2, 0.3}, nil
 }
 
 func TestExtractor_ExtractRecipe(t *testing.T) {
@@ -154,7 +138,7 @@ func TestExtractor_ProcessAndSaveEmbedding(t *testing.T) {
 	}
 
 	t.Run("Success_CacheMiss", func(t *testing.T) {
-		mockEmbGen := &MockEmbedingGenerator{}
+		mockEmbGen := &llmtest.MockEmbeddingGenerator{}
 		mockVectorRepo := &MockVectorRepository{
 			mockGet: func(ctx context.Context, recipeID string) (*llm.EmbeddingRecord, error) {
 				return nil, sql.ErrNoRows // Simulate cache miss
@@ -184,7 +168,7 @@ func TestExtractor_ProcessAndSaveEmbedding(t *testing.T) {
 		hasher.Write([]byte(sampleText))
 		currentTextHash := hex.EncodeToString(hasher.Sum(nil))
 
-		mockEmbGen := &MockEmbedingGenerator{} // Should not be called
+		mockEmbGen := &llmtest.MockEmbeddingGenerator{} // Should not be called
 		mockVectorRepo := &MockVectorRepository{
 			mockGet: func(ctx context.Context, recipeID string) (*llm.EmbeddingRecord, error) {
 				return &llm.EmbeddingRecord{
@@ -212,7 +196,7 @@ func TestExtractor_ProcessAndSaveEmbedding(t *testing.T) {
 	})
 
 	t.Run("EmbeddingGenerationError", func(t *testing.T) {
-		mockEmbGen := &MockEmbedingGenerator{shouldError: true}
+		mockEmbGen := &llmtest.MockEmbeddingGenerator{ShouldError: true}
 		mockVectorRepo := &MockVectorRepository{
 			mockGet: func(ctx context.Context, recipeID string) (*llm.EmbeddingRecord, error) {
 				return nil, sql.ErrNoRows // Simulate cache miss
@@ -224,14 +208,14 @@ func TestExtractor_ProcessAndSaveEmbedding(t *testing.T) {
 		if err == nil {
 			t.Fatal("Expected an error during embedding generation, got nil")
 		}
-		expectedError := "failed to generate embedding: LLM error"
+		expectedError := "failed to generate embedding: mock ai error"
 		if err.Error() != expectedError {
 			t.Errorf("Expected error '%s', got '%s'", expectedError, err.Error())
 		}
 	})
 
 	t.Run("VectorRepoSaveError", func(t *testing.T) {
-		mockEmbGen := &MockEmbedingGenerator{}
+		mockEmbGen := &llmtest.MockEmbeddingGenerator{}
 		mockVectorRepo := &MockVectorRepository{
 			mockSave: func(ctx context.Context, recipeID string, embedding []float32, textHash string) error {
 				return errors.New("mock vector repo error")

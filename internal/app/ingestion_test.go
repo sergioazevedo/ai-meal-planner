@@ -3,6 +3,7 @@ package app
 import (
 	"ai-meal-planner/internal/ghost"
 	"ai-meal-planner/internal/llm"
+	"ai-meal-planner/internal/llm/llmtest"
 	"ai-meal-planner/internal/metrics"
 	"ai-meal-planner/internal/recipe"
 	"context"
@@ -11,24 +12,6 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 )
-
-type mockTextGen struct {
-	res string
-}
-
-func (m *mockTextGen) GenerateContent(ctx context.Context, prompt string, tools []llm.Tool) (llm.ContentResponse, error) {
-	return llm.ContentResponse{Content: m.res}, nil
-}
-
-func (m *mockTextGen) StartChat(tools []llm.Tool) llm.ChatSession {
-	return nil
-}
-
-type mockEmbGen struct{}
-
-func (m *mockEmbGen) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
-	return []float32{0.1, 0.2}, nil
-}
 
 func TestProcessAndSaveRecipe(t *testing.T) {
 	ctx := context.Background()
@@ -55,8 +38,8 @@ func TestProcessAndSaveRecipe(t *testing.T) {
 	metricsStore := metrics.NewStore(db)
 
 	recipeJSON := `{"title": "Test Recipe", "ingredients": ["A"], "instructions": ["B"]}`
-	textGen := &mockTextGen{res: recipeJSON}
-	embGen := &mockEmbGen{}
+	textGen := &llmtest.MockTextGenerator{Response: recipeJSON}
+	embGen := &llmtest.MockEmbeddingGenerator{Values: []float32{0.1, 0.2}}
 	extractor := recipe.NewExtractor(textGen, embGen, vectorRepo)
 
 	post := ghost.Post{
