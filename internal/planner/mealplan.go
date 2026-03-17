@@ -22,7 +22,7 @@ type DayPlan struct {
 
 // MealPlan represents a full weekly meal plan.
 type MealPlan struct {
-	ID              int64      `json:"id,omitempty"`     // Database ID for referencing
+	ID              int64      `json:"id,omitempty"` // Database ID for referencing
 	WeekStart       time.Time  `json:"week_start"`
 	Status          PlanStatus `json:"status"`
 	Plan            []DayPlan  `json:"plan"`

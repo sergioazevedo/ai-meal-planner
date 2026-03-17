@@ -17,13 +17,13 @@ import (
 var planReviewerPrompt string
 
 type planReviewerPromptData struct {
-	OriginalRequest   string
-	CurrentPlan       []DayPlan
-	Adults            int
-	Children          int
-	ChildrenAges      []int
+	OriginalRequest    string
+	CurrentPlan        []DayPlan
+	Adults             int
+	Children           int
+	ChildrenAges       []int
 	AdjustmentFeedback string
-	AvailableRecipes  []recipe.Recipe
+	AvailableRecipes   []recipe.Recipe
 }
 
 type PlanReviewerResult struct {
@@ -67,15 +67,15 @@ func (p *Planner) RunPlanReviewer(
 
 	if err = json.Unmarshal([]byte(resp.Content), &rawResponse); err != nil {
 		return PlanReviewerResult{
-			Meta: shared.AgentMeta{
-				AgentName: "PlanReviewer",
-				Usage:     resp.Usage,
-			},
-		}, fmt.Errorf(
-			"failed to parse plan reviewer response %w. Response: %s",
-			err,
-			resp.Content,
-		)
+				Meta: shared.AgentMeta{
+					AgentName: "PlanReviewer",
+					Usage:     resp.Usage,
+				},
+			}, fmt.Errorf(
+				"failed to parse plan reviewer response %w. Response: %s",
+				err,
+				resp.Content,
+			)
 	}
 
 	// Copy over the revised plan
