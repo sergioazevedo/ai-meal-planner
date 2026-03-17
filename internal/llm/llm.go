@@ -8,10 +8,10 @@ import (
 type Tool struct {
 	Name        string
 	Description string
-	Parameters  Parameters
+	Parameters  ToolParameters
 }
 
-type Parameters struct {
+type ToolParameters struct {
 	Type       ParameterType
 	Properties map[string]Property
 	Required   []string
@@ -73,9 +73,4 @@ var NoTools []Tool
 // EmbeddingGenerator is an interface for generating vector embeddings from text.
 type EmbeddingGenerator interface {
 	GenerateEmbedding(ctx context.Context, text string) ([]float32, error)
-}
-
-// Closer is an interface for closing resources.
-type Closer interface {
-	Close() error
 }
