@@ -8,6 +8,7 @@ import (
 
 	"ai-meal-planner/internal/ghost"
 	"ai-meal-planner/internal/llm"
+	"ai-meal-planner/internal/llm/llmtest"
 	"ai-meal-planner/internal/metrics"
 	"ai-meal-planner/internal/recipe"
 
@@ -89,8 +90,8 @@ func TestIngestRecipes_Cleanup(t *testing.T) {
 	}
 
 	recipeJSON := `{"id": "staying-1", "title": "Staying Recipe", "ingredients": ["A"], "instructions": ["B"]}`
-	textGen := &mockTextGen{res: recipeJSON}
-	embGen := &mockEmbGen{}
+	textGen := &llmtest.MockTextGenerator{Response: recipeJSON}
+	embGen := &llmtest.MockEmbeddingGenerator{}
 
 	app := &App{
 		ghostClient:  mockGhost,

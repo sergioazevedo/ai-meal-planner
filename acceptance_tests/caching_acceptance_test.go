@@ -12,6 +12,7 @@ import (
 	"ai-meal-planner/internal/database"
 	"ai-meal-planner/internal/ghost"
 	"ai-meal-planner/internal/llm"
+	"ai-meal-planner/internal/llm/llmtest"
 	"ai-meal-planner/internal/metrics"
 	"ai-meal-planner/internal/planner"
 	"ai-meal-planner/internal/recipe"
@@ -47,7 +48,7 @@ type MockTextGenerator struct {
 	generateContentCalls int
 }
 
-func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (llm.ContentResponse, error) {
+func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string, tools []llm.Tool) (llm.ContentResponse, error) {
 	m.generateContentCalls++
 	if strings.Contains(prompt, "ingredients\": [\"quantity + name") {
 		return llm.ContentResponse{
@@ -82,12 +83,8 @@ func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) 
 	}, nil
 }
 
-type MockEmbedingGenerator struct {
-	shouldError bool
-}
-
-func (m *MockEmbedingGenerator) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
-	return []float32{0.0, 0.0}, nil
+func (m *MockTextGenerator) StartChat(tools []llm.Tool) llm.ChatSession {
+	return nil
 }
 
 // --- Acceptance Test ---
@@ -106,7 +103,7 @@ func TestFullWorkflow(t *testing.T) {
 	// 2. Initialize mocks and real repositories
 	ghostClient := &mockGhostClient{}
 	mockTextGenerator := &MockTextGenerator{}
-	mockEmbedingGenerator := &MockEmbedingGenerator{}
+	mockEmbeddingGenerator := &llmtest.MockEmbeddingGenerator{Values: []float32{0.0, 0.0}}
 
 	db, err := database.NewDB(dbPath)
 	if err != nil {
@@ -125,9 +122,9 @@ func TestFullWorkflow(t *testing.T) {
 	metricsStore := metrics.NewStore(db.SQL)
 
 	// 3. Create the application instance with mocks
-	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, planRepo, mockTextGenerator, mockTextGenerator, mockTextGenerator, mockEmbedingGenerator)
+	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, planRepo, mockTextGenerator, mockTextGenerator, mockTextGenerator, mockEmbeddingGenerator)
 	recipeClipper := clipper.NewClipper(ghostClient, mockTextGenerator)
-	application := app.NewApp(ghostClient, mockTextGenerator, mockEmbedingGenerator, metricsStore, mealPlanner, recipeClipper, &config.Config{
+	application := app.NewApp(ghostClient, mockTextGenerator, mockEmbeddingGenerator, metricsStore, mealPlanner, recipeClipper, &config.Config{
 		DefaultAdults:           2,
 		DefaultCookingFrequency: 7,
 	}, db, recipeRepo, vectorRepo, planRepo)

@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"ai-meal-planner/internal/ghost"
-	"ai-meal-planner/internal/llm"
+	"ai-meal-planner/internal/llm/llmtest"
 )
 
 // --- Mocks ---
@@ -38,18 +38,6 @@ func (m *MockGhostClient) CreatePost(title, html string, tags []string, publish 
 	return m.CreatedPost, nil
 }
 
-type MockTextGenerator struct {
-	Response    string
-	ShouldError bool
-}
-
-func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (llm.ContentResponse, error) {
-	if m.ShouldError {
-		return llm.ContentResponse{}, fmt.Errorf("mock ai error")
-	}
-	return llm.ContentResponse{Content: m.Response}, nil
-}
-
 // --- Tests ---
 
 func TestFetchAndCleanHTML(t *testing.T) {
@@ -71,7 +59,7 @@ func TestFetchAndCleanHTML(t *testing.T) {
 	defer ts.Close()
 
 	// 2. Initialize Clipper (deps don't matter for this private method test, but we need the struct)
-	c := NewClipper(&MockGhostClient{}, &MockTextGenerator{})
+	c := NewClipper(&MockGhostClient{}, &llmtest.MockTextGenerator{})
 
 	// 3. Run the private method (using export_test.go trick or just testing public ClipURL if preferred)
 	// Since go doesn't allow testing private methods easily from external test package,
@@ -131,7 +119,7 @@ func TestClipURL_Success(t *testing.T) {
 	aiResponse := `{"title": "Mock Pie", "ingredients": ["Apple"], "steps": ["Bake"], "prep_time": "1h", "servings": "8"}`
 
 	mockGhost := &MockGhostClient{}
-	mockAI := &MockTextGenerator{Response: aiResponse}
+	mockAI := &llmtest.MockTextGenerator{Response: aiResponse}
 	c := NewClipper(mockGhost, mockAI)
 
 	// Mock Server for the URL fetch

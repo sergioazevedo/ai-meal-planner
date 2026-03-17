@@ -9,30 +9,10 @@ import (
 
 	"ai-meal-planner/internal/database"
 	"ai-meal-planner/internal/llm"
+	"ai-meal-planner/internal/llm/llmtest"
 	"ai-meal-planner/internal/recipe"
 	_ "modernc.org/sqlite"
 )
-
-type MockEmbedingGenerator struct{}
-
-func (m *MockEmbedingGenerator) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
-	return []float32{1.0, 0.0}, nil // Matches Pasta
-}
-
-type MockTextGenerator struct{}
-
-func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string) (llm.ContentResponse, error) {
-	// If it's the Analyst prompt
-	if strings.Contains(prompt, "# Analyst Agent Prompt") {
-		return llm.ContentResponse{
-			Content: `{"planned_meals": [{"day": "Monday", "action": "Cook", "recipe_title": "Pasta", "note": "Yum"}]}`,
-		}, nil
-	}
-	// It's the Chef prompt
-	return llm.ContentResponse{
-		Content: `{"plan": [{"day": "Monday", "recipe_title": "Cook: Pasta", "prep_time": "15 mins", "note": "Yum"}], "shopping_list": ["Pasta", "Tomato"]}`,
-	}, nil
-}
 
 func TestGeneratePlan(t *testing.T) {
 	ctx := context.Background()
@@ -48,7 +28,7 @@ func TestGeneratePlan(t *testing.T) {
 		t.Fatalf("Failed to create test DB: %v", err)
 	}
 	defer db.Close()
-	
+
 	if err := db.MigrateUp(dbPath); err != nil {
 		t.Fatalf("Failed to migrate test DB: %v", err)
 	}
@@ -70,8 +50,15 @@ func TestGeneratePlan(t *testing.T) {
 	_ = recipeRepo.Save(ctx, rec2)
 	_ = vectorRepo.Save(ctx, rec2.ID, emb2, "dummy-hash-2")
 
-	mockGen := &MockTextGenerator{}
-	p := NewPlanner(recipeRepo, vectorRepo, planRepo, mockGen, mockGen, mockGen, &MockEmbedingGenerator{})
+	mockGen := &llmtest.MockTextGenerator{
+		GenerateFn: func(prompt string) string {
+			if strings.Contains(prompt, "# Analyst Agent Prompt") {
+				return `{"planned_meals": [{"day": "Monday", "action": "Cook", "recipe_title": "Pasta", "note": "Yum"}]}`
+			}
+			return `{"plan": [{"day": "Monday", "recipe_title": "Cook: Pasta", "prep_time": "15 mins", "note": "Yum"}], "shopping_list": ["Pasta", "Tomato"]}`
+		},
+	}
+	p := NewPlanner(recipeRepo, vectorRepo, planRepo, mockGen, mockGen, mockGen, &llmtest.MockEmbeddingGenerator{Values: []float32{1.0, 0.0}})
 
 	// 4. Run GeneratePlan
 	plan, metas, err := p.GeneratePlan(ctx, "test_user", "I want pasta", PlanningContext{}, time.Now())

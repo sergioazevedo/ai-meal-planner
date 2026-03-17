@@ -61,7 +61,7 @@ HTML Content:
 %s
 `, content)
 
-	resp, err := c.textGen.GenerateContent(ctx, prompt)
+	resp, err := c.textGen.GenerateContent(ctx, prompt, llm.NoTools)
 	if err != nil {
 		return nil, fmt.Errorf("ai extraction failed: %w", err)
 	}

@@ -136,6 +136,8 @@ We use a `Makefile` to simplify common tasks.
 ### Basic Commands
 - **Build all binaries**: `make build`
 - **Run unit tests**: `make test`
+    - **Unit Tests**: Found in `internal/<pkg>/*_test.go` (uses `llmtest` mocks).
+    - **Acceptance Tests**: Found in `acceptance_tests/` (verifies full E2E plumbing).
 - **Run local ingestion**: `make ingest`
 
 ### Database Migrations

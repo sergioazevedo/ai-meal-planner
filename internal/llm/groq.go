@@ -43,7 +43,7 @@ func NewGroqClient(cfg *config.Config, modelID string, temperature float64) *Gro
 }
 
 // GenerateContent sends a prompt to the Groq model and returns the generated text.
-func (c *GroqClient) GenerateContent(ctx context.Context, prompt string) (ContentResponse, error) {
+func (c *GroqClient) GenerateContent(ctx context.Context, prompt string, tools []Tool) (ContentResponse, error) {
 	maxRetries := 3
 	var lastErr error
 
@@ -144,4 +144,9 @@ func (c *GroqClient) GenerateContent(ctx context.Context, prompt string) (Conten
 	}
 
 	return ContentResponse{}, fmt.Errorf("exceeded max retries after rate limit: %w", lastErr)
+}
+
+// StartChat initializes a stateful chat session. Not supported by this basic client yet.
+func (c *GroqClient) StartChat(tools []Tool) ChatSession {
+	return nil
 }
