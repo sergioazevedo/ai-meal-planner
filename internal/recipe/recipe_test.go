@@ -2,6 +2,7 @@ package recipe
 
 import (
 	"ai-meal-planner/internal/llm"
+	"ai-meal-planner/internal/llm/llmtest"
 	"context"
 	"crypto/md5"   // New import
 	"database/sql" // Added for sql.ErrNoRows
@@ -20,7 +21,6 @@ type MockTextGenerator struct {
 	response    string
 }
 
-<<<<<<< HEAD
 type MockVectorRepository struct {
 	// For testing specific scenarios if needed
 	mockGet     func(ctx context.Context, recipeID string) (*llm.EmbeddingRecord, error)
@@ -56,13 +56,6 @@ func (m *MockVectorRepository) WithTx(tx *sql.Tx) *llm.VectorRepository {
 	return nil // Return nil for mock as real transaction not needed for this mock
 }
 
-func (m *MockTextGenerator) GenerateContent(_ context.Context, _ string, _ []llm.Tool) (llm.ContentResponse, error) {
-	if m.shouldError {
-		return llm.ContentResponse{}, errors.New("LLM error")
-	}
-	return llm.ContentResponse{Content: m.response}, nil
-}
-
 func (m *MockEmbedingGenerator) GenerateEmbedding(_ context.Context, _ string) ([]float32, error) {
 	if m.shouldError {
 		return nil, errors.New("LLM error")
@@ -79,8 +72,8 @@ func TestExtractor_ExtractRecipe(t *testing.T) {
 	}
 
 	t.Run("Success", func(t *testing.T) {
-		mockTextGeneration := &MockTextGenerator{
-			response: `{
+		mockTextGeneration := &llmtest.MockTextGenerator{
+			Response: `{
 				"title": "Test Recipe",
 				"ingredients": ["Ingredient 1", "Ingredient 2"],
 				"instructions": ["Step 1. Do something."],
@@ -124,21 +117,21 @@ func TestExtractor_ExtractRecipe(t *testing.T) {
 	})
 
 	t.Run("LLMError", func(t *testing.T) {
-		mockTextGeneration := &MockTextGenerator{shouldError: true}
+		mockTextGeneration := &llmtest.MockTextGenerator{ShouldError: true}
 		extractor := NewExtractor(mockTextGeneration, nil, nil)
 
 		_, err := extractor.ExtractRecipe(ctx, post)
 		if err == nil {
 			t.Fatal("Expected an error from the LLM client, got nil")
 		}
-		expectedError := "failed to get LLM response: LLM error"
+		expectedError := "failed to get LLM response: mock ai error"
 		if err.Error() != expectedError {
 			t.Errorf("Expected error '%s', got '%s'", expectedError, err.Error())
 		}
 	})
 
 	t.Run("InvalidJSON", func(t *testing.T) {
-		mockTextGeneration := &MockTextGenerator{response: "this is not json"}
+		mockTextGeneration := &llmtest.MockTextGenerator{Response: "this is not json"}
 		extractor := NewExtractor(mockTextGeneration, nil, nil)
 
 		_, err := extractor.ExtractRecipe(ctx, post)

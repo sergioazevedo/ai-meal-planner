@@ -82,6 +82,10 @@ func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string, 
 	}, nil
 }
 
+func (m *MockTextGenerator) StartChat(tools []llm.Tool) llm.ChatSession {
+	return nil
+}
+
 type MockEmbedingGenerator struct {
 	shouldError bool
 }

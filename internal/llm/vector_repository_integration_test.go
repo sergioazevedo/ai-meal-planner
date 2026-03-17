@@ -1,9 +1,10 @@
 package llm_test
 
-import (
+	import (
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/database"
 	"ai-meal-planner/internal/llm"
+	"ai-meal-planner/internal/llm/llmtest"
 	"ai-meal-planner/internal/recipe" // Import the recipe package
 	"context"
 	"log"
@@ -52,8 +53,14 @@ func TestVectorSearchRecallIntegration(t *testing.T) {
 		}
 		defer geminiClient.Close()
 		realEmbeddingGenerator = geminiClient
-		realTextGenerator = geminiClient // Gemini client implements both
-		t.Log("Using Gemini for embedding and text generation.\n")
+		// Use a mock for text generation since Gemini is embedding-only now
+		realTextGenerator = &llmtest.MockTextGenerator{
+			GenerateFn: func(prompt string) string {
+				// Return a dummy valid JSON for the extractor
+				return `{"title": "Dummy", "ingredients": [], "instructions": [], "tags": [], "prep_time": "10m", "servings": "1"}`
+			},
+		}
+		t.Log("Using Gemini for embedding and Mock for text generation.\n")
 	} else if cfg.GroqAPIKey != "" {
 		groqClient := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.1)
 		realTextGenerator = groqClient

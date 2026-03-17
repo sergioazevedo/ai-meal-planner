@@ -16,8 +16,12 @@ type mockTextGen struct {
 	res string
 }
 
-func (m *mockTextGen) GenerateContent(ctx context.Context, prompt string) (llm.ContentResponse, error) {
+func (m *mockTextGen) GenerateContent(ctx context.Context, prompt string, tools []llm.Tool) (llm.ContentResponse, error) {
 	return llm.ContentResponse{Content: m.res}, nil
+}
+
+func (m *mockTextGen) StartChat(tools []llm.Tool) llm.ChatSession {
+	return nil
 }
 
 type mockEmbGen struct{}

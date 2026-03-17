@@ -145,3 +145,8 @@ func (c *GroqClient) GenerateContent(ctx context.Context, prompt string, tools [
 
 	return ContentResponse{}, fmt.Errorf("exceeded max retries after rate limit: %w", lastErr)
 }
+
+// StartChat initializes a stateful chat session. Not supported by this basic client yet.
+func (c *GroqClient) StartChat(tools []Tool) ChatSession {
+	return nil
+}
