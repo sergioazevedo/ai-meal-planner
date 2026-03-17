@@ -30,6 +30,60 @@ type GroqClient struct {
 	httpClient  *http.Client
 }
 
+type groqTool struct {
+	Type     string       `json:"type"`
+	Function groqFunction `json:"function"`
+}
+
+type groqFunction struct {
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Parameters  ToolParameters `json:"parameters"`
+}
+
+type groqMessage struct {
+	Role      string         `json:"role,omitempty"`
+	Content   string         `json:"content,omitempty"`
+	ToolCalls []groqToolCall `json:"tool_calls,omitempty"`
+}
+
+type groqResponseFormat struct {
+	Type string `json:"type,omitempty"`
+}
+
+type groqRequest struct {
+	Model          string              `json:"model,omitempty"`
+	Messages       []groqMessage       `json:"messages,omitempty"`
+	Tools          []groqTool          `json:"tools,omitempty"`
+	ToolChoice     string              `json:"tool_choice,omitempty"`
+	Temperature    float64             `json:"temperature,omitempty"`
+	ResponseFormat *groqResponseFormat `json:"response_format,omitempty"`
+}
+
+type groqToolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
+}
+
+type groqTokenUsage struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+	TotalTokens      int `json:"total_tokens"`
+}
+
+type groqChoices struct {
+	Message groqMessage `json:"message"`
+}
+
+type groqResponse struct {
+	Choices []groqChoices  `json:"choices"`
+	Usage   groqTokenUsage `json:"usage"`
+}
+
 // NewGroqClient creates a new Groq API client for a specific model and temperature.
 func NewGroqClient(cfg *config.Config, modelID string, temperature float64) *GroqClient {
 	return &GroqClient{
@@ -47,24 +101,28 @@ func (c *GroqClient) GenerateContent(ctx context.Context, prompt string, tools [
 	maxRetries := 3
 	var lastErr error
 
+	reqBody := groqRequest{
+		Model: c.modelID,
+		Messages: []groqMessage{{
+			Role:    "user",
+			Content: prompt,
+		}},
+		Temperature: c.temperature,
+	}
+
+	if len(tools) > 0 {
+		reqBody.Tools = mapToGroqTools(tools)
+		reqBody.ToolChoice = "auto"
+	} else {
+		reqBody.ResponseFormat = &groqResponseFormat{Type: "json_object"}
+	}
+
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return ContentResponse{}, fmt.Errorf("failed to marshal request body: %w", err)
+	}
+
 	for i := 0; i < maxRetries; i++ {
-		reqBody := map[string]interface{}{
-			"model": c.modelID,
-			"messages": []map[string]string{
-				{
-					"role":    "user",
-					"content": prompt,
-				},
-			},
-			"temperature":     c.temperature,
-			"response_format": map[string]string{"type": "json_object"},
-		}
-
-		jsonBody, err := json.Marshal(reqBody)
-		if err != nil {
-			return ContentResponse{}, fmt.Errorf("failed to marshal request body: %w", err)
-		}
-
 		req, err := http.NewRequestWithContext(ctx, "POST", groqAPIURL, bytes.NewBuffer(jsonBody))
 		if err != nil {
 			return ContentResponse{}, fmt.Errorf("failed to create request: %w", err)
@@ -111,19 +169,7 @@ func (c *GroqClient) GenerateContent(ctx context.Context, prompt string, tools [
 			return ContentResponse{}, fmt.Errorf("groq api error: status=%d body=%s", resp.StatusCode, string(bodyBytes))
 		}
 
-		var groqResp struct {
-			Choices []struct {
-				Message struct {
-					Content string `json:"content"`
-				} `json:"message"`
-			} `json:"choices"`
-			Usage struct {
-				PromptTokens     int `json:"prompt_tokens"`
-				CompletionTokens int `json:"completion_tokens"`
-				TotalTokens      int `json:"total_tokens"`
-			} `json:"usage"`
-		}
-
+		var groqResp groqResponse
 		if err := json.NewDecoder(resp.Body).Decode(&groqResp); err != nil {
 			return ContentResponse{}, fmt.Errorf("failed to decode response: %w", err)
 		}
@@ -132,8 +178,19 @@ func (c *GroqClient) GenerateContent(ctx context.Context, prompt string, tools [
 			return ContentResponse{}, fmt.Errorf("no content generated")
 		}
 
+		var toolCalls []ToolCall
+		for _, call := range groqResp.Choices[0].Message.ToolCalls {
+			mapped, err := c.mapToTToolCall(call)
+			if err != nil {
+				return ContentResponse{}, err
+			}
+
+			toolCalls = append(toolCalls, mapped)
+		}
+
 		return ContentResponse{
-			Content: groqResp.Choices[0].Message.Content,
+			Content:   groqResp.Choices[0].Message.Content,
+			ToolCalls: toolCalls,
 			Usage: shared.TokenUsage{
 				PromptTokens:     groqResp.Usage.PromptTokens,
 				CompletionTokens: groqResp.Usage.CompletionTokens,
@@ -146,7 +203,38 @@ func (c *GroqClient) GenerateContent(ctx context.Context, prompt string, tools [
 	return ContentResponse{}, fmt.Errorf("exceeded max retries after rate limit: %w", lastErr)
 }
 
+func (c *GroqClient) mapToTToolCall(call groqToolCall) (ToolCall, error) {
+	var args map[string]any
+	if err := json.Unmarshal([]byte(call.Function.Arguments), &args); err != nil {
+		return ToolCall{}, fmt.Errorf("failed to parse tool arguments: %w", err)
+	}
+
+	return ToolCall{
+		Name: call.Function.Name,
+		Args: args,
+	}, nil
+}
+
 // StartChat initializes a stateful chat session. Not supported by this basic client yet.
 func (c *GroqClient) StartChat(tools []Tool) ChatSession {
 	return nil
+}
+
+func mapToGroqTools(tools []Tool) []groqTool {
+	if len(tools) == 0 {
+		return nil
+	}
+
+	var gropTools []groqTool
+	for _, t := range tools {
+		gropTools = append(gropTools, groqTool{
+			Type: "function",
+			Function: groqFunction{
+				Name:        t.Name,
+				Description: t.Description,
+				Parameters:  t.Parameters,
+			},
+		})
+	}
+	return gropTools
 }
