@@ -52,13 +52,13 @@ func (e *Extractor) ExtractRecipe(
 		return ExtractorResult{}, err
 	}
 
-	llmResp, err := e.textGen.GenerateContent(ctx, prompt, llm.NoTools)
+	llmResp, err := e.textGen.GenerateContent(ctx, llm.Conversation{{Role: "user", Content: prompt}}, llm.NoTools)
 	if err != nil {
 		return ExtractorResult{}, fmt.Errorf("failed to get LLM response: %w", err)
 	}
 
 	rec := Recipe{}
-	if err := json.Unmarshal([]byte(llmResp.Content), &rec); err != nil {
+	if err := json.Unmarshal([]byte(llmResp.Message.Content), &rec); err != nil {
 		return ExtractorResult{
 				Recipe: rec,
 				Meta: shared.AgentMeta{

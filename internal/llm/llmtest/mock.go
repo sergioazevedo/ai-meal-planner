@@ -15,18 +15,21 @@ type MockTextGenerator struct {
 	GenerateFn func(prompt string) string
 }
 
-func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string, tools []llm.Tool) (llm.ContentResponse, error) {
+func (m *MockTextGenerator) GenerateContent(ctx context.Context, conversation llm.Conversation, tools []llm.Tool) (llm.ContentResponse, error) {
 	if m.ShouldError {
 		return llm.ContentResponse{}, fmt.Errorf("mock ai error")
 	}
-	if m.GenerateFn != nil {
-		return llm.ContentResponse{Content: m.GenerateFn(prompt)}, nil
+	
+	// Default to an empty string if conversation is empty
+	prompt := ""
+	if len(conversation) > 0 {
+		prompt = conversation[len(conversation)-1].Content
 	}
-	return llm.ContentResponse{Content: m.Response}, nil
-}
-
-func (m *MockTextGenerator) StartChat(tools []llm.Tool) llm.ChatSession {
-	return nil
+	
+	if m.GenerateFn != nil {
+		return llm.ContentResponse{Message: llm.Message{Role: "assistant", Content: m.GenerateFn(prompt)}}, nil
+	}
+	return llm.ContentResponse{Message: llm.Message{Role: "assistant", Content: m.Response}}, nil
 }
 
 // MockEmbeddingGenerator is a reusable mock for testing vector embeddings.

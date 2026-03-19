@@ -97,16 +97,22 @@ func NewGroqClient(cfg *config.Config, modelID string, temperature float64) *Gro
 }
 
 // GenerateContent sends a prompt to the Groq model and returns the generated text.
-func (c *GroqClient) GenerateContent(ctx context.Context, prompt string, tools []Tool) (ContentResponse, error) {
+func (c *GroqClient) GenerateContent(
+	ctx context.Context,
+	conversation Conversation,
+	tools []Tool,
+) (ContentResponse, error) {
 	maxRetries := 3
 	var lastErr error
 
+	messages, err := mapToGroqMessages(conversation)
+	if err != nil {
+		return ContentResponse{}, err
+	}
+
 	reqBody := groqRequest{
-		Model: c.modelID,
-		Messages: []groqMessage{{
-			Role:    "user",
-			Content: prompt,
-		}},
+		Model:       c.modelID,
+		Messages:    messages,
 		Temperature: c.temperature,
 	}
 
@@ -189,8 +195,11 @@ func (c *GroqClient) GenerateContent(ctx context.Context, prompt string, tools [
 		}
 
 		return ContentResponse{
-			Content:   groqResp.Choices[0].Message.Content,
-			ToolCalls: toolCalls,
+			Message: Message{
+				Role:      groqResp.Choices[0].Message.Role,
+				Content:   groqResp.Choices[0].Message.Content,
+				ToolCalls: toolCalls,
+			},
 			Usage: shared.TokenUsage{
 				PromptTokens:     groqResp.Usage.PromptTokens,
 				CompletionTokens: groqResp.Usage.CompletionTokens,
@@ -215,11 +224,6 @@ func (c *GroqClient) mapToTToolCall(call groqToolCall) (ToolCall, error) {
 	}, nil
 }
 
-// StartChat initializes a stateful chat session. Not supported by this basic client yet.
-func (c *GroqClient) StartChat(tools []Tool) ChatSession {
-	return nil
-}
-
 func mapToGroqTools(tools []Tool) []groqTool {
 	if len(tools) == 0 {
 		return nil
@@ -237,4 +241,44 @@ func mapToGroqTools(tools []Tool) []groqTool {
 		})
 	}
 	return gropTools
+}
+
+func mapToGroqMessages(conversation []Message) ([]groqMessage, error) {
+	var result []groqMessage
+	for _, m := range conversation {
+		calls, err := mapToGroqToolCalls(m.ToolCalls)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, groqMessage{
+			Role:      m.Role,
+			Content:   m.Content,
+			ToolCalls: calls,
+		})
+	}
+	return result, nil
+}
+
+func mapToGroqToolCalls(calls []ToolCall) ([]groqToolCall, error) {
+	var result []groqToolCall
+	for _, c := range calls {
+		var argBytes, err = json.Marshal(c.Args)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize tool args: %w", err)
+		}
+
+		result = append(result, groqToolCall{
+			ID:   c.ID,
+			Type: "function",
+			Function: struct {
+				Name      string "json:\"name\""
+				Arguments string "json:\"arguments\""
+			}{
+				Name:      c.Name,
+				Arguments: string(argBytes),
+			},
+		})
+	}
+	return result, nil
 }

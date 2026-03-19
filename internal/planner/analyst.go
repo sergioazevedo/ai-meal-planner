@@ -75,13 +75,13 @@ func (p *Planner) runAnalyst(
 		return AnalystResult{}, err
 	}
 
-	resp, err := p.analystGenerator.GenerateContent(ctx, prompt, llm.NoTools)
+	resp, err := p.analystGenerator.GenerateContent(ctx, llm.Conversation{{Role: "user", Content: prompt}}, llm.NoTools)
 	if err != nil {
 		return AnalystResult{}, err
 	}
 
 	raw := &rawLlmResult{}
-	if err = json.Unmarshal([]byte(resp.Content), raw); err != nil {
+	if err = json.Unmarshal([]byte(resp.Message.Content), raw); err != nil {
 		return AnalystResult{
 				Meta: shared.AgentMeta{
 					AgentName: "Analyst",
@@ -90,7 +90,7 @@ func (p *Planner) runAnalyst(
 			}, fmt.Errorf(
 				"failed to parse analyst prompt response %w. Response: %s",
 				err,
-				resp.Content,
+				resp.Message.Content,
 			)
 	}
 
