@@ -39,12 +39,12 @@ const (
 
 // ContentResponse contains the generated text and metadata like token usage.
 type ContentResponse struct {
-	Content   string
-	Usage     shared.TokenUsage
-	ToolCalls []ToolCall
+	Message Message
+	Usage   shared.TokenUsage
 }
 
 type ToolCall struct {
+	ID   string
 	Name string
 	Args map[string]any
 }
@@ -54,17 +54,19 @@ type ToolResponse struct {
 	Content map[string]any // The resulting data (e.g., {"recipes": [...]})
 }
 
-type ChatSession interface {
-	// SendMessage starts the conversation or sends a follow-up text.
-	SendMessage(ctx context.Context, msg string) (ContentResponse, error)
-	// SendToolResponse sends the result of a tool call back to the LLM so it can continue.
-	SendToolResponse(ctx context.Context, responses []ToolResponse) (ContentResponse, error)
+type Message struct {
+	Role       string
+	Content    string
+	ToolCalls  []ToolCall
+	ToolCallID string
 }
+
+// Conversation is a sequence of messages representing a chat history.
+type Conversation []Message
 
 // TextGenerator is an interface for generating text from a prompt.
 type TextGenerator interface {
-	GenerateContent(ctx context.Context, prompt string, tools []Tool) (ContentResponse, error)
-	StartChat(tools []Tool) ChatSession
+	GenerateContent(ctx context.Context, conversation Conversation, tools []Tool) (ContentResponse, error)
 }
 
 // NoTools is a helper to pass an empty slice of tools to GenerateContent.

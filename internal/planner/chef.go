@@ -31,13 +31,13 @@ func (p *Planner) runChef(
 		return ChefResult{}, err
 	}
 
-	resp, err := p.chefGenerator.GenerateContent(ctx, prompt, llm.NoTools)
+	resp, err := p.chefGenerator.GenerateContent(ctx, llm.Conversation{{Role: "user", Content: prompt}}, llm.NoTools)
 	if err != nil {
 		return ChefResult{}, err
 	}
 
 	result := &MealPlan{}
-	if err = json.Unmarshal([]byte(resp.Content), result); err != nil {
+	if err = json.Unmarshal([]byte(resp.Message.Content), result); err != nil {
 		return ChefResult{
 				Meta: shared.AgentMeta{
 					Usage:     resp.Usage,
@@ -46,7 +46,7 @@ func (p *Planner) runChef(
 			fmt.Errorf(
 				"failed to parse MealPlan %w, :%s",
 				err,
-				resp.Content,
+				resp.Message.Content,
 			)
 	}
 
