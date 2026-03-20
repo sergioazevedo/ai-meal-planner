@@ -55,7 +55,7 @@ func (p *Planner) RunPlanReviewer(
 		return PlanReviewerResult{}, err
 	}
 
-	resp, err := p.reviewerGenerator.GenerateContent(ctx, prompt, llm.NoTools)
+	resp, err := p.reviewerGenerator.GenerateContent(ctx, llm.Conversation{{Role: "user", Content: prompt}}, llm.NoTools)
 	if err != nil {
 		return PlanReviewerResult{}, err
 	}
@@ -65,7 +65,7 @@ func (p *Planner) RunPlanReviewer(
 		Plan []DayPlan `json:"plan"`
 	}{}
 
-	if err = json.Unmarshal([]byte(resp.Content), &rawResponse); err != nil {
+	if err = json.Unmarshal([]byte(resp.Message.Content), &rawResponse); err != nil {
 		return PlanReviewerResult{
 				Meta: shared.AgentMeta{
 					AgentName: "PlanReviewer",
@@ -74,7 +74,7 @@ func (p *Planner) RunPlanReviewer(
 			}, fmt.Errorf(
 				"failed to parse plan reviewer response %w. Response: %s",
 				err,
-				resp.Content,
+				resp.Message.Content,
 			)
 	}
 

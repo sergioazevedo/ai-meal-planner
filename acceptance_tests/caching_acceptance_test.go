@@ -48,11 +48,17 @@ type MockTextGenerator struct {
 	generateContentCalls int
 }
 
-func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string, tools []llm.Tool) (llm.ContentResponse, error) {
+func (m *MockTextGenerator) GenerateContent(ctx context.Context, conversation llm.Conversation, tools []llm.Tool) (llm.ContentResponse, error) {
 	m.generateContentCalls++
+	var prompt string
+	if len(conversation) > 0 {
+		prompt = conversation[len(conversation)-1].Content
+	}
+	
 	if strings.Contains(prompt, "ingredients\": [\"quantity + name") {
 		return llm.ContentResponse{
-			Content: `{
+			Message: llm.Message{
+				Content: `{
 				"title": "Test Recipe",
 				"ingredients": ["1 cup testing"],
 				"instructions": ["Write a test."],
@@ -60,32 +66,34 @@ func (m *MockTextGenerator) GenerateContent(ctx context.Context, prompt string, 
 				"prep_time": "10 mins",
 				"servings": "1"
 			}`,
+			},
 		}, nil
 	}
 
 	if strings.Contains(prompt, "Strategic Meal Planning Analyst") {
 		return llm.ContentResponse{
-			Content: `{
+			Message: llm.Message{
+				Content: `{
 				"planned_meals": [
 					{"day": "Monday", "action": "Cook", "recipe_title": "Test Recipe", "note": "Only one available"}
 				]
 			}`,
+			},
 		}, nil
 	}
 
 	return llm.ContentResponse{
-		Content: `{
+		Message: llm.Message{
+			Content: `{
 			"plan": [
 				{"day": "Monday", "recipe_title": "Cook: Test Recipe", "prep_time": "10 mins", "note": "Only one available"}
 			],
 			"shopping_list": ["1 cup testing"]
 		}`,
+		},
 	}, nil
 }
 
-func (m *MockTextGenerator) StartChat(tools []llm.Tool) llm.ChatSession {
-	return nil
-}
 
 // --- Acceptance Test ---
 func TestFullWorkflow(t *testing.T) {
