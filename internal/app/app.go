@@ -171,7 +171,7 @@ func (a *App) GenerateMealPlan(ctx context.Context, userID string, request strin
 
 	// Record metrics for each agent execution
 	for _, meta := range metas {
-		if err := a.metricsStore.Record(metrics.MapUsage(meta.AgentName, meta.Usage, meta.Latency)); err != nil {
+		if err := a.metricsStore.Record(metrics.MapUsage(meta)); err != nil {
 			log.Printf("Warning: failed to record metrics for %s: %v", meta.AgentName, err)
 		}
 	}

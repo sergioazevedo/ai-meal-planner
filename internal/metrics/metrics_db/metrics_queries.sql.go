@@ -67,9 +67,58 @@ func (q *Queries) GetDailyUsage(ctx context.Context, strftime interface{}) ([]Ge
 	return items, nil
 }
 
-const insertExecutionMetric = `-- name: InsertExecutionMetric :exec
+const getTurnDistributionByAgent = `-- name: GetTurnDistributionByAgent :many
+WITH AgentTurns AS (
+    SELECT
+        m.id,
+        m.agent_name,
+        COALESCE(SUM(t.call_count), 0) + 1 as turns
+    FROM execution_metrics m
+    LEFT JOIN execution_tool_calls t ON m.id = t.execution_metric_id
+    GROUP BY m.id, m.agent_name
+)
+SELECT
+    agent_name,
+    turns,
+    COUNT(*) as count
+FROM AgentTurns
+GROUP BY agent_name, turns
+ORDER BY agent_name ASC, turns ASC
+`
+
+type GetTurnDistributionByAgentRow struct {
+	AgentName string
+	Turns     int64
+	Count     int64
+}
+
+func (q *Queries) GetTurnDistributionByAgent(ctx context.Context) ([]GetTurnDistributionByAgentRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTurnDistributionByAgent)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTurnDistributionByAgentRow
+	for rows.Next() {
+		var i GetTurnDistributionByAgentRow
+		if err := rows.Scan(&i.AgentName, &i.Turns, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const insertExecutionMetric = `-- name: InsertExecutionMetric :one
 INSERT INTO execution_metrics (agent_name, model, prompt_tokens, completion_tokens, latency_ms, timestamp)
 VALUES (?, ?, ?, ?, ?, ?)
+RETURNING id
 `
 
 type InsertExecutionMetricParams struct {
@@ -81,14 +130,38 @@ type InsertExecutionMetricParams struct {
 	Timestamp        time.Time
 }
 
-func (q *Queries) InsertExecutionMetric(ctx context.Context, arg InsertExecutionMetricParams) error {
-	_, err := q.db.ExecContext(ctx, insertExecutionMetric,
+func (q *Queries) InsertExecutionMetric(ctx context.Context, arg InsertExecutionMetricParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, insertExecutionMetric,
 		arg.AgentName,
 		arg.Model,
 		arg.PromptTokens,
 		arg.CompletionTokens,
 		arg.LatencyMs,
 		arg.Timestamp,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertExecutionToolCall = `-- name: InsertExecutionToolCall :exec
+INSERT INTO execution_tool_calls (execution_metric_id, tool_name, call_count, total_latency_ms)
+VALUES (?, ?, ?, ?)
+`
+
+type InsertExecutionToolCallParams struct {
+	ExecutionMetricID int64
+	ToolName          string
+	CallCount         int64
+	TotalLatencyMs    int64
+}
+
+func (q *Queries) InsertExecutionToolCall(ctx context.Context, arg InsertExecutionToolCallParams) error {
+	_, err := q.db.ExecContext(ctx, insertExecutionToolCall,
+		arg.ExecutionMetricID,
+		arg.ToolName,
+		arg.CallCount,
+		arg.TotalLatencyMs,
 	)
 	return err
 }

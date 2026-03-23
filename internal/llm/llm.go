@@ -61,6 +61,10 @@ type Message struct {
 	ToolCallID string
 }
 
+func (m *Message) IsAToolCall() bool {
+	return m.Content == "" && len(m.ToolCalls) > 0
+}
+
 // Conversation is a sequence of messages representing a chat history.
 type Conversation []Message
 
