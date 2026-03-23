@@ -16,12 +16,14 @@ import (
 //go:embed analyst_prompt.md
 var analystPrompt string
 
-type analystPromptData struct {
+//go:embed user_context_prompt.md
+var userContextPrompt string
+
+type userContextData struct {
 	UserRequest  string
 	Adults       int
 	Children     int
 	ChildrenAges []int
-	Recipes      []recipe.Recipe
 }
 
 type MealAction string
@@ -57,27 +59,78 @@ type rawLlmResult struct {
 	PlannedMeals         []PlannedMeal `json:"planned_meals"`
 }
 
+var searchRecipesTool = llm.Tool{
+	Name:        "search_recipes",
+	Description: "Search for recipes based on a query to find meals that fit the user's requirements.",
+	Parameters: llm.ToolParameters{
+		Type: llm.ParameterTypeObject,
+		Properties: map[string]llm.Property{
+			"query": {
+				Type:        llm.PropertyTypeString,
+				Description: "The search query (e.g., 'chicken dinner', 'quick vegetarian').",
+			},
+		},
+		Required: []string{"query"},
+	},
+}
+
 func (p *Planner) runAnalyst(
 	ctx context.Context,
 	userRequest string,
 	planingCtx PlanningContext,
-	recipes []recipe.Recipe,
+	recipesRecentlyUsed []string,
 ) (AnalystResult, error) {
 	start := time.Now()
-	prompt, err := buildAnalystPrompt(analystPromptData{
+	userContextPrompt, err := buildUserContext(userContextData{
 		UserRequest:  userRequest,
 		Adults:       planingCtx.Adults,
 		Children:     planingCtx.Children,
 		ChildrenAges: planingCtx.ChildrenAges,
-		Recipes:      recipes,
 	})
 	if err != nil {
 		return AnalystResult{}, err
 	}
 
-	resp, err := p.analystGenerator.GenerateContent(ctx, llm.Conversation{{Role: "user", Content: prompt}}, llm.NoTools)
-	if err != nil {
-		return AnalystResult{}, err
+	chat := llm.Conversation{{
+		Role:    "system",
+		Content: analystPrompt,
+	}, {
+		Role:    "user",
+		Content: userContextPrompt,
+	}}
+
+	tools := []llm.Tool{searchRecipesTool}
+
+	resp := llm.ContentResponse{}
+	recipeLookup := make(map[string]recipe.Recipe)
+	for {
+		resp, err = p.analystGenerator.GenerateContent(
+			ctx,
+			chat,
+			tools,
+		)
+		if err != nil {
+			return AnalystResult{}, err
+		}
+
+		chat = append(chat, resp.Message)
+		if !resp.Message.IsAToolCall() {
+			break
+		}
+
+		toolCall := resp.Message.ToolCalls[0]
+		if toolCall.Name != "search_recipes" {
+			return AnalystResult{}, fmt.Errorf("tool not supported %s", toolCall.Name)
+		}
+		recipes, msg, err := p.handleSearchTool(ctx, toolCall, recipesRecentlyUsed)
+		if err != nil {
+			return AnalystResult{}, err
+		}
+
+		chat = append(chat, msg)
+		for _, r := range recipes {
+			recipeLookup[r.Title] = r
+		}
 	}
 
 	raw := &rawLlmResult{}
@@ -92,11 +145,6 @@ func (p *Planner) runAnalyst(
 				err,
 				resp.Message.Content,
 			)
-	}
-
-	recipeLookup := make(map[string]recipe.Recipe)
-	for _, r := range recipes {
-		recipeLookup[r.Title] = r
 	}
 
 	selectedRecipes := []recipe.Recipe{}
@@ -138,8 +186,36 @@ func (p *Planner) runAnalyst(
 	}, nil
 }
 
-func buildAnalystPrompt(data analystPromptData) (string, error) {
-	tmpl, err := template.New("analyst").Parse(analystPrompt)
+func (p *Planner) handleSearchTool(
+	ctx context.Context,
+	toolCall llm.ToolCall,
+	recipesRecentlyUsed []string,
+) ([]recipe.Recipe, llm.Message, error) {
+	recipes, err := p.getRecipeCandidates(
+		ctx,
+		toolCall.Args["query"].(string),
+		recipesRecentlyUsed,
+	)
+	if err != nil {
+		return nil, llm.Message{}, err
+	}
+
+	recipesJson, err := json.Marshal(recipes)
+	if err != nil {
+		return nil, llm.Message{}, err
+	}
+
+	msg := llm.Message{
+		Role:       "tool",
+		Content:    string(recipesJson),
+		ToolCallID: toolCall.ID,
+	}
+
+	return recipes, msg, nil
+}
+
+func buildUserContext(data userContextData) (string, error) {
+	tmpl, err := template.New("userContext").Parse(userContextPrompt)
 	if err != nil {
 		return "", err
 	}

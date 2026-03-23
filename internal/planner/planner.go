@@ -65,14 +65,14 @@ type PlanningContext struct {
 	CookingFrequency int // Times per week they want to cook
 }
 
-// GeneratePlan creates a meal plan based on a user request.
-func (p *Planner) GeneratePlan(ctx context.Context, userID string, userRequest string, pCtx PlanningContext, targetWeek time.Time) (*MealPlan, []shared.AgentMeta, error) {
-	var metas []shared.AgentMeta
-	var recipes []recipe.Recipe
-
-	// 0. Fetch recent history to avoid repetition
-	var excludeIDs []string
-	recentPlans, err := p.planRepo.ListRecentByUserID(ctx, userID, 3) // Check last 3 plans
+func (p *Planner) receiptIDsRecentlyUsed(
+	ctx context.Context,
+	userID string,
+	targetWeek time.Time,
+) []string {
+	result := []string{}
+	// Check the last 3 plans
+	recentPlans, err := p.planRepo.ListRecentByUserID(ctx, userID, 3)
 	if err == nil {
 		for _, plan := range recentPlans {
 			// Skip the plan we are currently redoing/replacing
@@ -81,26 +81,24 @@ func (p *Planner) GeneratePlan(ctx context.Context, userID string, userRequest s
 			}
 			for _, day := range plan.Plan {
 				if day.RecipeID != "" {
-					excludeIDs = append(excludeIDs, day.RecipeID)
+					result = append(result, day.RecipeID)
 				}
 			}
 		}
 	}
 
-	// 1. Fetch candidates using the helper
-	recipes, err = p.getRecipeCandidates(ctx, userRequest, excludeIDs)
-	if err != nil {
-		return nil, nil, err
-	}
+	return result
+}
 
-	log.Printf("Analyst will choose from %d available recipes", len(recipes))
+// GeneratePlan creates a meal plan based on a user request.
+func (p *Planner) GeneratePlan(ctx context.Context, userID string, userRequest string, pCtx PlanningContext, targetWeek time.Time) (*MealPlan, []shared.AgentMeta, error) {
+	var metas []shared.AgentMeta
 
-	if len(recipes) == 0 {
-		return nil, nil, fmt.Errorf("no recipes found to create a plan")
-	}
+	// 0. Fetch recent history to avoid repetition
+	excludeIDs := p.receiptIDsRecentlyUsed(ctx, userID, targetWeek)
 
-	// 2. Call Analyst agent to create a meal schedule
-	analystResult, err := p.runAnalyst(ctx, userRequest, pCtx, recipes)
+	// 1. Call Analyst agent to create a meal schedule
+	analystResult, err := p.runAnalyst(ctx, userRequest, pCtx, excludeIDs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to generate meal schedule: %w", err)
 	}
