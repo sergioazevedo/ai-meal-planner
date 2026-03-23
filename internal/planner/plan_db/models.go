@@ -18,6 +18,14 @@ type ExecutionMetric struct {
 	Timestamp        time.Time
 }
 
+type ExecutionToolCall struct {
+	ID                int64
+	ExecutionMetricID int64
+	ToolName          string
+	CallCount         int64
+	TotalLatencyMs    int64
+}
+
 type Recipe struct {
 	ID        string
 	Data      string

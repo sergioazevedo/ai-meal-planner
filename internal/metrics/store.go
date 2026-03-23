@@ -16,6 +16,7 @@ type ExecutionMetric struct {
 	CompletionTokens int
 	LatencyMS        int64
 	Timestamp        time.Time
+	ToolCalls        []shared.ToolCallMeta
 }
 
 // Store handles persistence of metrics to SQLite.
@@ -32,14 +33,24 @@ func NewStore(db *sql.DB) *Store {
 	}
 }
 
-// Record saves a metric to the database.
+// Record saves a metric and its tool calls to the database.
 func (s *Store) Record(m ExecutionMetric) error {
 	ts := m.Timestamp
 	if ts.IsZero() {
 		ts = time.Now().UTC()
 	}
 
-	return s.queries.InsertExecutionMetric(context.Background(), metricsdb.InsertExecutionMetricParams{
+	ctx := context.Background()
+	// Using a transaction to ensure atomicity
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	
+	qtx := s.queries.WithTx(tx)
+
+	metricID, err := qtx.InsertExecutionMetric(ctx, metricsdb.InsertExecutionMetricParams{
 		AgentName:        m.AgentName,
 		Model:            m.Model,
 		PromptTokens:     int64(m.PromptTokens),
@@ -47,6 +58,31 @@ func (s *Store) Record(m ExecutionMetric) error {
 		LatencyMs:        m.LatencyMS,
 		Timestamp:        ts,
 	})
+	if err != nil {
+		return err
+	}
+
+	// Aggregate tool calls by name
+	toolCounts := make(map[string]int64)
+	toolLatency := make(map[string]int64)
+	for _, tc := range m.ToolCalls {
+		toolCounts[tc.ToolName]++
+		toolLatency[tc.ToolName] += tc.Latency.Milliseconds()
+	}
+
+	for name, count := range toolCounts {
+		err = qtx.InsertExecutionToolCall(ctx, metricsdb.InsertExecutionToolCallParams{
+			ExecutionMetricID: metricID,
+			ToolName:          name,
+			CallCount:         count,
+			TotalLatencyMs:    toolLatency[name],
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 // RecordMeta records metrics directly from shared.AgentMeta.
@@ -54,7 +90,7 @@ func (s *Store) RecordMeta(meta shared.AgentMeta) error {
 	if meta.Usage.PromptTokens == 0 && meta.Usage.CompletionTokens == 0 {
 		return nil
 	}
-	return s.Record(MapUsage(meta.AgentName, meta.Usage, meta.Latency))
+	return s.Record(MapUsage(meta))
 }
 
 // Close closes the database connection.
@@ -116,13 +152,14 @@ func (s *Store) Cleanup(olderThanDays int) (int64, error) {
 }
 
 // MapUsage helper to convert llm.TokenUsage to ExecutionMetric.
-func MapUsage(agentName string, usage shared.TokenUsage, latency time.Duration) ExecutionMetric {
+func MapUsage(meta shared.AgentMeta) ExecutionMetric {
 	return ExecutionMetric{
-		AgentName:        agentName,
-		Model:            usage.Model,
-		PromptTokens:     usage.PromptTokens,
-		CompletionTokens: usage.CompletionTokens,
-		LatencyMS:        latency.Milliseconds(),
+		AgentName:        meta.AgentName,
+		Model:            meta.Usage.Model,
+		PromptTokens:     meta.Usage.PromptTokens,
+		CompletionTokens: meta.Usage.CompletionTokens,
+		LatencyMS:        meta.Latency.Milliseconds(),
 		Timestamp:        time.Now().UTC(),
+		ToolCalls:        meta.ToolCalls,
 	}
 }

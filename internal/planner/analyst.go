@@ -110,7 +110,7 @@ func (p *Planner) runAnalyst(
 	}
 
 	// 2. Execute the autonomous loop
-	resp, recipeLookup, err := p.executeAnalystLoop(ctx, chat, initialLookup, recipesRecentlyUsed)
+	resp, recipeLookup, toolMetas, err := p.executeAnalystLoop(ctx, chat, initialLookup, recipesRecentlyUsed)
 	if err != nil {
 		return AnalystResult{}, err
 	}
@@ -122,6 +122,7 @@ func (p *Planner) runAnalyst(
 			Meta: shared.AgentMeta{
 				AgentName: "Analyst",
 				Usage:     resp.Usage,
+				ToolCalls: toolMetas,
 			},
 		}, fmt.Errorf(
 			"failed to parse analyst prompt response %w. Response: %s",
@@ -139,6 +140,7 @@ func (p *Planner) runAnalyst(
 			AgentName: "Analyst",
 			Usage:     resp.Usage,
 			Latency:   time.Since(start),
+			ToolCalls: toolMetas,
 		},
 	}, nil
 }
@@ -148,11 +150,12 @@ func (p *Planner) executeAnalystLoop(
 	chat llm.Conversation,
 	initialLookup map[string]recipe.Recipe,
 	recipesRecentlyUsed []string,
-) (llm.ContentResponse, map[string]recipe.Recipe, error) {
+) (llm.ContentResponse, map[string]recipe.Recipe, []shared.ToolCallMeta, error) {
 	tools := []llm.Tool{searchRecipesTool}
 	recipeLookup := initialLookup
 	var resp llm.ContentResponse
 	var err error
+	var toolMetas []shared.ToolCallMeta
 
 	for {
 		resp, err = p.analystGenerator.GenerateContent(
@@ -161,7 +164,7 @@ func (p *Planner) executeAnalystLoop(
 			tools,
 		)
 		if err != nil {
-			return llm.ContentResponse{}, nil, err
+			return llm.ContentResponse{}, nil, nil, err
 		}
 
 		chat = append(chat, resp.Message)
@@ -171,13 +174,21 @@ func (p *Planner) executeAnalystLoop(
 
 		toolCall := resp.Message.ToolCalls[0]
 		if toolCall.Name != "search_recipes" {
-			return llm.ContentResponse{}, nil, fmt.Errorf("tool not supported %s", toolCall.Name)
+			return llm.ContentResponse{}, nil, nil, fmt.Errorf("tool not supported %s", toolCall.Name)
 		}
 		
+		toolStart := time.Now()
 		recipes, msg, err := p.handleSearchTool(ctx, toolCall, recipesRecentlyUsed)
 		if err != nil {
-			return llm.ContentResponse{}, nil, err
+			return llm.ContentResponse{}, nil, nil, err
 		}
+		toolLatency := time.Since(toolStart)
+
+		toolMetas = append(toolMetas, shared.ToolCallMeta{
+			ToolName: toolCall.Name,
+			Input:    toolCall.Args,
+			Latency:  toolLatency,
+		})
 
 		chat = append(chat, msg)
 		for _, r := range recipes {
@@ -186,7 +197,7 @@ func (p *Planner) executeAnalystLoop(
 		}
 	}
 
-	return resp, recipeLookup, nil
+	return resp, recipeLookup, toolMetas, nil
 }
 
 func buildMealProposal(
