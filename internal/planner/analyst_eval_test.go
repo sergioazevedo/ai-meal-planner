@@ -51,7 +51,7 @@ func TestAnalyst_LiveEval(t *testing.T) {
 	}
 
 	// 3. Execute
-	result, err := p.runAnalyst(ctx, userRequest, pCtx, mockRecipes)
+	result, err := p.runAnalyst(ctx, userRequest, pCtx, mockRecipes, nil)
 	if err != nil {
 		t.Fatalf("Analyst failed to respond: %v", err)
 	}

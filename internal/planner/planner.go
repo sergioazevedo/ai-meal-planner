@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math/rand"
 	"strings"
 	"time"
 
@@ -97,8 +96,20 @@ func (p *Planner) GeneratePlan(ctx context.Context, userID string, userRequest s
 	// 0. Fetch recent history to avoid repetition
 	excludeIDs := p.receiptIDsRecentlyUsed(ctx, userID, targetWeek)
 
+	// 1. Fetch intial set of recipes
+	recipeSelection, err := p.getRecipeCandidates(ctx, userRequest, excludeIDs)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	// 1. Call Analyst agent to create a meal schedule
-	analystResult, err := p.runAnalyst(ctx, userRequest, pCtx, excludeIDs)
+	analystResult, err := p.runAnalyst(
+		ctx,
+		userRequest,
+		pCtx,
+		recipeSelection,
+		excludeIDs,
+	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to generate meal schedule: %w", err)
 	}
@@ -194,42 +205,28 @@ func (p *Planner) RevisePlan(
 }
 
 // getRecipeCandidates retrieves recipe candidates based on a query string.
-// It uses semantic search if the total recipe count exceeds a threshold, otherwise returns all recipes (shuffled).
 func (p *Planner) getRecipeCandidates(ctx context.Context, query string, excludeIDs []string) ([]recipe.Recipe, error) {
-	// Decide retrieval strategy based on total recipe count
-	count, err := p.recipeRepo.Count(ctx)
+	queryEmbedding, err := p.embedGen.GenerateEmbedding(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to count recipes: %w", err)
+		return nil, fmt.Errorf("failed to generate embedding for request: %w", err)
 	}
 
-	var recipes []recipe.Recipe
+	recipeIds, err := p.vectorRepo.FindSimilar(ctx, queryEmbedding, 10, excludeIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve similar recipes: %w", err)
+	}
 
-	if count <= 20 {
-		// For small pools, give everything to maximize variety
-		recipes, err = p.recipeRepo.List(ctx, excludeIDs)
-		if err != nil {
-			return nil, fmt.Errorf("failed to list recipes: %w", err)
-		}
-		// Shuffle to avoid positional bias in the LLM
-		r := rand.New(rand.NewSource(time.Now().UnixNano()))
-		r.Shuffle(len(recipes), func(i, j int) {
-			recipes[i], recipes[j] = recipes[j], recipes[i]
-		})
-	} else {
-		// For larger pools, use embedding search to find top relevant recipes
-		queryEmbedding, err := p.embedGen.GenerateEmbedding(ctx, query)
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate embedding for request: %w", err)
-		}
-
-		recipeIds, err := p.vectorRepo.FindSimilar(ctx, queryEmbedding, 40, excludeIDs)
+	if len(recipeIds) < 5 {
+		log.Printf("Warning: Recipe pool exhausted for query '%s'. Dropping exclusions.", query)
+		recipeIds, err = p.vectorRepo.FindSimilar(ctx, queryEmbedding, 10, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve similar recipes: %w", err)
 		}
-		recipes, err = p.recipeRepo.GetByIds(ctx, recipeIds)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve recipes: %w", err)
-		}
+	}
+
+	recipes, err := p.recipeRepo.GetByIds(ctx, recipeIds)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve recipes: %w", err)
 	}
 
 	return recipes, nil

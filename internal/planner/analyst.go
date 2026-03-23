@@ -21,6 +21,7 @@ var userContextPrompt string
 
 type userContextData struct {
 	UserRequest  string
+	Recipes      []recipe.Recipe
 	Adults       int
 	Children     int
 	ChildrenAges []int
@@ -78,11 +79,15 @@ func (p *Planner) runAnalyst(
 	ctx context.Context,
 	userRequest string,
 	planingCtx PlanningContext,
+	recipePool []recipe.Recipe,
 	recipesRecentlyUsed []string,
 ) (AnalystResult, error) {
 	start := time.Now()
-	userContextPrompt, err := buildUserContext(userContextData{
+
+	// 1. Setup Prompt & State
+	userContextPromptStr, err := buildUserContext(userContextData{
 		UserRequest:  userRequest,
+		Recipes:      recipePool,
 		Adults:       planingCtx.Adults,
 		Children:     planingCtx.Children,
 		ChildrenAges: planingCtx.ChildrenAges,
@@ -96,13 +101,59 @@ func (p *Planner) runAnalyst(
 		Content: analystPrompt,
 	}, {
 		Role:    "user",
-		Content: userContextPrompt,
+		Content: userContextPromptStr,
 	}}
 
-	tools := []llm.Tool{searchRecipesTool}
+	initialLookup := make(map[string]recipe.Recipe)
+	for _, r := range recipePool {
+		initialLookup[r.Title] = r
+	}
 
-	resp := llm.ContentResponse{}
-	recipeLookup := make(map[string]recipe.Recipe)
+	// 2. Execute the autonomous loop
+	resp, recipeLookup, err := p.executeAnalystLoop(ctx, chat, initialLookup, recipesRecentlyUsed)
+	if err != nil {
+		return AnalystResult{}, err
+	}
+
+	// 3. Parse JSON
+	raw := &rawLlmResult{}
+	if err = json.Unmarshal([]byte(resp.Message.Content), raw); err != nil {
+		return AnalystResult{
+			Meta: shared.AgentMeta{
+				AgentName: "Analyst",
+				Usage:     resp.Usage,
+			},
+		}, fmt.Errorf(
+			"failed to parse analyst prompt response %w. Response: %s",
+			err,
+			resp.Message.Content,
+		)
+	}
+
+	// 4. Map back to Domain Models
+	proposal := buildMealProposal(*raw, recipeLookup, planingCtx)
+
+	return AnalystResult{
+		Proposal: proposal,
+		Meta: shared.AgentMeta{
+			AgentName: "Analyst",
+			Usage:     resp.Usage,
+			Latency:   time.Since(start),
+		},
+	}, nil
+}
+
+func (p *Planner) executeAnalystLoop(
+	ctx context.Context,
+	chat llm.Conversation,
+	initialLookup map[string]recipe.Recipe,
+	recipesRecentlyUsed []string,
+) (llm.ContentResponse, map[string]recipe.Recipe, error) {
+	tools := []llm.Tool{searchRecipesTool}
+	recipeLookup := initialLookup
+	var resp llm.ContentResponse
+	var err error
+
 	for {
 		resp, err = p.analystGenerator.GenerateContent(
 			ctx,
@@ -110,43 +161,39 @@ func (p *Planner) runAnalyst(
 			tools,
 		)
 		if err != nil {
-			return AnalystResult{}, err
+			return llm.ContentResponse{}, nil, err
 		}
 
 		chat = append(chat, resp.Message)
 		if !resp.Message.IsAToolCall() {
-			break
+			break // Loop complete, we have final JSON
 		}
 
 		toolCall := resp.Message.ToolCalls[0]
 		if toolCall.Name != "search_recipes" {
-			return AnalystResult{}, fmt.Errorf("tool not supported %s", toolCall.Name)
+			return llm.ContentResponse{}, nil, fmt.Errorf("tool not supported %s", toolCall.Name)
 		}
+		
 		recipes, msg, err := p.handleSearchTool(ctx, toolCall, recipesRecentlyUsed)
 		if err != nil {
-			return AnalystResult{}, err
+			return llm.ContentResponse{}, nil, err
 		}
 
 		chat = append(chat, msg)
 		for _, r := range recipes {
 			recipeLookup[r.Title] = r
+			recipesRecentlyUsed = append(recipesRecentlyUsed, r.ID)
 		}
 	}
 
-	raw := &rawLlmResult{}
-	if err = json.Unmarshal([]byte(resp.Message.Content), raw); err != nil {
-		return AnalystResult{
-				Meta: shared.AgentMeta{
-					AgentName: "Analyst",
-					Usage:     resp.Usage,
-				},
-			}, fmt.Errorf(
-				"failed to parse analyst prompt response %w. Response: %s",
-				err,
-				resp.Message.Content,
-			)
-	}
+	return resp, recipeLookup, nil
+}
 
+func buildMealProposal(
+	raw rawLlmResult,
+	recipeLookup map[string]recipe.Recipe,
+	pCtx PlanningContext,
+) *MealProposal {
 	selectedRecipes := []recipe.Recipe{}
 	seen := make(map[string]struct{})
 	finalPlannedMeals := []PlannedMeal{}
@@ -170,20 +217,13 @@ func (p *Planner) runAnalyst(
 		selectedRecipes = append(selectedRecipes, r)
 	}
 
-	return AnalystResult{
-		Proposal: &MealProposal{
-			PlannedMeals: finalPlannedMeals,
-			Recipes:      selectedRecipes,
-			Adults:       planingCtx.Adults,
-			Children:     planingCtx.Children,
-			ChildrenAges: planingCtx.ChildrenAges,
-		},
-		Meta: shared.AgentMeta{
-			AgentName: "Analyst",
-			Usage:     resp.Usage,
-			Latency:   time.Since(start),
-		},
-	}, nil
+	return &MealProposal{
+		PlannedMeals: finalPlannedMeals,
+		Recipes:      selectedRecipes,
+		Adults:       pCtx.Adults,
+		Children:     pCtx.Children,
+		ChildrenAges: pCtx.ChildrenAges,
+	}
 }
 
 func (p *Planner) handleSearchTool(
