@@ -70,7 +70,11 @@ type Conversation []Message
 
 // TextGenerator is an interface for generating text from a prompt.
 type TextGenerator interface {
-	GenerateContent(ctx context.Context, conversation Conversation, tools []Tool) (ContentResponse, error)
+	GenerateContent(
+		ctx context.Context,
+		conversation Conversation,
+		tools []Tool,
+	) (ContentResponse, error)
 }
 
 // NoTools is a helper to pass an empty slice of tools to GenerateContent.
