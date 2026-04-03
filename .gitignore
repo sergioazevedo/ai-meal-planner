@@ -28,5 +28,6 @@ tmp/
 temp/
 .tmp/
 
-# AI Agent Plans
+# AI Agent Plans & Drafts
 docs/plans/
+docs/blog/
