@@ -26,7 +26,10 @@ func TestChef_LiveEval(t *testing.T) {
 	}
 
 	groqClient := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.1)
-	p := &Planner{chefGenerator: groqClient}
+	p := &Planner{
+		chefGenerator: groqClient,
+		recipeService: &RecipeService{},
+	}
 
 	// 1. Setup a Mock Proposal (The input the Chef expects from the Analyst)
 	proposal := &MealProposal{
@@ -47,10 +50,12 @@ func TestChef_LiveEval(t *testing.T) {
 	}
 
 	// 2. Execute
-	result, err := p.runChef(ctx, proposal, time.Now())
+	chef := NewChef(p.chefGenerator)
+	result, err := chef.Run(ctx, proposal, time.Now())
 	if err != nil {
-		t.Fatalf("Chef failed to respond: %v", err)
+		t.Fatalf("Chef failed to generate plan: %v", err)
 	}
+
 	plan := result.Plan
 
 	// 3. Quality Assertions (The "Evals")

@@ -8,40 +8,32 @@ import (
 	"time"
 
 	"ai-meal-planner/internal/llm"
-	"ai-meal-planner/internal/recipe"
 	"ai-meal-planner/internal/shared"
-	// Removed "ai-meal-planner/internal/storage" as it's no longer directly used by Planner
 )
 
-// Planner handles the generation of meal plans.
+// Planner handles the orchestration of meal plan generation.
 type Planner struct {
-	recipeRepo        *recipe.Repository
-	vectorRepo        *llm.VectorRepository
+	recipeService     *RecipeService
 	planRepo          *PlanRepository
 	analystGenerator  llm.TextGenerator // High-reasoning model (e.g., 70B)
 	chefGenerator     llm.TextGenerator // High-throughput model (e.g., 8B)
 	reviewerGenerator llm.TextGenerator // High-reasoning model for plan revision
-	embedGen          llm.EmbeddingGenerator
 }
 
-// NewPlanner creates a new Planner instance with separate generators for different agent roles.
+// NewPlanner creates a new Planner instance.
 func NewPlanner(
-	recipeRepo *recipe.Repository,
-	vectorRepo *llm.VectorRepository,
+	recipeService *RecipeService,
 	planRepo *PlanRepository,
 	analystGen llm.TextGenerator,
 	chefGen llm.TextGenerator,
 	reviewerGen llm.TextGenerator,
-	embedGen llm.EmbeddingGenerator,
 ) *Planner {
 	return &Planner{
-		recipeRepo:        recipeRepo,
-		vectorRepo:        vectorRepo,
+		recipeService:     recipeService,
 		planRepo:          planRepo,
 		analystGenerator:  analystGen,
 		chefGenerator:     chefGen,
 		reviewerGenerator: reviewerGen,
-		embedGen:          embedGen,
 	}
 }
 
@@ -97,13 +89,14 @@ func (p *Planner) GeneratePlan(ctx context.Context, userID string, userRequest s
 	excludeIDs := p.receiptIDsRecentlyUsed(ctx, userID, targetWeek)
 
 	// 1. Fetch intial set of recipes
-	recipeSelection, err := p.getRecipeCandidates(ctx, userRequest, excludeIDs)
+	recipeSelection, err := p.recipeService.GetRecipeCandidates(ctx, userRequest, excludeIDs)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// 1. Call Analyst agent to create a meal schedule
-	analystResult, err := p.runAnalyst(
+	analyst := NewAnalyst(p.analystGenerator, p.recipeService)
+	analystResult, err := analyst.Run(
 		ctx,
 		userRequest,
 		pCtx,
@@ -117,7 +110,8 @@ func (p *Planner) GeneratePlan(ctx context.Context, userID string, userRequest s
 
 	// 5. Handover meal schedule to the chef to prempare
 	// the MealPlan and the consolidate shooping list
-	chefResult, err := p.runChef(ctx, analystResult.Proposal, targetWeek)
+	chef := NewChef(p.chefGenerator)
+	chefResult, err := chef.Run(ctx, analystResult.Proposal, targetWeek)
 	if err != nil {
 		return nil, metas, fmt.Errorf("failed to generate meal plan: %w", err)
 	}
@@ -161,7 +155,7 @@ func (p *Planner) GenerateShoppingList(ctx context.Context, plan *MealPlan, pCtx
 		recipeIDs = append(recipeIDs, id)
 	}
 
-	recipes, err := p.recipeRepo.GetByIds(ctx, recipeIDs)
+	recipes, err := p.recipeService.GetByIds(ctx, recipeIDs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch recipes: %w", err)
 	}
@@ -176,7 +170,8 @@ func (p *Planner) GenerateShoppingList(ctx context.Context, plan *MealPlan, pCtx
 	}
 
 	// 4. Call Chef to generate the shopping list
-	chefResult, err := p.runChef(ctx, proposal, plan.WeekStart)
+	chef := NewChef(p.chefGenerator)
+	chefResult, err := chef.Run(ctx, proposal, plan.WeekStart)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate shopping list: %w", err)
 	}
@@ -193,7 +188,7 @@ func (p *Planner) RevisePlan(
 	pCtx PlanningContext,
 ) (PlanReviewerResult, error) {
 	// Find relevant recipes based on feedback
-	recipes, err := p.getRecipeCandidates(ctx, feedback, nil)
+	recipes, err := p.recipeService.GetRecipeCandidates(ctx, feedback, nil)
 	if err != nil {
 		return PlanReviewerResult{}, fmt.Errorf("failed to find recipe candidates: %w", err)
 	}
@@ -201,33 +196,6 @@ func (p *Planner) RevisePlan(
 	log.Printf("PlanReviewer will choose from %d available recipes", len(recipes))
 
 	// Run the reviewer agent
-	return p.RunPlanReviewer(ctx, currentPlan, originalRequest, feedback, pCtx, recipes)
-}
-
-// getRecipeCandidates retrieves recipe candidates based on a query string.
-func (p *Planner) getRecipeCandidates(ctx context.Context, query string, excludeIDs []string) ([]recipe.Recipe, error) {
-	queryEmbedding, err := p.embedGen.GenerateEmbedding(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate embedding for request: %w", err)
-	}
-
-	recipeIds, err := p.vectorRepo.FindSimilar(ctx, queryEmbedding, 10, excludeIDs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve similar recipes: %w", err)
-	}
-
-	if len(recipeIds) < 5 {
-		log.Printf("Warning: Recipe pool exhausted for query '%s'. Dropping exclusions.", query)
-		recipeIds, err = p.vectorRepo.FindSimilar(ctx, queryEmbedding, 10, nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve similar recipes: %w", err)
-		}
-	}
-
-	recipes, err := p.recipeRepo.GetByIds(ctx, recipeIds)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve recipes: %w", err)
-	}
-
-	return recipes, nil
+	reviewer := NewPlanReviewer(p.reviewerGenerator)
+	return reviewer.Run(ctx, currentPlan, originalRequest, feedback, pCtx, recipes)
 }

@@ -31,8 +31,20 @@ type PlanReviewerResult struct {
 	Meta        shared.AgentMeta
 }
 
-// RunPlanReviewer revises a meal plan based on user feedback
-func (p *Planner) RunPlanReviewer(
+// PlanReviewer handles the revision of an existing meal plan based on user feedback.
+type PlanReviewer struct {
+	llm llm.TextGenerator
+}
+
+// NewPlanReviewer creates a new PlanReviewer instance.
+func NewPlanReviewer(llm llm.TextGenerator) *PlanReviewer {
+	return &PlanReviewer{
+		llm: llm,
+	}
+}
+
+// Run revises a meal plan based on user feedback.
+func (r *PlanReviewer) Run(
 	ctx context.Context,
 	currentPlan *MealPlan,
 	userRequest string,
@@ -55,7 +67,7 @@ func (p *Planner) RunPlanReviewer(
 		return PlanReviewerResult{}, err
 	}
 
-	resp, err := p.reviewerGenerator.GenerateContent(ctx, llm.Conversation{{Role: "user", Content: prompt}}, llm.NoTools)
+	resp, err := r.llm.GenerateContent(ctx, llm.Conversation{{Role: "user", Content: prompt}}, llm.NoTools)
 	if err != nil {
 		return PlanReviewerResult{}, err
 	}
