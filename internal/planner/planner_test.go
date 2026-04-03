@@ -3,7 +3,6 @@ package planner
 import (
 	"context"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -51,14 +50,24 @@ func TestGeneratePlan(t *testing.T) {
 	_ = vectorRepo.Save(ctx, rec2.ID, emb2, "dummy-hash-2")
 
 	mockGen := &llmtest.MockTextGenerator{
-		GenerateFn: func(prompt string) string {
-			if strings.Contains(prompt, "# Analyst Agent Prompt") {
-				return `{"planned_meals": [{"day": "Monday", "action": "Cook", "recipe_title": "Pasta", "note": "Yum"}]}`
-			}
-			return `{"plan": [{"day": "Monday", "recipe_title": "Cook: Pasta", "prep_time": "15 mins", "note": "Yum"}], "shopping_list": ["Pasta", "Tomato"]}`
+		ResponseChain: []llm.ContentResponse{
+			{
+				Message: llm.Message{
+					Role:    "assistant",
+					Content: `{"planned_meals": [{"day": "Monday", "action": "Cook", "recipe_title": "Pasta", "note": "Yum"}]}`,
+				},
+			},
+			{
+				Message: llm.Message{
+					Role:    "assistant",
+					Content: `{"plan": [{"day": "Monday", "recipe_title": "Cook: Pasta", "prep_time": "15 mins", "note": "Yum"}], "shopping_list": ["Pasta", "Tomato"]}`,
+				},
+			},
 		},
 	}
-	p := NewPlanner(recipeRepo, vectorRepo, planRepo, mockGen, mockGen, mockGen, &llmtest.MockEmbeddingGenerator{Values: []float32{1.0, 0.0}})
+	mockEmbedGen := &llmtest.MockEmbeddingGenerator{Values: []float32{1.0, 0.0}}
+	recipeService := NewRecipeService(recipeRepo, vectorRepo, mockEmbedGen)
+	p := NewPlanner(recipeService, planRepo, mockGen, mockGen, mockGen)
 
 	// 4. Run GeneratePlan
 	plan, metas, err := p.GeneratePlan(ctx, "test_user", "I want pasta", PlanningContext{}, time.Now())

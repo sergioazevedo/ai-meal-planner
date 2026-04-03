@@ -75,7 +75,28 @@ var searchRecipesTool = llm.Tool{
 	},
 }
 
-func (p *Planner) runAnalyst(
+// RecipeSearcher defines the interface for searching recipes,
+// allowing the Analyst to be decoupled from the Planner's concrete implementation.
+type RecipeSearcher interface {
+	GetRecipeCandidates(ctx context.Context, query string, excludeIDs []string) ([]recipe.Recipe, error)
+}
+
+// Analyst handles the high-reasoning logic for creating a meal schedule.
+type Analyst struct {
+	llm      llm.TextGenerator
+	searcher RecipeSearcher
+}
+
+// NewAnalyst creates a new Analyst instance.
+func NewAnalyst(llm llm.TextGenerator, searcher RecipeSearcher) *Analyst {
+	return &Analyst{
+		llm:      llm,
+		searcher: searcher,
+	}
+}
+
+// Run executes the Analyst agent to create a meal schedule.
+func (a *Analyst) Run(
 	ctx context.Context,
 	userRequest string,
 	planingCtx PlanningContext,
@@ -110,7 +131,7 @@ func (p *Planner) runAnalyst(
 	}
 
 	// 2. Execute the autonomous loop
-	resp, recipeLookup, toolMetas, err := p.executeAnalystLoop(ctx, chat, initialLookup, recipesRecentlyUsed)
+	resp, recipeLookup, toolMetas, err := a.executeAnalystLoop(ctx, chat, initialLookup, recipesRecentlyUsed)
 	if err != nil {
 		return AnalystResult{}, err
 	}
@@ -145,7 +166,7 @@ func (p *Planner) runAnalyst(
 	}, nil
 }
 
-func (p *Planner) executeAnalystLoop(
+func (a *Analyst) executeAnalystLoop(
 	ctx context.Context,
 	chat llm.Conversation,
 	initialLookup map[string]recipe.Recipe,
@@ -158,7 +179,7 @@ func (p *Planner) executeAnalystLoop(
 	var toolMetas []shared.ToolCallMeta
 
 	for {
-		resp, err = p.analystGenerator.GenerateContent(
+		resp, err = a.llm.GenerateContent(
 			ctx,
 			chat,
 			tools,
@@ -176,9 +197,9 @@ func (p *Planner) executeAnalystLoop(
 		if toolCall.Name != "search_recipes" {
 			return llm.ContentResponse{}, nil, nil, fmt.Errorf("tool not supported %s", toolCall.Name)
 		}
-		
+
 		toolStart := time.Now()
-		recipes, msg, err := p.handleSearchTool(ctx, toolCall, recipesRecentlyUsed)
+		recipes, msg, err := a.handleSearchTool(ctx, toolCall, recipesRecentlyUsed)
 		if err != nil {
 			return llm.ContentResponse{}, nil, nil, err
 		}
@@ -237,12 +258,12 @@ func buildMealProposal(
 	}
 }
 
-func (p *Planner) handleSearchTool(
+func (a *Analyst) handleSearchTool(
 	ctx context.Context,
 	toolCall llm.ToolCall,
 	recipesRecentlyUsed []string,
 ) ([]recipe.Recipe, llm.Message, error) {
-	recipes, err := p.getRecipeCandidates(
+	recipes, err := a.searcher.GetRecipeCandidates(
 		ctx,
 		toolCall.Args["query"].(string),
 		recipesRecentlyUsed,

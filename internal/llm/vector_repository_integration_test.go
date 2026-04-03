@@ -55,9 +55,14 @@ func TestVectorSearchRecallIntegration(t *testing.T) {
 		realEmbeddingGenerator = geminiClient
 		// Use a mock for text generation since Gemini is embedding-only now
 		realTextGenerator = &llmtest.MockTextGenerator{
-			GenerateFn: func(prompt string) string {
+			GenerateFn: func(conversation llm.Conversation) llm.ContentResponse {
 				// Return a dummy valid JSON for the extractor
-				return `{"title": "Dummy", "ingredients": [], "instructions": [], "tags": [], "prep_time": "10m", "servings": "1"}`
+				return llm.ContentResponse{
+					Message: llm.Message{
+						Role:    "assistant",
+						Content: `{"title": "Dummy", "ingredients": [], "instructions": [], "tags": [], "prep_time": "10m", "servings": "1"}`,
+					},
+				}
 			},
 		}
 		t.Log("Using Gemini for embedding and Mock for text generation.\n")

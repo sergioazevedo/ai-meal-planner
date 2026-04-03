@@ -20,7 +20,20 @@ type ChefResult struct {
 	Meta shared.AgentMeta
 }
 
-func (p *Planner) runChef(
+// Chef handles the generation of the final MealPlan and shopping list.
+type Chef struct {
+	llm llm.TextGenerator
+}
+
+// NewChef creates a new Chef instance.
+func NewChef(llm llm.TextGenerator) *Chef {
+	return &Chef{
+		llm: llm,
+	}
+}
+
+// Run executes the Chef agent to generate a meal plan.
+func (c *Chef) Run(
 	ctx context.Context,
 	mealSchedule *MealProposal,
 	weekStart time.Time,
@@ -31,7 +44,7 @@ func (p *Planner) runChef(
 		return ChefResult{}, err
 	}
 
-	resp, err := p.chefGenerator.GenerateContent(ctx, llm.Conversation{{Role: "user", Content: prompt}}, llm.NoTools)
+	resp, err := c.llm.GenerateContent(ctx, llm.Conversation{{Role: "user", Content: prompt}}, llm.NoTools)
 	if err != nil {
 		return ChefResult{}, err
 	}

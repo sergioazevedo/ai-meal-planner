@@ -26,7 +26,10 @@ func TestAnalyst_LiveEval(t *testing.T) {
 
 	// Use Groq for fast, cheap evals
 	groqClient := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
-	p := &Planner{analystGenerator: groqClient}
+	p := &Planner{
+		analystGenerator: groqClient,
+		recipeService:    &RecipeService{}, // Placeholder, as search tool is not expected to be used in this basic test
+	}
 
 	// 2. Define a "Hard" Scenario
 	userRequest := "We need high-protein meals for the week, but my kids hate spicy food."
@@ -51,7 +54,8 @@ func TestAnalyst_LiveEval(t *testing.T) {
 	}
 
 	// 3. Execute
-	result, err := p.runAnalyst(ctx, userRequest, pCtx, mockRecipes, nil)
+	analyst := NewAnalyst(p.analystGenerator, p.recipeService)
+	result, err := analyst.Run(ctx, userRequest, pCtx, mockRecipes, nil)
 	if err != nil {
 		t.Fatalf("Analyst failed to respond: %v", err)
 	}

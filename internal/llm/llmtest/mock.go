@@ -12,24 +12,37 @@ type MockTextGenerator struct {
 	Response    string
 	ShouldError bool
 	// GenerateFn allows tests to provide custom response logic based on the prompt.
-	GenerateFn func(prompt string) string
+	GenerateFn    func(conversation llm.Conversation) llm.ContentResponse
+	ResponseChain []llm.ContentResponse
+	callCount     int
 }
 
-func (m *MockTextGenerator) GenerateContent(ctx context.Context, conversation llm.Conversation, tools []llm.Tool) (llm.ContentResponse, error) {
+func (m *MockTextGenerator) GenerateContent(
+	ctx context.Context,
+	conversation llm.Conversation,
+	tools []llm.Tool,
+) (llm.ContentResponse, error) {
 	if m.ShouldError {
 		return llm.ContentResponse{}, fmt.Errorf("mock ai error")
 	}
-	
-	// Default to an empty string if conversation is empty
-	prompt := ""
-	if len(conversation) > 0 {
-		prompt = conversation[len(conversation)-1].Content
-	}
-	
+
 	if m.GenerateFn != nil {
-		return llm.ContentResponse{Message: llm.Message{Role: "assistant", Content: m.GenerateFn(prompt)}}, nil
+		return m.GenerateFn(conversation), nil
 	}
-	return llm.ContentResponse{Message: llm.Message{Role: "assistant", Content: m.Response}}, nil
+
+	if len(m.ResponseChain) > 0 {
+		if m.callCount >= len(m.ResponseChain) {
+			return llm.ContentResponse{}, fmt.Errorf("too many calls to GenerateContent")
+		}
+		resp := m.ResponseChain[m.callCount]
+		m.callCount++
+		return resp, nil
+	}
+
+	return llm.ContentResponse{Message: llm.Message{
+		Role:    "assistant",
+		Content: m.Response,
+	}}, nil
 }
 
 // MockEmbeddingGenerator is a reusable mock for testing vector embeddings.

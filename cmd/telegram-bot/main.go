@@ -63,7 +63,8 @@ func main() {
 	// Create reviewer model (use same high-reasoning model as Analyst for plan revision)
 	reviewerModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
 
-	mealPlanner := planner.NewPlanner(recipeRepo, vectorRepo, planRepo, analystModel, normalizerModel, reviewerModel, geminiClient)
+	recipeService := planner.NewRecipeService(recipeRepo, vectorRepo, geminiClient)
+	mealPlanner := planner.NewPlanner(recipeService, planRepo, analystModel, normalizerModel, reviewerModel)
 	recipeClipper := clipper.NewClipper(ghostClient, normalizerModel)
 
 	// 6. Initialize Session Repository for conversation state tracking
