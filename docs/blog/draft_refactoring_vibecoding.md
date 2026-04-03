@@ -106,6 +106,43 @@ func (m *mockSearcher) GetRecipeCandidates(ctx context.Context, query string, ex
 }
 ```
 
+### The Final Boss: Unburdening the Orchestrator
+
+Even after isolating the agents, my `Planner` struct was still doing too much. It was satisfying the `RecipeSearcher` interface itself, which meant it still carried the weight of embedding generators and vector repositories.
+
+The final step of this architectural cleanup was to extract that search logic into a dedicated **`RecipeService`**. 
+
+Now, the `Planner` is a true orchestrator. It doesn't know *how* to find recipes; it just knows *who* to ask and how to coordinate the agents.
+
+```go
+// The final, lean Planner
+type Planner struct {
+	recipeService     *RecipeService    // Focused data capability
+	planRepo          *PlanRepository
+	analystGenerator  llm.TextGenerator // Orchestrates these workers...
+	chefGenerator     llm.TextGenerator
+	reviewerGenerator llm.TextGenerator
+}
+
+// GeneratePlan now looks like a clean script
+func (p *Planner) GeneratePlan(...) {
+    // 1. Get data via the service
+    recipes, _ := p.recipeService.GetRecipeCandidates(...)
+    
+    // 2. Delegate to the Analyst
+    analyst := NewAnalyst(p.analystGenerator, p.recipeService)
+    res, _ := analyst.Run(..., recipes)
+    
+    // 3. Handover to the Chef
+    chef := NewChef(p.chefGenerator)
+    return chef.Run(...)
+}
+```
+
+### The Payoff: Clean Domain Models
+
+By moving the "mechanics" of searching into a service and the "thinking" into isolated agents, the code became incredibly predictable. I no longer have to worry about side effects in a 500-line God Object when I want to improve the Analyst's prompt.
+
 ### Reflections on Vibecoding
 
 Vibecoding is not a silver bullet. It trades architectural rigor for initial velocity. 
