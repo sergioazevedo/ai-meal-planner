@@ -3,7 +3,6 @@ package planner
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -187,15 +186,15 @@ func (p *Planner) RevisePlan(
 	feedback string,
 	pCtx PlanningContext,
 ) (PlanReviewerResult, error) {
-	// Find relevant recipes based on feedback
-	recipes, err := p.recipeService.GetRecipeCandidates(ctx, feedback, nil)
-	if err != nil {
-		return PlanReviewerResult{}, fmt.Errorf("failed to find recipe candidates: %w", err)
+	// Extract recently used IDs from the current plan to inform the search
+	recentlyUsed := []string{}
+	for _, meal := range currentPlan.Plan {
+		if meal.RecipeID != "" {
+			recentlyUsed = append(recentlyUsed, meal.RecipeID)
+		}
 	}
 
-	log.Printf("PlanReviewer will choose from %d available recipes", len(recipes))
-
 	// Run the reviewer agent
-	reviewer := NewPlanReviewer(p.reviewerGenerator)
-	return reviewer.Run(ctx, currentPlan, originalRequest, feedback, pCtx, recipes)
+	reviewer := NewPlanReviewer(p.reviewerGenerator, p.recipeService)
+	return reviewer.Run(ctx, currentPlan, originalRequest, feedback, pCtx, recentlyUsed)
 }

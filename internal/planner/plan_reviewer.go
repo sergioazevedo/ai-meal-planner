@@ -16,14 +16,16 @@ import (
 //go:embed plan_reviewer_prompt.md
 var planReviewerPrompt string
 
-type planReviewerPromptData struct {
+//go:embed plan_reviewer_user_context_prompt.md
+var planReviewerUserContextPrompt string
+
+type planReviewerUserContextData struct {
 	OriginalRequest    string
 	CurrentPlan        []DayPlan
 	Adults             int
 	Children           int
 	ChildrenAges       []int
 	AdjustmentFeedback string
-	AvailableRecipes   []recipe.Recipe
 }
 
 type PlanReviewerResult struct {
@@ -33,13 +35,15 @@ type PlanReviewerResult struct {
 
 // PlanReviewer handles the revision of an existing meal plan based on user feedback.
 type PlanReviewer struct {
-	llm llm.TextGenerator
+	llm      llm.TextGenerator
+	searcher RecipeSearcher
 }
 
 // NewPlanReviewer creates a new PlanReviewer instance.
-func NewPlanReviewer(llm llm.TextGenerator) *PlanReviewer {
+func NewPlanReviewer(llm llm.TextGenerator, searcher RecipeSearcher) *PlanReviewer {
 	return &PlanReviewer{
-		llm: llm,
+		llm:      llm,
+		searcher: searcher,
 	}
 }
 
@@ -50,48 +54,100 @@ func (r *PlanReviewer) Run(
 	userRequest string,
 	adjustmentFeedback string,
 	planningCtx PlanningContext,
-	recipes []recipe.Recipe,
+	recipesRecentlyUsed []string,
 ) (PlanReviewerResult, error) {
 	start := time.Now()
 
-	prompt, err := buildPlanReviewerPrompt(planReviewerPromptData{
+	prompt, err := buildPlanReviewerUserContext(planReviewerUserContextData{
 		OriginalRequest:    userRequest,
 		CurrentPlan:        currentPlan.Plan,
 		Adults:             planningCtx.Adults,
 		Children:           planningCtx.Children,
 		ChildrenAges:       planningCtx.ChildrenAges,
 		AdjustmentFeedback: adjustmentFeedback,
-		AvailableRecipes:   recipes,
 	})
 	if err != nil {
 		return PlanReviewerResult{}, err
 	}
 
-	resp, err := r.llm.GenerateContent(ctx, llm.Conversation{{Role: "user", Content: prompt}}, llm.NoTools)
+	chat := llm.Conversation{{
+		Role:    "system",
+		Content: planReviewerPrompt,
+	}, {
+		Role:    "user",
+		Content: prompt,
+	}}
+
+	// 1. Setup Tool Handlers
+	recentlyUsed := recipesRecentlyUsed
+	initialLookup := make(map[string]recipe.Recipe) // Used for mapping titles back to IDs
+
+	searchHandler := func(ctx context.Context, toolCall llm.ToolCall) (llm.Message, []recipe.Recipe, error) {
+		recipes, msg, err := HandleRecipeSearch(ctx, r.searcher, toolCall, recentlyUsed)
+		if err != nil {
+			return llm.Message{}, nil, err
+		}
+		// Update the exclusion list for subsequent turns
+		for _, recipe := range recipes {
+			recentlyUsed = append(recentlyUsed, recipe.ID)
+		}
+		return msg, recipes, nil
+	}
+
+	handlers := map[string]ToolHandler[[]recipe.Recipe]{
+		searchRecipesTool.Name: searchHandler,
+	}
+
+	// 2. Execute the autonomous loop via the Engine
+	resp, recipeBatches, toolMetas, err := ExecuteAgentLoop[[]recipe.Recipe](
+		ctx,
+		r.llm,
+		chat,
+		[]llm.Tool{searchRecipesTool},
+		handlers,
+	)
 	if err != nil {
 		return PlanReviewerResult{}, err
 	}
 
-	result := &MealPlan{}
+	// 3. Build lookup from retrieved recipes
+	recipeLookup := initialLookup
+	for _, batch := range recipeBatches {
+		for _, recipe := range batch {
+			recipeLookup[recipe.Title] = recipe
+		}
+	}
+
+	// 4. Parse JSON Response
 	rawResponse := struct {
 		Plan []DayPlan `json:"plan"`
 	}{}
 
 	if err = json.Unmarshal([]byte(resp.Message.Content), &rawResponse); err != nil {
 		return PlanReviewerResult{
-				Meta: shared.AgentMeta{
-					AgentName: "PlanReviewer",
-					Usage:     resp.Usage,
-				},
-			}, fmt.Errorf(
-				"failed to parse plan reviewer response %w. Response: %s",
-				err,
-				resp.Message.Content,
-			)
+			Meta: shared.AgentMeta{
+				AgentName: "PlanReviewer",
+				Usage:     resp.Usage,
+				ToolCalls: toolMetas,
+			},
+		}, fmt.Errorf(
+			"failed to parse plan reviewer response %w. Response: %s",
+			err,
+			resp.Message.Content,
+		)
 	}
 
-	// Copy over the revised plan
-	result.Plan = rawResponse.Plan
+	// 5. Build final result and map IDs
+	result := &MealPlan{}
+	result.Plan = []DayPlan{}
+	for _, day := range rawResponse.Plan {
+		// Try to find the recipe ID from our lookup
+		if recipe, ok := recipeLookup[day.RecipeTitle]; ok {
+			day.RecipeID = recipe.ID
+		}
+		result.Plan = append(result.Plan, day)
+	}
+
 	result.WeekStart = currentPlan.WeekStart
 	result.Status = currentPlan.Status
 	result.OriginalRequest = userRequest
@@ -102,12 +158,15 @@ func (r *PlanReviewer) Run(
 			AgentName: "PlanReviewer",
 			Usage:     resp.Usage,
 			Latency:   time.Since(start),
+			ToolCalls: toolMetas,
 		},
 	}, nil
 }
 
-func buildPlanReviewerPrompt(data planReviewerPromptData) (string, error) {
-	tmpl, err := template.New("planreviewer").Parse(planReviewerPrompt)
+func buildPlanReviewerUserContext(
+	data planReviewerUserContextData,
+) (string, error) {
+	tmpl, err := template.New("planreviewerusercontext").Parse(planReviewerUserContextPrompt)
 	if err != nil {
 		return "", err
 	}
