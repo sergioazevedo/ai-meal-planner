@@ -165,21 +165,13 @@ This application compiles to a single static binary, making it perfect for low-c
 
 ## 🏗️ Architecture
 
-### Multi-Agent Pipeline
+### Autonomous Agent Pipeline
 
-The planner uses a specialized two-stage pipeline:
+The planner uses a specialized three-stage pipeline powered by a **Generic Agent Engine**:
 
-1. **Analyst Agent**: Strategic reasoning
-   - Analyzes your meal preferences and constraints
-   - Selects recipes based on semantic search results
-   - Enforces the batch-cooking cadence for efficiency
-   - Ensures variety and nutritional balance
-
-2. **Chef Agent**: Tactical execution
-   - Scales ingredient quantities for your household (adults + children)
-   - Consolidates recipes into a unified shopping list
-   - Formats the final output as markdown
-   - Handles leftovers and meal timing
+1.  **Analyst Agent**: Strategic reasoning. Autonomously "pulls" recipe candidates using tools to build the initial plan structure.
+2.  **PlanReviewer Agent**: Intelligent adjustment. Revises existing plans based on user feedback by searching for alternatives dynamically.
+3.  **Chef Agent**: Tactical execution. Scales ingredient quantities, consolidates the shopping list, and formats the final markdown.
 
 ### System Diagram
 
@@ -188,30 +180,23 @@ graph TD
     User((User)) <--> Bot[Telegram Bot]
     Bot <--> Planner[Multi-Agent Planner]
 
-    subgraph Agents [Planner Roles]
-        Planner --> Analyst[Analyst: Strategy]
-        Analyst --> Chef[Chef: Execution]
+    subgraph Engine [Generic Agent Engine]
+        Loop[ExecuteAgentLoop: Generics-powered While-Loop]
     end
 
-    subgraph Storage [SQLite Database]
-        Migrations[Migrations] --> Recipes[(Recipes Table)]
-        Recipes -- Embed --> Embeddings[(Embeddings Table)]
-        Embeddings -- text_hash for caching --> Embeddings
-        Plans[(Meal Plans Table)]
-        Metrics[(Metrics Table)]
+    subgraph Agents [Autonomous Roles]
+        Analyst[Analyst: Strategy]
+        Reviewer[PlanReviewer: Adjustment]
+        Chef[Chef: Execution]
     end
 
-    subgraph CMS [Source]
-        Ghost[Ghost Blog]
-    end
+    Planner --> Analyst
+    Planner --> Reviewer
+    Planner --> Chef
 
-    Ghost -- Ingest --> Recipes
-    Recipes -- Embed (Cached) --> Embeddings
-
-    Planner -- RAG --> Embeddings
-    Planner -- Fetch --> Recipes
-    Bot -- Log --> Metrics
-    Bot -- Save/Load --> Plans
+    Analyst & Reviewer -->|Provide Handlers| Loop
+    Loop -->|Tool Call| SearchTool[HandleRecipeSearch]
+    SearchTool --> RAG[RecipeService: Semantic Search]
 ```
 
 1.  **Ingestion Service**: Pulls content from Ghost -> Normalizes via LLM (with caching) -> Saves to SQLite.
@@ -281,6 +266,14 @@ After deploying your planner:
 2. **Customize Your Profile**: Adjust household settings in `.env` (adults, children, ages, cooking frequency)
 3. **Monitor Performance**: Check `/metrics` in Telegram to see token usage and API latency
 4. **Explore Agent Behavior**: Read [AI_AGENT_ROADMAP.md](AI_AGENT_ROADMAP.md) to understand the multi-agent system's potential
+5. **Set Up Automation**: Configure a cron job to automatically ingest new recipes hourly (see [DEPLOY.md](DEPLOY.md))
+
+**Want to Contribute?** Check [TODO.md](TODO.md) for planned features and architectural decisions.
+
+---
+
+## 📄 License
+MITe Agent Behavior**: Read [AI_AGENT_ROADMAP.md](AI_AGENT_ROADMAP.md) to understand the multi-agent system's potential
 5. **Set Up Automation**: Configure a cron job to automatically ingest new recipes hourly (see [DEPLOY.md](DEPLOY.md))
 
 **Want to Contribute?** Check [TODO.md](TODO.md) for planned features and architectural decisions.
