@@ -60,27 +60,6 @@ type rawLlmResult struct {
 	PlannedMeals         []PlannedMeal `json:"planned_meals"`
 }
 
-var searchRecipesTool = llm.Tool{
-	Name:        "search_recipes",
-	Description: "Search for recipes based on a query to find meals that fit the user's requirements.",
-	Parameters: llm.ToolParameters{
-		Type: llm.ParameterTypeObject,
-		Properties: map[string]llm.Property{
-			"query": {
-				Type:        llm.PropertyTypeString,
-				Description: "The search query (e.g., 'chicken dinner', 'quick vegetarian').",
-			},
-		},
-		Required: []string{"query"},
-	},
-}
-
-// RecipeSearcher defines the interface for searching recipes,
-// allowing the Analyst to be decoupled from the Planner's concrete implementation.
-type RecipeSearcher interface {
-	GetRecipeCandidates(ctx context.Context, query string, excludeIDs []string) ([]recipe.Recipe, error)
-}
-
 // Analyst handles the high-reasoning logic for creating a meal schedule.
 type Analyst struct {
 	llm      llm.TextGenerator
@@ -130,13 +109,45 @@ func (a *Analyst) Run(
 		initialLookup[r.Title] = r
 	}
 
-	// 2. Execute the autonomous loop
-	resp, recipeLookup, toolMetas, err := a.executeAnalystLoop(ctx, chat, initialLookup, recipesRecentlyUsed)
+	// 2. Setup Tool Handlers
+	recentlyUsed := recipesRecentlyUsed
+	searchHandler := func(ctx context.Context, toolCall llm.ToolCall) (llm.Message, []recipe.Recipe, error) {
+		recipes, msg, err := HandleRecipeSearch(ctx, a.searcher, toolCall, recentlyUsed)
+		if err != nil {
+			return llm.Message{}, nil, err
+		}
+		// Update the exclusion list for subsequent turns in the same run
+		for _, r := range recipes {
+			recentlyUsed = append(recentlyUsed, r.ID)
+		}
+		return msg, recipes, nil
+	}
+
+	handlers := map[string]ToolHandler[[]recipe.Recipe]{
+		searchRecipesTool.Name: searchHandler,
+	}
+
+	// 3. Execute the autonomous loop via the Engine
+	resp, recipeBatches, toolMetas, err := ExecuteAgentLoop[[]recipe.Recipe](
+		ctx,
+		a.llm,
+		chat,
+		[]llm.Tool{searchRecipesTool},
+		handlers,
+	)
 	if err != nil {
 		return AnalystResult{}, err
 	}
 
-	// 3. Parse JSON
+	// 4. Update lookup from batches
+	recipeLookup := initialLookup
+	for _, batch := range recipeBatches {
+		for _, r := range batch {
+			recipeLookup[r.Title] = r
+		}
+	}
+
+	// 5. Parse JSON
 	raw := &rawLlmResult{}
 	if err = json.Unmarshal([]byte(resp.Message.Content), raw); err != nil {
 		return AnalystResult{
@@ -152,7 +163,7 @@ func (a *Analyst) Run(
 		)
 	}
 
-	// 4. Map back to Domain Models
+	// 6. Map back to Domain Models
 	proposal := buildMealProposal(*raw, recipeLookup, planingCtx)
 
 	return AnalystResult{
@@ -164,61 +175,6 @@ func (a *Analyst) Run(
 			ToolCalls: toolMetas,
 		},
 	}, nil
-}
-
-func (a *Analyst) executeAnalystLoop(
-	ctx context.Context,
-	chat llm.Conversation,
-	initialLookup map[string]recipe.Recipe,
-	recipesRecentlyUsed []string,
-) (llm.ContentResponse, map[string]recipe.Recipe, []shared.ToolCallMeta, error) {
-	tools := []llm.Tool{searchRecipesTool}
-	recipeLookup := initialLookup
-	var resp llm.ContentResponse
-	var err error
-	var toolMetas []shared.ToolCallMeta
-
-	for {
-		resp, err = a.llm.GenerateContent(
-			ctx,
-			chat,
-			tools,
-		)
-		if err != nil {
-			return llm.ContentResponse{}, nil, nil, err
-		}
-
-		chat = append(chat, resp.Message)
-		if !resp.Message.IsAToolCall() {
-			break // Loop complete, we have final JSON
-		}
-
-		toolCall := resp.Message.ToolCalls[0]
-		if toolCall.Name != "search_recipes" {
-			return llm.ContentResponse{}, nil, nil, fmt.Errorf("tool not supported %s", toolCall.Name)
-		}
-
-		toolStart := time.Now()
-		recipes, msg, err := a.handleSearchTool(ctx, toolCall, recipesRecentlyUsed)
-		if err != nil {
-			return llm.ContentResponse{}, nil, nil, err
-		}
-		toolLatency := time.Since(toolStart)
-
-		toolMetas = append(toolMetas, shared.ToolCallMeta{
-			ToolName: toolCall.Name,
-			Input:    toolCall.Args,
-			Latency:  toolLatency,
-		})
-
-		chat = append(chat, msg)
-		for _, r := range recipes {
-			recipeLookup[r.Title] = r
-			recipesRecentlyUsed = append(recipesRecentlyUsed, r.ID)
-		}
-	}
-
-	return resp, recipeLookup, toolMetas, nil
 }
 
 func buildMealProposal(
@@ -256,34 +212,6 @@ func buildMealProposal(
 		Children:     pCtx.Children,
 		ChildrenAges: pCtx.ChildrenAges,
 	}
-}
-
-func (a *Analyst) handleSearchTool(
-	ctx context.Context,
-	toolCall llm.ToolCall,
-	recipesRecentlyUsed []string,
-) ([]recipe.Recipe, llm.Message, error) {
-	recipes, err := a.searcher.GetRecipeCandidates(
-		ctx,
-		toolCall.Args["query"].(string),
-		recipesRecentlyUsed,
-	)
-	if err != nil {
-		return nil, llm.Message{}, err
-	}
-
-	recipesJson, err := json.Marshal(recipes)
-	if err != nil {
-		return nil, llm.Message{}, err
-	}
-
-	msg := llm.Message{
-		Role:       "tool",
-		Content:    string(recipesJson),
-		ToolCallID: toolCall.ID,
-	}
-
-	return recipes, msg, nil
 }
 
 func buildUserContext(data userContextData) (string, error) {
