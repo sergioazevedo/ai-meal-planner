@@ -42,5 +42,6 @@ You have successfully moved past basic LLM calls and implemented a **Multi-Agent
 ---
 
 ## 3. Key Distinction
-*   **Pipeline (Where we are):** Code -> DB Search -> Agent (`Analyst`) -> Agent (`Chef`) -> User.
-*   **Agentic (Where we are going):** Code -> Agent (`Analyst`) -> (Agent decides to use DB Search Tool) -> Agent (`Chef`) -> Agent (`Validator QA`) -> (Validator decides to Loop back to Analyst) -> User.
+*   **Pipeline (Old):** Code -> DB Search -> Agent (`Analyst`) -> Agent (`Chef`) -> User.
+*   **Agentic (Current):** Code -> Generic Engine -> Agent (`Analyst/Reviewer`) -> (Agent uses DB Search Tool) -> Agent (`Chef`) -> User.
+*   **Next (Future):** Code -> Generic Engine -> Agent (`Analyst`) -> Agent (`Chef`) -> Agent (`Validator QA`) -> (Validator decides to Loop back to Analyst) -> User.

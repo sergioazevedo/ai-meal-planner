@@ -34,37 +34,31 @@ A single, clean JSON object matching the following schema. The agent must not pr
 
 ---
 
-## 2. Meal Plan Agent
+## 2. Meal Plan Agent (Analyst)
 
 ### Purpose
-To generate a weekly meal plan based on a provided list of structured recipes and a set of user preferences.
+To strategically generate a weekly meal plan based on user preferences. Unlike basic agents, the Analyst uses a **"Pull" model**, meaning it does not receive all recipes upfront. It autonomously searches for recipes as needed.
 
-### Input
-A text prompt containing the User's Request and a context block of relevant recipes retrieved via semantic search.
-
-```text
-User Request: "Healthy vegetarian dinners"
-
-Available Recipes:
-Recipe 1:
-Title: ...
-...
-```
+### Interaction Logic
+1.  **Reasoning**: The agent analyzes the user request and identifies missing information or recipe needs.
+2.  **Tool Use**: It calls the `search_recipes` tool with specific queries to fetch relevant candidates from the RAG pipeline.
+3.  **Iteration**: It iterates through multiple turns until it has a sufficient recipe pool to satisfy all constraints.
 
 ### Output
-A JSON object containing the `plan` (list of daily assignments) and an aggregated `shopping_list`.
+A structured JSON object representing the plan strategy and recipe selections.
 
-```json
-{
-  "plan": [
-    {
-      "day": "Monday",
-      "recipe_title": "Recipe Name",
-      "note": "Chosen because it is quick to make"
-    },
-    ...
-  ],
-  "shopping_list": ["Ingredient 1", "Ingredient 2"],
-  "total_prep_estimate": "3 hours"
-}
-```
+---
+
+## 3. Plan Reviewer Agent
+
+### Purpose
+An autonomous agent responsible for revising existing meal plans based on user feedback. It shares the same "Pull" model as the Analyst, fetching replacement recipes dynamically via tools.
+
+### Interaction Logic
+1.  **Diff Analysis**: Compares the current plan against the user's adjustment request (e.g., "Make Monday vegetarian").
+2.  **Autonomous Search**: Searches for specific replacements that fit the requested change while maintaining the rest of the plan's integrity.
+3.  **Consistency Check**: Ensures batch-cooking patterns (Cook/Reuse) are preserved during the revision.
+
+---
+
+## 4. Chef Agent
