@@ -29,7 +29,15 @@ func ExecuteAgentLoop[T any](
 	var metas []shared.ToolCallMeta
 	var sideEffects []T
 
+	const maxTurns = 5
+	turnCount := 0
+
 	for {
+		if turnCount >= maxTurns {
+			return llm.ContentResponse{}, nil, nil, fmt.Errorf("agent exceeded maximum tool execution turns (%d)", maxTurns)
+		}
+		turnCount++
+
 		resp, err = generator.GenerateContent(ctx, chat, tools)
 		if err != nil {
 			return llm.ContentResponse{}, nil, nil, err

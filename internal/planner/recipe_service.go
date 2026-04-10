@@ -32,17 +32,15 @@ func (s *RecipeService) GetRecipeCandidates(ctx context.Context, query string, e
 		return nil, fmt.Errorf("failed to generate embedding for request: %w", err)
 	}
 
-	recipeIds, err := s.vectorRepo.FindSimilar(ctx, queryEmbedding, 10, excludeIDs)
+	searchLimit := 10
+
+	recipeIds, err := s.vectorRepo.FindSimilar(ctx, queryEmbedding, searchLimit, excludeIDs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve similar recipes: %w", err)
 	}
 
-	if len(recipeIds) < 5 {
-		log.Printf("Warning: Recipe pool exhausted for query '%s'. Dropping exclusions.", query)
-		recipeIds, err = s.vectorRepo.FindSimilar(ctx, queryEmbedding, 10, nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve similar recipes: %w", err)
-		}
+	if len(recipeIds) < searchLimit {
+		log.Printf("Warning: Recipe pool exhausted for query '%s'. Returning fewer than %d recipes.", query, searchLimit)
 	}
 
 	recipes, err := s.recipeRepo.GetByIds(ctx, recipeIds)
