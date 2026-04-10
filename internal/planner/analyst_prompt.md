@@ -70,7 +70,7 @@ Before generating the final JSON, perform this internal audit:
 
 ### Output Format
 
-Return ONLY a valid JSON object with this structure:
+When you are ready to provide your final plan, **DO NOT call any tools**. Instead, reply with a standard message containing ONLY a raw JSON object with this structure:
 
 {
   "selected_recipes_audit": ["Recipe 1", "Recipe 2", "Recipe 3", "Recipe 4", "Recipe 5"],

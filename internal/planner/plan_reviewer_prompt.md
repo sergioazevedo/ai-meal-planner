@@ -52,7 +52,7 @@ You do not have a pre-populated list of recipes. Instead, you MUST use the `sear
 
 ## Output Format
 
-Output raw JSON only. Do not wrap in markdown blocks. Follow this structure (matching the current plan structure):
+When you are ready to provide your revised plan, **DO NOT call any tools**. Instead, reply with a standard message containing ONLY raw JSON. Do not wrap in markdown blocks. Follow this structure (matching the current plan structure):
 
 {
   "plan": [
