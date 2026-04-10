@@ -42,9 +42,10 @@ type groqFunction struct {
 }
 
 type groqMessage struct {
-	Role      string         `json:"role,omitempty"`
-	Content   string         `json:"content,omitempty"`
-	ToolCalls []groqToolCall `json:"tool_calls,omitempty"`
+	Role       string         `json:"role,omitempty"`
+	Content    string         `json:"content,omitempty"`
+	ToolCalls  []groqToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string         `json:"tool_call_id,omitempty"`
 }
 
 type groqResponseFormat struct {
@@ -219,6 +220,7 @@ func (c *GroqClient) mapToTToolCall(call groqToolCall) (ToolCall, error) {
 	}
 
 	return ToolCall{
+		ID:   call.ID,
 		Name: call.Function.Name,
 		Args: args,
 	}, nil
@@ -252,9 +254,10 @@ func mapToGroqMessages(conversation []Message) ([]groqMessage, error) {
 		}
 
 		result = append(result, groqMessage{
-			Role:      m.Role,
-			Content:   m.Content,
-			ToolCalls: calls,
+			Role:       m.Role,
+			Content:    m.Content,
+			ToolCalls:  calls,
+			ToolCallID: m.ToolCallID,
 		})
 	}
 	return result, nil
