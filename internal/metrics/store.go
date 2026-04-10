@@ -47,7 +47,7 @@ func (s *Store) Record(m ExecutionMetric) error {
 		return err
 	}
 	defer tx.Rollback()
-	
+
 	qtx := s.queries.WithTx(tx)
 
 	metricID, err := qtx.InsertExecutionMetric(ctx, metricsdb.InsertExecutionMetricParams{

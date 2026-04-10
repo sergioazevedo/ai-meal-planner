@@ -6,9 +6,10 @@ import (
 	"log"
 	"time"
 
+	"ai-meal-planner/internal/audit"
 	"ai-meal-planner/internal/clipper"
 	"ai-meal-planner/internal/config"
-	"ai-meal-planner/internal/database" // New import
+	"ai-meal-planner/internal/database"
 	"ai-meal-planner/internal/ghost"
 	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/metrics"
@@ -31,6 +32,7 @@ type App struct {
 	recipeRepo *recipe.Repository
 	vectorRepo *llm.VectorRepository
 	planRepo   *planner.PlanRepository
+	auditRepo  *audit.AuditRepository
 
 	extractor *recipe.Extractor // New Extractor instance
 }
@@ -48,6 +50,7 @@ func NewApp(
 	recipeRepo *recipe.Repository,
 	vectorRepo *llm.VectorRepository,
 	planRepo *planner.PlanRepository,
+	auditRepo *audit.AuditRepository,
 ) *App {
 	return &App{
 		ghostClient:   ghostClient,
@@ -61,6 +64,7 @@ func NewApp(
 		recipeRepo:    recipeRepo,
 		vectorRepo:    vectorRepo,
 		planRepo:      planRepo,
+		auditRepo:     auditRepo,
 		extractor:     recipe.NewExtractor(textGen, embedGen, vectorRepo), // Initialize Extractor
 	}
 }
@@ -95,6 +99,7 @@ func (a *App) IngestRecipes(ctx context.Context, force bool) error {
 			a.recipeRepo,
 			a.metricsStore,
 			post,
+			force,
 		); err != nil {
 			log.Printf("Failed to process recipe '%s': %v", post.Title, err)
 		} else {
@@ -143,6 +148,7 @@ func (a *App) IngestRecipeByID(ctx context.Context, id string) error {
 		a.recipeRepo,
 		a.metricsStore,
 		*post,
+		true, // Force re-ingestion for manual single ID requests
 	); err != nil {
 		return fmt.Errorf("failed to process recipe '%s': %w", post.Title, err)
 	}
@@ -195,4 +201,21 @@ func (a *App) GenerateMealPlan(ctx context.Context, userID string, request strin
 	}
 
 	return nil
+}
+
+// GetShoppingListForPlan returns the shopping list for a specific plan ID.
+func (a *App) GetShoppingListForPlan(ctx context.Context, planID int64) ([]string, error) {
+	plan, err := a.planRepo.GetByID(ctx, planID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get plan: %w", err)
+	}
+
+	pCtx := planner.PlanningContext{
+		Adults:           a.cfg.DefaultAdults,
+		Children:         a.cfg.DefaultChildren,
+		ChildrenAges:     a.cfg.DefaultChildrenAges,
+		CookingFrequency: a.cfg.DefaultCookingFrequency,
+	}
+
+	return a.mealPlanner.GenerateShoppingList(ctx, plan, pCtx)
 }

@@ -40,7 +40,7 @@ func ExecuteAgentLoop[T any](
 			break // Loop complete, we have final text/JSON
 		}
 
-		// Handle all tool calls in this turn (Note: we currently handle the first one, 
+		// Handle all tool calls in this turn (Note: we currently handle the first one,
 		// but the loop is ready for parallel tool calls in the future)
 		for _, toolCall := range resp.Message.ToolCalls {
 			handler, ok := handlers[toolCall.Name]

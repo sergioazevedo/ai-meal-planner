@@ -18,8 +18,9 @@ func ProcessAndSaveRecipe(
 	recipeRepo *recipe.Repository,
 	metricsStore *metrics.Store,
 	post ghost.Post,
+	force bool,
 ) error {
-	rec, err := ensureRecipe(ctx, extractor, recipeRepo, metricsStore, post)
+	rec, err := ensureRecipe(ctx, extractor, recipeRepo, metricsStore, post, force)
 	if err != nil {
 		return err
 	}
@@ -33,20 +34,23 @@ func ProcessAndSaveRecipe(
 	return metricsStore.RecordMeta(meta)
 }
 
-// ensureRecipe retrieves a recipe from the repository or extracts it from the post if missing.
+// ensureRecipe retrieves a recipe from the repository or extracts it from the post if missing (or if forced).
 func ensureRecipe(
 	ctx context.Context,
 	extractor *recipe.Extractor,
 	recipeRepo *recipe.Repository,
 	metricsStore *metrics.Store,
 	post ghost.Post,
+	force bool,
 ) (recipe.Recipe, error) {
-	rec, err := recipeRepo.Get(ctx, post.ID)
-	if err == nil {
-		return rec, nil
-	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		return recipe.Recipe{}, fmt.Errorf("failed to get recipe from repo: %w", err)
+	if !force {
+		rec, err := recipeRepo.Get(ctx, post.ID)
+		if err == nil {
+			return rec, nil
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return recipe.Recipe{}, fmt.Errorf("failed to get recipe from repo: %w", err)
+		}
 	}
 
 	// Extraction required

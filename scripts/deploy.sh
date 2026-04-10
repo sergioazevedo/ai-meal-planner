@@ -44,6 +44,9 @@ else
     ssh "$REMOTE_USER@$REMOTE_HOST" "$CMD_CHMOD"
 fi
 
+echo "Running database migrations on $REMOTE_HOST..."
+./scripts/remote-migrate.sh "$REMOTE_HOST" "$PEM_KEY"
+
 echo "Deploy complete."
 echo "CLI: /home/$REMOTE_USER/$CLI_BINARY"
 echo "BOT: /home/$REMOTE_USER/$BOT_BINARY"

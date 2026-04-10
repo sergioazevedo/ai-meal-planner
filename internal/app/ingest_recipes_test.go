@@ -2,17 +2,18 @@ package app
 
 import (
 	"context"
-	"database/sql"
+	"os"
 	"testing"
 	"time"
 
+	"ai-meal-planner/internal/database"
 	"ai-meal-planner/internal/ghost"
 	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/llm/llmtest"
 	"ai-meal-planner/internal/metrics"
 	"ai-meal-planner/internal/recipe"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 type mockGhostClientForIngest struct {
@@ -36,29 +37,32 @@ func TestIngestRecipes_Cleanup(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. Setup DB
-	db, err := sql.Open("sqlite3", ":memory:")
+	tempFile, err := os.CreateTemp("", "ingest_test_*.db")
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Failed to create temp db file: %v", err)
+	}
+	dbPath := tempFile.Name()
+	tempFile.Close()
+	defer os.Remove(dbPath)
+
+	db, err := database.NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer db.Close()
 
-	// Create tables with Foreign Keys enabled
-	_, err = db.Exec("PRAGMA foreign_keys = ON;")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = db.Exec(`
-		CREATE TABLE recipes (id TEXT PRIMARY KEY, data TEXT, updated_at DATETIME);
-		CREATE TABLE recipe_embeddings (recipe_id TEXT PRIMARY KEY, embedding BLOB, text_hash TEXT, FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE);
-		CREATE TABLE execution_metrics (id INTEGER PRIMARY KEY, agent_name TEXT, model TEXT, prompt_tokens INTEGER, completion_tokens INTEGER, latency_ms INTEGER, timestamp DATETIME);
-	`)
-	if err != nil {
-		t.Fatal(err)
+	if err := db.MigrateUp(dbPath); err != nil {
+		t.Fatalf("Failed to migrate test database: %v", err)
 	}
 
-	recipeRepo := recipe.NewRepository(db)
-	vectorRepo := llm.NewVectorRepository(db)
-	metricsStore := metrics.NewStore(db)
+	// Enable Foreign Keys for CASCADE DELETE to work
+	if _, err := db.SQL.Exec("PRAGMA foreign_keys = ON;"); err != nil {
+		t.Fatalf("Failed to enable foreign keys: %v", err)
+	}
+
+	recipeRepo := recipe.NewRepository(db.SQL)
+	vectorRepo := llm.NewVectorRepository(db.SQL)
+	metricsStore := metrics.NewStore(db.SQL)
 
 	// 2. Pre-populate DB with an orphaned recipe
 	orphanedID := "orphaned-1"

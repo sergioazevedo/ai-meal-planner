@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"ai-meal-planner/internal/audit"
 	"ai-meal-planner/internal/clipper"
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/database" // New import
@@ -52,6 +53,7 @@ func main() {
 	vectorRepo := llm.NewVectorRepository(db.SQL)
 	planRepo := planner.NewPlanRepository(db.SQL)
 	shoppingRepo := shopping.NewRepository(db.SQL)
+	auditRepo := audit.NewAuditRepository(db.SQL)
 
 	// 3. Initialize Ghost Client
 	ghostClient := ghost.NewClient(cfg)
@@ -71,7 +73,7 @@ func main() {
 	sessionRepo := telegram.NewSessionRepository(db.SQL)
 
 	// 7. Initialize Telegram Bot
-	bot, err := telegram.NewBot(cfg, mealPlanner, recipeClipper, metricsStore, normalizerModel, geminiClient, planRepo, recipeRepo, vectorRepo, shoppingRepo, sessionRepo)
+	bot, err := telegram.NewBot(cfg, mealPlanner, recipeClipper, metricsStore, normalizerModel, geminiClient, planRepo, recipeRepo, vectorRepo, shoppingRepo, sessionRepo, auditRepo)
 	if err != nil {
 		log.Fatalf("Failed to initialize Telegram Bot: %v", err)
 	}

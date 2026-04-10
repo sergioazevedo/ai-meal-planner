@@ -42,3 +42,10 @@ sql:
       go:
         package: "sessiondb"
         out: "internal/telegram/session_db"
+  - engine: "sqlite"
+    schema: "internal/database/schema.sql"
+    queries: "internal/database/audit_queries.sql"
+    gen:
+      go:
+        package: "auditdb"
+        out: "internal/audit/db"

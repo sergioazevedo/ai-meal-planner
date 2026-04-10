@@ -10,7 +10,7 @@ help:
 	@echo "  make test              - Run all unit tests (skipping live LLM evals)"
 	@echo "  make eval              - Run live LLM evaluation tests (costs money!)"
 	@echo "  make ingest            - Run local ingestion"
-	@echo "  make metrics-cleanup   - Clean up old metrics data (30 days)"
+	@echo "  make metrics-cleanup   - Clean up old metrics & audit data (60 days)"
 	@echo "  make migrate-up        - Apply all pending database migrations"
 	@echo "  make migrate-down      - Revert the last applied database migration"
 	@echo "  make migrate-create NAME=<name> - Create a new migration file"
@@ -48,7 +48,7 @@ ingest:
 	go run cmd/ai-meal-planner/main.go ingest
 
 metrics-cleanup:
-	go run cmd/ai-meal-planner/main.go metrics-cleanup -days 30
+	go run cmd/ai-meal-planner/main.go metrics-cleanup -days 60
 
 # --- Remote Scripts ---
 

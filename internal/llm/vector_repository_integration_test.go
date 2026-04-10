@@ -13,7 +13,7 @@ import (
 	"slices"
 	"testing"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 // goldenTest defines a test case for vector search evaluation.

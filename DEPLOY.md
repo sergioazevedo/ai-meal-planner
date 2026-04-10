@@ -118,10 +118,10 @@ Add one of the following lines to the end of the file to sync every hour at minu
 0 * * * * cd /home/ubuntu && set -a && . ./.env && set +a && ./ai-meal-planner-linux ingest >> /home/ubuntu/ingest.log 2>&1
 ```
 
-### 3. Cleanup Metrics (Optional but Recommended)
-To keep your database small, schedule a daily cleanup of metrics older than 30 days:
+### 3. Cleanup Metrics & Audit Logs (Recommended)
+To keep your database healthy while maintaining enough history for the PlanReviewer agent, schedule a daily cleanup of metrics and audit logs older than 60 days:
 ```bash
-0 0 * * * cd /home/ubuntu && set -a && . ./.env && set +a && ./ai-meal-planner-linux metrics-cleanup -days 30 >> /home/ubuntu/metrics-cleanup.log 2>&1
+0 0 * * * cd /home/ubuntu && set -a && . ./.env && set +a && ./ai-meal-planner-linux metrics-cleanup -days 60 >> /home/ubuntu/metrics-cleanup.log 2>&1
 ```
 
 **If using Docker:**
