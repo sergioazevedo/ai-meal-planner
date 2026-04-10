@@ -125,16 +125,16 @@ func (r *PlanReviewer) Run(
 
 	if err = json.Unmarshal([]byte(resp.Message.Content), &rawResponse); err != nil {
 		return PlanReviewerResult{
-			Meta: shared.AgentMeta{
-				AgentName: "PlanReviewer",
-				Usage:     resp.Usage,
-				ToolCalls: toolMetas,
-			},
-		}, fmt.Errorf(
-			"failed to parse plan reviewer response %w. Response: %s",
-			err,
-			resp.Message.Content,
-		)
+				Meta: shared.AgentMeta{
+					AgentName: "PlanReviewer",
+					Usage:     resp.Usage,
+					ToolCalls: toolMetas,
+				},
+			}, fmt.Errorf(
+				"failed to parse plan reviewer response %w. Response: %s",
+				err,
+				resp.Message.Content,
+			)
 	}
 
 	// 5. Build final result and map IDs

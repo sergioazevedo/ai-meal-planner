@@ -6,9 +6,10 @@ import (
 	"log"
 	"time"
 
+	"ai-meal-planner/internal/audit"
 	"ai-meal-planner/internal/clipper"
 	"ai-meal-planner/internal/config"
-	"ai-meal-planner/internal/database" // New import
+	"ai-meal-planner/internal/database"
 	"ai-meal-planner/internal/ghost"
 	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/metrics"
@@ -24,9 +25,8 @@ type App struct {
 	metricsStore  *metrics.Store
 	mealPlanner   *planner.Planner
 	recipeClipper *clipper.Clipper
-	"ai-meal-planner/internal/audit"
-	"ai-meal-planner/internal/clipper"
-	...
+	cfg           *config.Config
+
 	// New database components
 	db         *database.DB
 	recipeRepo *recipe.Repository
@@ -35,10 +35,10 @@ type App struct {
 	auditRepo  *audit.AuditRepository
 
 	extractor *recipe.Extractor // New Extractor instance
-	}
+}
 
-	// NewApp creates and initializes a new App instance.
-	func NewApp(
+// NewApp creates and initializes a new App instance.
+func NewApp(
 	ghostClient ghost.Client,
 	textGen llm.TextGenerator,
 	embedGen llm.EmbeddingGenerator,
@@ -51,7 +51,7 @@ type App struct {
 	vectorRepo *llm.VectorRepository,
 	planRepo *planner.PlanRepository,
 	auditRepo *audit.AuditRepository,
-	) *App {
+) *App {
 	return &App{
 		ghostClient:   ghostClient,
 		textGen:       textGen,
@@ -67,7 +67,7 @@ type App struct {
 		auditRepo:     auditRepo,
 		extractor:     recipe.NewExtractor(textGen, embedGen, vectorRepo), // Initialize Extractor
 	}
-	}
+}
 
 // IngestRecipes fetches and normalizes recipes from Ghost.
 func (a *App) IngestRecipes(ctx context.Context, force bool) error {
@@ -201,4 +201,21 @@ func (a *App) GenerateMealPlan(ctx context.Context, userID string, request strin
 	}
 
 	return nil
+}
+
+// GetShoppingListForPlan returns the shopping list for a specific plan ID.
+func (a *App) GetShoppingListForPlan(ctx context.Context, planID int64) ([]string, error) {
+	plan, err := a.planRepo.GetByID(ctx, planID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get plan: %w", err)
+	}
+
+	pCtx := planner.PlanningContext{
+		Adults:           a.cfg.DefaultAdults,
+		Children:         a.cfg.DefaultChildren,
+		ChildrenAges:     a.cfg.DefaultChildrenAges,
+		CookingFrequency: a.cfg.DefaultCookingFrequency,
+	}
+
+	return a.mealPlanner.GenerateShoppingList(ctx, plan, pCtx)
 }

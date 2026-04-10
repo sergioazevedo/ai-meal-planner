@@ -24,10 +24,10 @@ func TestPlanReviewer_LiveEval(t *testing.T) {
 	}
 
 	// 1. Setup the Agent and dependencies
-	// Note: We use ModelAnalyst here if ModelReviewer isn't explicitly defined in groq.go, 
+	// Note: We use ModelAnalyst here if ModelReviewer isn't explicitly defined in groq.go,
 	// as it represents the "High Reasoning" model needed for this complex task.
-	groqClient := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1) 
-	
+	groqClient := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
+
 	// Create a simple mock searcher that returns vegetarian options when called
 	mockSearcher := &mockSearcher{
 		recipes: []recipe.Recipe{
@@ -63,7 +63,7 @@ func TestPlanReviewer_LiveEval(t *testing.T) {
 	revised := result.RevisedPlan
 
 	// 5. Quality Assertions (The "Evals")
-	
+
 	// EVAL A: Structural Integrity
 	if len(revised.Plan) != 3 {
 		t.Fatalf("QUALITY FAIL: Plan length changed. Expected 3, got %d", len(revised.Plan))
@@ -71,7 +71,7 @@ func TestPlanReviewer_LiveEval(t *testing.T) {
 
 	// EVAL B: Preservation ("Preserve Good Parts" rule)
 	if revised.Plan[0].RecipeTitle != "Chicken Roast" || revised.Plan[1].RecipeTitle != "Chicken Roast" {
-		t.Errorf("QUALITY FAIL: Agent modified Monday/Tuesday. Expected 'Chicken Roast', got '%s'/'%s'", 
+		t.Errorf("QUALITY FAIL: Agent modified Monday/Tuesday. Expected 'Chicken Roast', got '%s'/'%s'",
 			revised.Plan[0].RecipeTitle, revised.Plan[1].RecipeTitle)
 	}
 
@@ -80,10 +80,10 @@ func TestPlanReviewer_LiveEval(t *testing.T) {
 	if wednesday.RecipeTitle == "Beef Stew" {
 		t.Errorf("QUALITY FAIL: Agent failed to change Wednesday. It is still 'Beef Stew'")
 	}
-	
-	isVegetarian := strings.Contains(strings.ToLower(wednesday.RecipeTitle), "vegetarian") || 
-					strings.Contains(strings.ToLower(wednesday.RecipeTitle), "mushroom")
-					
+
+	isVegetarian := strings.Contains(strings.ToLower(wednesday.RecipeTitle), "vegetarian") ||
+		strings.Contains(strings.ToLower(wednesday.RecipeTitle), "mushroom")
+
 	if !isVegetarian {
 		t.Errorf("QUALITY FAIL: Agent changed Wednesday, but not to a recognized vegetarian option. Got: '%s'", wednesday.RecipeTitle)
 	}
@@ -92,7 +92,7 @@ func TestPlanReviewer_LiveEval(t *testing.T) {
 	if len(result.Meta.ToolCalls) == 0 {
 		t.Errorf("QUALITY FAIL: Agent did not use the 'search_recipes' tool to find a replacement.")
 	} else {
-		t.Logf("Agent successfully used tool '%s' with input: %v", 
+		t.Logf("Agent successfully used tool '%s' with input: %v",
 			result.Meta.ToolCalls[0].ToolName, result.Meta.ToolCalls[0].Input)
 	}
 

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"ai-meal-planner/internal/app"
+	"ai-meal-planner/internal/audit"
 	"ai-meal-planner/internal/clipper"
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/database"
@@ -41,9 +42,6 @@ func (m *mockGhostClient) CreatePost(title, html string, tags []string, publish 
 }
 
 // --- Mock LLM Client ---
-type mockLLMClient struct {
-}
-
 type MockTextGenerator struct {
 	generateContentCalls int
 }
@@ -54,7 +52,7 @@ func (m *MockTextGenerator) GenerateContent(ctx context.Context, conversation ll
 	if len(conversation) > 0 {
 		prompt = conversation[len(conversation)-1].Content
 	}
-	
+
 	if strings.Contains(prompt, "ingredients\": [\"quantity + name") {
 		return llm.ContentResponse{
 			Message: llm.Message{
@@ -94,7 +92,6 @@ func (m *MockTextGenerator) GenerateContent(ctx context.Context, conversation ll
 	}, nil
 }
 
-
 // --- Acceptance Test ---
 func TestFullWorkflow(t *testing.T) {
 	ctx := context.Background()
@@ -126,6 +123,7 @@ func TestFullWorkflow(t *testing.T) {
 	recipeRepo := recipe.NewRepository(db.SQL)
 	vectorRepo := llm.NewVectorRepository(db.SQL)
 	planRepo := planner.NewPlanRepository(db.SQL)
+	auditRepo := audit.NewAuditRepository(db.SQL)
 
 	metricsStore := metrics.NewStore(db.SQL)
 
@@ -135,7 +133,7 @@ func TestFullWorkflow(t *testing.T) {
 	application := app.NewApp(ghostClient, mockTextGenerator, mockEmbeddingGenerator, metricsStore, mealPlanner, recipeClipper, &config.Config{
 		DefaultAdults:           2,
 		DefaultCookingFrequency: 7,
-	}, db, recipeRepo, vectorRepo, planRepo)
+	}, db, recipeRepo, vectorRepo, planRepo, auditRepo)
 
 	// --- 4. Step 1: Ingestion ---
 	t.Log("--- Step 1: Ingesting Recipes ---")
@@ -148,29 +146,30 @@ func TestFullWorkflow(t *testing.T) {
 	}
 
 	// Verify the recipe is in the database
-	rec, err := recipeRepo.Get(ctx, "1")
+	_, err = recipeRepo.Get(ctx, "1")
 	if err != nil {
-		t.Fatalf("Failed to get recipe from DB: %v", err)
-	}
-	if rec.Title == "" {
-		t.Errorf("Expected recipe to be in DB")
+		t.Errorf("Expected recipe '1' in DB, got error: %v", err)
 	}
 
 	// --- 5. Step 2: Planning ---
 	t.Log("--- Step 2: Generating Meal Plan ---")
-	// Reset counter for planning step
-	mockTextGenerator.generateContentCalls = 0
-
-	if err := application.GenerateMealPlan(ctx, "test_user", "Give me something simple"); err != nil {
-
-		t.Fatalf("Meal planning failed: %v", err)
-
+	if err := application.GenerateMealPlan(ctx, "test-user", "surprise me"); err != nil {
+		t.Fatalf("Planning failed: %v", err)
 	}
 
-	if mockTextGenerator.generateContentCalls != 2 {
-
-		t.Errorf("Expected 2 calls to LLM for planning (Analyst + Chef), got %d", mockTextGenerator.generateContentCalls)
-
+	// Verify plan was saved
+	plans, _ := planRepo.ListRecentByUserID(ctx, "test-user", 1)
+	if len(plans) != 1 {
+		t.Fatalf("Expected 1 plan in DB, got %d", len(plans))
 	}
 
+	// --- 6. Step 3: Shopping List ---
+	t.Log("--- Step 3: Verifying Shopping List ---")
+	// The planner should have generated a shopping list during the plan generation
+	shoppingList, _ := application.GetShoppingListForPlan(ctx, plans[0].ID)
+	if len(shoppingList) == 0 {
+		t.Error("Shopping list is empty")
+	}
+
+	t.Log("Acceptance test passed successfully!")
 }

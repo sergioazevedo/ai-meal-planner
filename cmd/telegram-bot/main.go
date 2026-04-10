@@ -9,7 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"ai-meal-planner/internal/app"
 	"ai-meal-planner/internal/audit"
 	"ai-meal-planner/internal/clipper"
 	"ai-meal-planner/internal/config"

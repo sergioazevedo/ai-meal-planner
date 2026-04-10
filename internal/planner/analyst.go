@@ -151,16 +151,16 @@ func (a *Analyst) Run(
 	raw := &rawLlmResult{}
 	if err = json.Unmarshal([]byte(resp.Message.Content), raw); err != nil {
 		return AnalystResult{
-			Meta: shared.AgentMeta{
-				AgentName: "Analyst",
-				Usage:     resp.Usage,
-				ToolCalls: toolMetas,
-			},
-		}, fmt.Errorf(
-			"failed to parse analyst prompt response %w. Response: %s",
-			err,
-			resp.Message.Content,
-		)
+				Meta: shared.AgentMeta{
+					AgentName: "Analyst",
+					Usage:     resp.Usage,
+					ToolCalls: toolMetas,
+				},
+			}, fmt.Errorf(
+				"failed to parse analyst prompt response %w. Response: %s",
+				err,
+				resp.Message.Content,
+			)
 	}
 
 	// 6. Map back to Domain Models
