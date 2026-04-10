@@ -90,8 +90,44 @@ func buildChefPrompt(data *MealProposal) (string, error) {
 		return "", err
 	}
 
+	// Create a compact version of recipes for the Chef to save tokens
+	// Chef needs ingredients for shopping list, but doesn't need instructions.
+	type ChefRecipe struct {
+		ID           string   `json:"id"`
+		Title        string   `json:"title"`
+		Ingredients  []string `json:"ingredients"`
+		PrepTime     string   `json:"prep_time"`
+		Servings     string   `json:"servings"`
+	}
+
+	chefRecipes := make([]ChefRecipe, len(data.Recipes))
+	for i, r := range data.Recipes {
+		chefRecipes[i] = ChefRecipe{
+			ID:          r.ID,
+			Title:       r.Title,
+			Ingredients: r.Ingredients,
+			PrepTime:    r.PrepTime,
+			Servings:    r.Servings,
+		}
+	}
+
+	// We use an anonymous struct to pass the modified recipes list to the template
+	chefData := struct {
+		PlannedMeals []PlannedMeal
+		Recipes      []ChefRecipe
+		Adults       int
+		Children     int
+		ChildrenAges []int
+	}{
+		PlannedMeals: data.PlannedMeals,
+		Recipes:      chefRecipes,
+		Adults:       data.Adults,
+		Children:     data.Children,
+		ChildrenAges: data.ChildrenAges,
+	}
+
 	var buf bytes.Buffer
-	err = tmpl.Execute(&buf, data)
+	err = tmpl.Execute(&buf, chefData)
 	if err != nil {
 		return "", err
 	}

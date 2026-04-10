@@ -93,7 +93,7 @@ func TestIngestRecipes_Cleanup(t *testing.T) {
 		},
 	}
 
-	recipeJSON := `{"id": "staying-1", "title": "Staying Recipe", "ingredients": ["A"], "instructions": ["B"]}`
+	recipeJSON := `{"id": "staying-1", "title": "Staying Recipe", "ingredients": ["A"]}`
 	textGen := &llmtest.MockTextGenerator{Response: recipeJSON}
 	embGen := &llmtest.MockEmbeddingGenerator{}
 
