@@ -181,13 +181,16 @@ func (p *Planner) GenerateShoppingList(ctx context.Context, plan *MealPlan, pCtx
 // RevisePlan revises an existing meal plan based on user feedback.
 func (p *Planner) RevisePlan(
 	ctx context.Context,
+	userID string,
 	currentPlan *MealPlan,
 	originalRequest string,
 	feedback string,
 	pCtx PlanningContext,
 ) (PlanReviewerResult, error) {
+	// Fetch recent history to avoid repetition from previous weeks
+	recentlyUsed := p.receiptIDsRecentlyUsed(ctx, userID, currentPlan.WeekStart)
+
 	// Extract recently used IDs from the current plan to inform the search
-	recentlyUsed := []string{}
 	for _, meal := range currentPlan.Plan {
 		if meal.RecipeID != "" {
 			recentlyUsed = append(recentlyUsed, meal.RecipeID)
