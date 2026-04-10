@@ -60,7 +60,6 @@ func TestExtractor_ExtractRecipe(t *testing.T) {
 			Response: `{
 				"title": "Test Recipe",
 				"ingredients": ["Ingredient 1", "Ingredient 2"],
-				"instructions": ["Step 1. Do something."],
 				"tags": ["test", "recipe"],
 				"prep_time": "30 mins",
 				"servings": "4"
@@ -82,9 +81,6 @@ func TestExtractor_ExtractRecipe(t *testing.T) {
 		}
 		if len(extractorResult.Recipe.Ingredients) != 2 {
 			t.Errorf("Expected 2 ingredients, got %d", len(extractorResult.Recipe.Ingredients))
-		}
-		if len(extractorResult.Recipe.Instructions) != 1 || extractorResult.Recipe.Instructions[0] != "Step 1. Do something." {
-			t.Errorf("Expected instructions ['Step 1. Do something.'], got %v", extractorResult.Recipe.Instructions)
 		}
 		if len(extractorResult.Recipe.Tags) != 2 {
 			t.Errorf("Expected 2 tags, got %d", len(extractorResult.Recipe.Tags))

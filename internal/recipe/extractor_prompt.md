@@ -18,9 +18,8 @@ Please extract the following information from the HTML above:
  - **Ingredients** (include quantities):
     - Include all ingredients for the main dish.
     - **IMPORTANT**: You MUST also add the basic ingredients for the side dish and salad (whether they were in the source or suggested by you).
- - Step-by-step instructions (primarily for the main dish; keep them concise).
  - **Relevant tags**: (e.g., "Massa", "Peixe", "Rápido", "Jantar", "Vegetariano").
- - Preparation time (e.g., "30 mins") - **MANDATORY: If missing from source, YOU MUST ESTIMATE based on ingredients and instructions. Do NOT return "Unknown".**
+ - Preparation time (e.g., "30 mins") - **MANDATORY: If missing from source, YOU MUST ESTIMATE based on ingredients. Do NOT return "Unknown".**
  - Number of servings (e.g., "4 people") - **estimate if missing**.
 
 ### Output Format
@@ -30,7 +29,6 @@ Return **ONLY** a valid JSON object with the structure below.
 {
     "title": "Sassami de Frango com Purê de batata e salada de repolho",
     "ingredients": ["quantity + name", "quantity + name", ...],
-    "instructions": ["Step 1", "Step 2", ...],
     "tags": ["tag1", "tag2"],
     "prep_time": "Estimated time",
     "servings": "Estimated servings"

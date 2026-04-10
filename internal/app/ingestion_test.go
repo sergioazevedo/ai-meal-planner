@@ -41,7 +41,7 @@ func TestProcessAndSaveRecipe(t *testing.T) {
 	vectorRepo := llm.NewVectorRepository(db.SQL)
 	metricsStore := metrics.NewStore(db.SQL)
 
-	recipeJSON := `{"title": "Test Recipe", "ingredients": ["A"], "instructions": ["B"]}`
+	recipeJSON := `{"title": "Test Recipe", "ingredients": ["A"]}`
 	textGen := &llmtest.MockTextGenerator{Response: recipeJSON}
 	embGen := &llmtest.MockEmbeddingGenerator{Values: []float32{0.1, 0.2}}
 	extractor := recipe.NewExtractor(textGen, embGen, vectorRepo)

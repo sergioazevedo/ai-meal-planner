@@ -15,14 +15,13 @@ type PostData struct {
 
 // Recipe represents a recipe after being normalized by the LLM.
 type Recipe struct {
-	ID           string   `json:"id"`
-	Title        string   `json:"title"`
-	Ingredients  []string `json:"ingredients"`
-	Instructions []string `json:"instructions"`
-	Tags         []string `json:"tags"`
-	PrepTime     string   `json:"prep_time"`
-	Servings     string   `json:"servings"`
-	UpdatedAt    string   `json:"source_updated_at"`
+	ID          string   `json:"id"`
+	Title       string   `json:"title"`
+	Ingredients []string `json:"ingredients"`
+	Tags        []string `json:"tags"`
+	PrepTime    string   `json:"prep_time"`
+	Servings    string   `json:"servings"`
+	UpdatedAt   string   `json:"source_updated_at"`
 }
 
 // returns a semantic string representation of the recipe

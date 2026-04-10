@@ -60,7 +60,7 @@ func TestVectorSearchRecallIntegration(t *testing.T) {
 				return llm.ContentResponse{
 					Message: llm.Message{
 						Role:    "assistant",
-						Content: `{"title": "Dummy", "ingredients": [], "instructions": [], "tags": [], "prep_time": "10m", "servings": "1"}`,
+						Content: `{"title": "Dummy", "ingredients": [], "tags": [], "prep_time": "10m", "servings": "1"}`,
 					},
 				}
 			},
