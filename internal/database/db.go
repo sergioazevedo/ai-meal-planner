@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
-	"log" // Added log for migration messages
+	"log"
 	"os"
 	"path/filepath"
 

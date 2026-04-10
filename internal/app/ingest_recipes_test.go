@@ -12,7 +12,7 @@ import (
 	"ai-meal-planner/internal/metrics"
 	"ai-meal-planner/internal/recipe"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 type mockGhostClientForIngest struct {
@@ -36,7 +36,7 @@ func TestIngestRecipes_Cleanup(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. Setup DB
-	db, err := sql.Open("sqlite3", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}

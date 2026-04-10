@@ -8,7 +8,6 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/google/generative-ai-go v0.20.1
-	github.com/mattn/go-sqlite3 v1.14.22
 	google.golang.org/api v0.259.0
 	modernc.org/sqlite v1.44.3
 )
