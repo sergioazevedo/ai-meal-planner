@@ -20,7 +20,6 @@ bin/
 .git/
 
 # Database Migrations
-internal/database/migrations/
 
 # Logs & Temporaries
 *.log

@@ -119,15 +119,24 @@ func main() {
 		}
 	case "migrate":
 		migrateCmd := flag.NewFlagSet("migrate", flag.ExitOnError)
-		direction := migrateCmd.String("direction", "up", "Migration direction (e.g., 'up', 'down')")
 		migrateCmd.Parse(os.Args[2:])
 
-		if *direction == "up" {
+		args := migrateCmd.Args()
+		direction := "up"
+		if len(args) > 0 {
+			direction = args[0]
+		}
+
+		if direction == "up" {
 			if err := db.MigrateUp(cfg.DatabasePath); err != nil {
 				log.Fatalf("Migration failed: %v", err)
 			}
+		} else if direction == "down" {
+			if err := db.MigrateDown(cfg.DatabasePath); err != nil {
+				log.Fatalf("Migration failed: %v", err)
+			}
 		} else {
-			log.Fatalf("Unsupported migration direction: %s", *direction)
+			log.Fatalf("Unsupported migration direction: %s. Use 'up' or 'down'", direction)
 		}
 	case "metrics-cleanup":
 		cleanupCmd := flag.NewFlagSet("metrics-cleanup", flag.ExitOnError)

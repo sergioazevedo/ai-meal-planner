@@ -72,3 +72,26 @@ func (d *DB) MigrateUp(databasePath string) error {
 	log.Println("Database migrations applied successfully!")
 	return nil
 }
+
+// MigrateDown reverts the last applied database migration.
+func (d *DB) MigrateDown(databasePath string) error {
+	migrations, err := iofs.New(migrationsFS, "migrations")
+	if err != nil {
+		return fmt.Errorf("failed to create migration source: %w", err)
+	}
+
+	databaseURL := fmt.Sprintf("sqlite://%s", databasePath)
+
+	m, err := migrate.NewWithSourceInstance("iofs", migrations, databaseURL)
+	if err != nil {
+		return fmt.Errorf("failed to create migrate instance: %w", err)
+	}
+
+	// Revert the last migration
+	if err := m.Steps(-1); err != nil {
+		return fmt.Errorf("failed to revert migration: %w", err)
+	}
+
+	log.Println("Database migration reverted successfully!")
+	return nil
+}
