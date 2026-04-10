@@ -398,6 +398,7 @@ func (b *Bot) ingestClippedPost(post ghost.Post) {
 		b.recipeRepo,
 		b.metricsStore,
 		post,
+		true, // Force save for newly clipped recipes
 	); err != nil {
 		log.Printf("Background Error: Failed to process and save clipped post '%s': %v", post.Title, err)
 		return
@@ -701,9 +702,11 @@ func (b *Bot) handleAdjustmentFeedback(ctx context.Context, msg *tgbotapi.Messag
 		return
 	}
 
-	// Extract user request from the original plan data (if available)
-	// For now, we'll use a generic request since we don't store it in the plan
-	userRequest := "meal plan"
+	// Extract user request from the original plan data
+	userRequest := contextData.OriginalRequest
+	if userRequest == "" {
+		userRequest = "meal plan" // Fallback if missing
+	}
 
 	// Call Planner to revise the plan
 	pCtx := planner.PlanningContext{
@@ -713,7 +716,7 @@ func (b *Bot) handleAdjustmentFeedback(ctx context.Context, msg *tgbotapi.Messag
 		CookingFrequency: b.cfg.DefaultCookingFrequency,
 	}
 
-	reviewerResult, err := b.planner.RevisePlan(ctx, currentPlan, userRequest, adjustmentFeedback, pCtx)
+	reviewerResult, err := b.planner.RevisePlan(ctx, userID, currentPlan, userRequest, adjustmentFeedback, pCtx)
 	if err != nil {
 		log.Printf("Error revising plan: %v", err)
 		safeErr := strings.ReplaceAll(err.Error(), "`", "'")

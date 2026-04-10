@@ -50,7 +50,7 @@ func TestProcessAndSaveRecipe(t *testing.T) {
 	}
 
 	t.Run("New Recipe", func(t *testing.T) {
-		err := ProcessAndSaveRecipe(ctx, extractor, recipeRepo, metricsStore, post)
+		err := ProcessAndSaveRecipe(ctx, extractor, recipeRepo, metricsStore, post, false)
 		if err != nil {
 			t.Fatalf("ProcessAndSaveRecipe failed: %v", err)
 		}
