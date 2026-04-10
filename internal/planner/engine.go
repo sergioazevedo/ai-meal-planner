@@ -104,27 +104,7 @@ func HandleRecipeSearch(
 		return nil, llm.Message{}, err
 	}
 
-	// Create a summary of recipes to save tokens in the LLM conversation
-	type RecipeSummary struct {
-		ID       string   `json:"id"`
-		Title    string   `json:"title"`
-		Tags     []string `json:"tags"`
-		PrepTime string   `json:"prep_time"`
-		Servings string   `json:"servings"`
-	}
-
-	summaries := make([]RecipeSummary, len(recipes))
-	for i, r := range recipes {
-		summaries[i] = RecipeSummary{
-			ID:       r.ID,
-			Title:    r.Title,
-			Tags:     r.Tags,
-			PrepTime: r.PrepTime,
-			Servings: r.Servings,
-		}
-	}
-
-	recipesJson, err := json.Marshal(summaries)
+	recipesJson, err := json.Marshal(recipes)
 	if err != nil {
 		return nil, llm.Message{}, err
 	}
