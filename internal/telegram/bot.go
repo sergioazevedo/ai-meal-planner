@@ -342,7 +342,7 @@ func (b *Bot) generateAndSendPlan(ctx context.Context, userID string, chatID int
 			LatencyMS:        m.Latency.Milliseconds(),
 		})
 		// Alert on Context Bloat
-		if m.Usage.PromptTokens > 4000 {
+		if m.Usage.PromptTokens > 8000 {
 			alert := fmt.Sprintf("⚠️ *Context Bloat Alert*\nAgent: Planner\nModel: %s\nPrompt Tokens: %d", m.Usage.Model, m.Usage.PromptTokens)
 			b.sendAdminAlert(alert)
 		}
@@ -737,7 +737,7 @@ func (b *Bot) handleAdjustmentFeedback(ctx context.Context, msg *tgbotapi.Messag
 	})
 
 	// Check for context bloat
-	if reviewerResult.Meta.Usage.PromptTokens > 4000 {
+	if reviewerResult.Meta.Usage.PromptTokens > 8000 {
 		alert := fmt.Sprintf("⚠️ *Context Bloat Alert*\nAgent: PlanReviewer\nModel: %s\nPrompt Tokens: %d", reviewerResult.Meta.Usage.Model, reviewerResult.Meta.Usage.PromptTokens)
 		b.sendAdminAlert(alert)
 	}
