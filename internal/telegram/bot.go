@@ -394,6 +394,7 @@ func (b *Bot) ingestClippedPost(post ghost.Post) {
 		b.recipeRepo,
 		b.metricsStore,
 		post,
+		true, // Force save for newly clipped recipes
 	); err != nil {
 		log.Printf("Background Error: Failed to process and save clipped post '%s': %v", post.Title, err)
 		return

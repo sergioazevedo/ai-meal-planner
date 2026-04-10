@@ -95,6 +95,7 @@ func (a *App) IngestRecipes(ctx context.Context, force bool) error {
 			a.recipeRepo,
 			a.metricsStore,
 			post,
+			force,
 		); err != nil {
 			log.Printf("Failed to process recipe '%s': %v", post.Title, err)
 		} else {
@@ -143,6 +144,7 @@ func (a *App) IngestRecipeByID(ctx context.Context, id string) error {
 		a.recipeRepo,
 		a.metricsStore,
 		*post,
+		true, // Force re-ingestion for manual single ID requests
 	); err != nil {
 		return fmt.Errorf("failed to process recipe '%s': %w", post.Title, err)
 	}
