@@ -24,19 +24,21 @@ type App struct {
 	metricsStore  *metrics.Store
 	mealPlanner   *planner.Planner
 	recipeClipper *clipper.Clipper
-	cfg           *config.Config
-
+	"ai-meal-planner/internal/audit"
+	"ai-meal-planner/internal/clipper"
+	...
 	// New database components
 	db         *database.DB
 	recipeRepo *recipe.Repository
 	vectorRepo *llm.VectorRepository
 	planRepo   *planner.PlanRepository
+	auditRepo  *audit.AuditRepository
 
 	extractor *recipe.Extractor // New Extractor instance
-}
+	}
 
-// NewApp creates and initializes a new App instance.
-func NewApp(
+	// NewApp creates and initializes a new App instance.
+	func NewApp(
 	ghostClient ghost.Client,
 	textGen llm.TextGenerator,
 	embedGen llm.EmbeddingGenerator,
@@ -48,7 +50,8 @@ func NewApp(
 	recipeRepo *recipe.Repository,
 	vectorRepo *llm.VectorRepository,
 	planRepo *planner.PlanRepository,
-) *App {
+	auditRepo *audit.AuditRepository,
+	) *App {
 	return &App{
 		ghostClient:   ghostClient,
 		textGen:       textGen,
@@ -61,9 +64,10 @@ func NewApp(
 		recipeRepo:    recipeRepo,
 		vectorRepo:    vectorRepo,
 		planRepo:      planRepo,
+		auditRepo:     auditRepo,
 		extractor:     recipe.NewExtractor(textGen, embedGen, vectorRepo), // Initialize Extractor
 	}
-}
+	}
 
 // IngestRecipes fetches and normalizes recipes from Ghost.
 func (a *App) IngestRecipes(ctx context.Context, force bool) error {

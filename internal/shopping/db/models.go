@@ -5,8 +5,21 @@
 package shoppingdb
 
 import (
+	"database/sql"
 	"time"
 )
+
+type AuditLog struct {
+	ID              int64
+	UserID          string
+	PlanID          sql.NullInt64
+	ActionType      string
+	OriginalRequest sql.NullString
+	UserFeedback    sql.NullString
+	PreviousState   sql.NullString
+	NewState        sql.NullString
+	CreatedAt       time.Time
+}
 
 type ExecutionMetric struct {
 	ID               int64

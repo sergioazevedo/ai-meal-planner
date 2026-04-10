@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"ai-meal-planner/internal/app"
+	"ai-meal-planner/internal/audit"
 	"ai-meal-planner/internal/clipper"
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/ghost"
@@ -41,6 +42,7 @@ type Bot struct {
 	vectorRepo   *llm.VectorRepository
 	shoppingRepo *shopping.Repository
 	sessionRepo  *SessionRepository
+	auditRepo    *audit.AuditRepository
 	extractor    *recipe.Extractor // Added extractor
 }
 
@@ -57,6 +59,7 @@ func NewBot(
 	vectorRepo *llm.VectorRepository, // New parameter
 	shoppingRepo *shopping.Repository, // New parameter
 	sessionRepo *SessionRepository, // New parameter
+	auditRepo *audit.AuditRepository, // New parameter
 ) (*Bot, error) {
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramBotToken)
 	if err != nil {
@@ -88,6 +91,7 @@ func NewBot(
 		vectorRepo:   vectorRepo,
 		shoppingRepo: shoppingRepo,
 		sessionRepo:  sessionRepo,
+		auditRepo:    auditRepo,
 		extractor:    extractor,
 	}, nil
 }

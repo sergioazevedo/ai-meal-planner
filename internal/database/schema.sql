@@ -82,3 +82,18 @@ CREATE TABLE IF NOT EXISTS execution_tool_calls (
 );
 CREATE INDEX IF NOT EXISTS idx_execution_tool_calls_metric_id ON execution_tool_calls(execution_metric_id);
 CREATE INDEX IF NOT EXISTS idx_execution_tool_calls_tool_name ON execution_tool_calls(tool_name);
+
+-- audit_logs table
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    plan_id INTEGER,
+    action_type TEXT NOT NULL,
+    original_request TEXT,
+    user_feedback TEXT,
+    previous_state TEXT,
+    new_state TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_plan_id ON audit_logs(plan_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);

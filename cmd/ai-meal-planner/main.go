@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"ai-meal-planner/internal/app"
+	"ai-meal-planner/internal/audit"
 	"ai-meal-planner/internal/clipper"
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/database" // New import
@@ -49,6 +50,7 @@ func main() {
 	recipeRepo := recipe.NewRepository(db.SQL)
 	vectorRepo := llm.NewVectorRepository(db.SQL)
 	planRepo := planner.NewPlanRepository(db.SQL)
+	auditRepo := audit.NewAuditRepository(db.SQL)
 
 	metricsStore := metrics.NewStore(db.SQL)
 	defer metricsStore.Close()
@@ -69,6 +71,7 @@ func main() {
 		recipeRepo, // Pass new RecipeRepo
 		vectorRepo, // Pass new VectorRepo
 		planRepo,   // Pass new PlanRepo
+		auditRepo,  // Pass AuditRepo
 	)
 
 	if len(os.Args) < 2 {
@@ -128,14 +131,19 @@ func main() {
 		}
 	case "metrics-cleanup":
 		cleanupCmd := flag.NewFlagSet("metrics-cleanup", flag.ExitOnError)
-		days := cleanupCmd.Int("days", 30, "Keep records for the last N days")
+		days := cleanupCmd.Int("days", 60, "Keep records for the last N days")
 		cleanupCmd.Parse(os.Args[2:])
 
 		affected, err := metricsStore.Cleanup(*days)
 		if err != nil {
-			log.Fatalf("Cleanup failed: %v", err)
+			log.Fatalf("Metrics cleanup failed: %v", err)
 		}
 		fmt.Printf("Successfully removed %d old metric records.\n", affected)
+
+		if err := auditRepo.Cleanup(ctx, *days); err != nil {
+			log.Fatalf("Audit logs cleanup failed: %v", err)
+		}
+		fmt.Println("Successfully cleaned up old audit logs.")
 	default:
 		fmt.Printf("Unknown command: %s\n", os.Args[1])
 		printUsage()
