@@ -77,24 +77,24 @@
     - [ ] **Agent 2: The Nutritionist** - Basic version to audit balance, variety, and healthy heuristics.
     - [x] **Agent 3: The Chef** - Responsible for final scheduling and JSON synthesis.
     - [ ] **Agent 4: The Grocer** - Responsible for organizing and categorizing the shopping list by supermarket aisle.
-- [ ] **Implement Orchestrator Pattern**
-    - [ ] Create a "Manager" logic in `internal/planner` to coordinate hand-offs and state between agents.
-- [ ] **Enhanced Testing**
-    - [ ] Add unit tests for each agent's specialized prompt and output.
+- [x] **Implement Orchestrator Pattern**
+    - [x] Create a "Manager" logic in `internal/planner` to coordinate hand-offs and state between agents (Using the Generic Agent Engine).
+- [x] **Enhanced Testing**
+    - [x] Add unit tests for each agent's specialized prompt and output (Live Evals).
 
 ## Phase 8: Advanced RAG & Search Optimization
 - [ ] **Metadata Pre-filtering**
     - [ ] Update `NormalizedRecipe` to include strict dietary flags (e.g., `is_vegan`, `is_vegetarian`, `is_gluten_free`, `is_dairy_free`).
     - [ ] Update the Normalization prompt to accurately extract these flags.
     - [ ] Modify the search logic to apply SQL `WHERE` filters *before* calculating vector similarity to ensure dietary constraints are 100% respected.
-- [ ] **In-Database Vector Search**
+- [x] **In-Database Vector Search**
+    - [x] Implement Random Discovery using native SQL `ORDER BY RANDOM()`.
     - [ ] Migrate from the current in-memory Go similarity loop to a native SQLite vector extension (e.g., `sqlite-vec`).
-    - [ ] This will improve performance and reduce RAM usage as the number of recipes grows.
 - [ ] **Hybrid Search (Keyword + Vector)**
     - [ ] Enable SQLite FTS5 (Full Text Search) for recipe titles and ingredient lists.
     - [ ] Combine keyword matches with semantic vector results (using a technique like Reciprocal Rank Fusion) to handle specific ingredient requests more accurately.
 
-## Phase 9: Dynamic Agency (Tool Use & Feedback Loops) (Current Status: Complete)
+## Phase 9: Pure Agentic RAG Migration (Current Status: Complete)
 - [x] **Implement Tool-Enabled Analyst**
     - [x] Update `internal/llm/llm.go` to support Tool Definitions and Tool Calls (universal schema).
     - [x] Implement tool-calling logic in `internal/llm/gemini.go` and `internal/llm/groq.go`.
@@ -104,6 +104,9 @@
     - [x] Implement `PlanReviewer` agent to intelligently revise plans based on user feedback.
     - [x] Add multi-turn autonomous loops for plan adjustment.
     - [x] Implement mechanical guardrails (`maxTurns`) and error handling for tool hallucinations.
+- [x] **The Deterministic Trap Fix**
+    - [x] Split `search_recipes` into `semantic` and `random` tools.
+    - [x] Remove pre-fetching and trust LLM agency.
 - [ ] **Implement Nutritionist as Consultant**
     - [ ] Add `get_nutrition_advice` tool to the Analyst's toolset.
     - [ ] Implement a lightweight Nutritionist tool/agent to provide meal alternatives.
