@@ -7,13 +7,13 @@ import (
 
 // Recipe represents a recipe
 type Recipe struct {
-	ID          string   `json:"id"`
-	Title       string   `json:"title"`
-	Ingredients []string `json:"ingredients"`
-	Tags        []string `json:"tags"`
-	PrepTime    string   `json:"prep_time"`
-	Servings    string   `json:"servings"`
-	UpdatedAt   string   `json:"source_updated_at"`
+	ID          string   `json:"id,omitempty"`
+	Title       string   `json:"title,omitempty"`
+	Ingredients []string `json:"ingredients,omitempty"`
+	Tags        []string `json:"tags,omitempty"`
+	PrepTime    string   `json:"prep_time,omitempty"`
+	Servings    string   `json:"servings,omitempty"`
+	UpdatedAt   string   `json:"source_updated_at,omitempty"`
 }
 
 // returns a semantic string representation of the recipe
