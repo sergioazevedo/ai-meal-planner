@@ -91,6 +91,21 @@ var searchRecipesSemanticTool = llm.Tool{
 	},
 }
 
+// simplifyForTool reduces the payload of a recipe array to minimize token usage in the LLM context window.
+func simplifyForTool(recipes []value.Recipe) []value.Recipe {
+	var content []value.Recipe
+	for _, r := range recipes {
+		content = append(content, value.Recipe{
+			ID:       r.ID,
+			Title:    r.Title,
+			PrepTime: r.PrepTime,
+			Tags:     r.Tags,
+			Servings: r.Servings,
+		})
+	}
+	return content
+}
+
 // HandleRecipeSemanticSearch executes the search_recipes tool and formats the result as an LLM message.
 func HandleRecipeSemanticSearch(
 	ctx context.Context,
@@ -107,7 +122,7 @@ func HandleRecipeSemanticSearch(
 		return llm.Message{}, nil, err
 	}
 
-	recipesJson, err := json.Marshal(recipes)
+	recipesJson, err := json.Marshal(simplifyForTool(recipes))
 	if err != nil {
 		return llm.Message{}, nil, err
 	}
@@ -155,7 +170,7 @@ func HandleRecipeRandomSearch(
 		return llm.Message{}, nil, err
 	}
 
-	recipesJson, err := json.Marshal(recipes)
+	recipesJson, err := json.Marshal(simplifyForTool(recipes))
 	if err != nil {
 		return llm.Message{}, nil, err
 	}
