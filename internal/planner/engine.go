@@ -29,7 +29,7 @@ func ExecuteAgentLoop[T any](
 	var metas []shared.ToolCallMeta
 	var sideEffects []T
 
-	const maxTurns = 5
+	const maxTurns = 15
 	turnCount := 0
 
 	for {
