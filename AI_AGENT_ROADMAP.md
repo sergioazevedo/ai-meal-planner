@@ -15,11 +15,9 @@ You have successfully moved past basic LLM calls and implemented a **Multi-Agent
 
 ## 2. The Next Frontier: Dynamic Agency & Self-Correction
 
-### Phase 1: Tool Use & Function Calling (The Autonomous Analyst)
+### Phase 1: Tool Use & Function Calling (The Autonomous Analyst) (Complete)
 **Concept:** Instead of the Go code *pushing* data to the LLM, the LLM *pulls* the data it needs.
-*   **Current State:** The Go backend runs a semantic search, grabs 30 recipes, and hands them to the Analyst in a single prompt.
-*   **The Upgrade:** Refactor the `Planner` so the `Analyst` is given a tool definition (e.g., `search_recipes(query: string, limit: int)`). 
-*   **Why it matters:** If the user asks for "High-protein breakfasts and vegan dinners", the Analyst might realize the initial context block doesn't have enough vegan options. It can autonomously execute `search_recipes("vegan dinner")` to gather more context before writing the plan.
+*   **Status:** Implemented! The `Analyst` and `PlanReviewer` now use a generic engine and specialized search tools (`semantic` vs `random`) to gather context dynamically.
 
 ### Phase 2: Automated Self-Correction (The Internal Critic Loop)
 **Concept:** Agents "talking back" to each other to fix errors *before* the user ever sees the output.

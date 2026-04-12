@@ -11,17 +11,6 @@ import (
 	"time"
 )
 
-const countRecipes = `-- name: CountRecipes :one
-SELECT COUNT(id) FROM recipes
-`
-
-func (q *Queries) CountRecipes(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countRecipes)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const deleteRecipeByID = `-- name: DeleteRecipeByID :exec
 DELETE FROM recipes WHERE id = ?
 `
@@ -29,6 +18,52 @@ DELETE FROM recipes WHERE id = ?
 func (q *Queries) DeleteRecipeByID(ctx context.Context, id string) error {
 	_, err := q.db.ExecContext(ctx, deleteRecipeByID, id)
 	return err
+}
+
+const getRandomRecipes = `-- name: GetRandomRecipes :many
+SELECT id, data, updated_at FROM recipes
+WHERE id NOT IN (/*SLICE:exclude_ids*/?)
+ORDER BY RANDOM()
+LIMIT ?
+`
+
+type GetRandomRecipesParams struct {
+	ExcludeIds []string
+	Limit      int64
+}
+
+func (q *Queries) GetRandomRecipes(ctx context.Context, arg GetRandomRecipesParams) ([]Recipe, error) {
+	query := getRandomRecipes
+	var queryParams []interface{}
+	if len(arg.ExcludeIds) > 0 {
+		for _, v := range arg.ExcludeIds {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:exclude_ids*/?", strings.Repeat(",?", len(arg.ExcludeIds))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:exclude_ids*/?", "NULL", 1)
+	}
+	queryParams = append(queryParams, arg.Limit)
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Recipe
+	for rows.Next() {
+		var i Recipe
+		if err := rows.Scan(&i.ID, &i.Data, &i.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getRecipeByID = `-- name: GetRecipeByID :one

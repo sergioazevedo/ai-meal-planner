@@ -14,7 +14,6 @@ WHERE id = ?;
 SELECT id, data, updated_at FROM recipes
 WHERE id IN (sqlc.slice('ids'));
 
-
 -- name: ListRecipes :many
 SELECT id, data, updated_at FROM recipes
 WHERE id NOT IN (sqlc.slice('exclude_ids'))
@@ -27,5 +26,8 @@ ORDER BY updated_at DESC;
 -- name: DeleteRecipeByID :exec
 DELETE FROM recipes WHERE id = ?;
 
--- name: CountRecipes :one
-SELECT COUNT(id) FROM recipes;
+-- name: GetRandomRecipes :many
+SELECT id, data, updated_at FROM recipes
+WHERE id NOT IN (sqlc.slice('exclude_ids'))
+ORDER BY RANDOM()
+LIMIT ?;

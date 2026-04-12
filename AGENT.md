@@ -41,8 +41,8 @@ To strategically generate a weekly meal plan based on user preferences. Unlike b
 
 ### Interaction Logic
 1.  **Reasoning**: The agent analyzes the user request and identifies missing information or recipe needs.
-2.  **Tool Use**: It calls the `search_recipes` tool with specific queries to fetch relevant candidates from the RAG pipeline.
-3.  **Iteration**: It iterates through multiple turns until it has a sufficient recipe pool to satisfy all constraints.
+2. **Tool Use**: It has two tools: `search_recipes_semantic` for targeted requests and `search_recipes_random` for discovery/variety.
+3.  **Iteration**: It iterates through multiple turns (up to 15) until it has a sufficient recipe pool to satisfy all constraints.
 
 ### Output
 A structured JSON object representing the plan strategy and recipe selections.
@@ -56,7 +56,7 @@ An autonomous agent responsible for revising existing meal plans based on user f
 
 ### Interaction Logic
 1.  **Diff Analysis**: Compares the current plan against the user's adjustment request (e.g., "Make Monday vegetarian").
-2.  **Autonomous Search**: Searches for specific replacements that fit the requested change while maintaining the rest of the plan's integrity.
+2.  **Autonomous Search**: Uses `search_recipes_semantic` or `search_recipes_random` to find specific replacements that fit the requested change.
 3.  **Consistency Check**: Ensures batch-cooking patterns (Cook/Reuse) are preserved during the revision.
 
 ---

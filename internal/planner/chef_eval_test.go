@@ -8,7 +8,7 @@ import (
 
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/llm"
-	"ai-meal-planner/internal/recipe"
+	"ai-meal-planner/internal/value"
 )
 
 // TestChef_LiveEval performs a real LLM call to evaluate the Chef's
@@ -28,7 +28,6 @@ func TestChef_LiveEval(t *testing.T) {
 	groqClient := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.1)
 	p := &Planner{
 		chefGenerator: groqClient,
-		recipeService: &RecipeService{},
 	}
 
 	// 1. Setup a Mock Proposal (The input the Chef expects from the Analyst)
@@ -37,7 +36,7 @@ func TestChef_LiveEval(t *testing.T) {
 			{Day: "Monday", Action: MealActionCook, RecipeTitle: "Garlic Pasta", Note: "Easy start"},
 			{Day: "Tuesday", Action: MealActionLeftOvers, RecipeTitle: "Garlic Pasta", Note: "Reheat"},
 		},
-		Recipes: []recipe.Recipe{
+		Recipes: []value.Recipe{
 			{
 				Title:       "Garlic Pasta",
 				PrepTime:    "20 mins",

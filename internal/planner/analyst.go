@@ -2,8 +2,8 @@ package planner
 
 import (
 	"ai-meal-planner/internal/llm"
-	"ai-meal-planner/internal/recipe"
 	"ai-meal-planner/internal/shared"
+	"ai-meal-planner/internal/value"
 	"bytes"
 	"context"
 	_ "embed"
@@ -21,7 +21,7 @@ var userContextPrompt string
 
 type userContextData struct {
 	UserRequest  string
-	Recipes      []recipe.Recipe
+	Recipes      []value.Recipe
 	Adults       int
 	Children     int
 	ChildrenAges []int
@@ -44,7 +44,7 @@ type PlannedMeal struct {
 
 type MealProposal struct {
 	PlannedMeals []PlannedMeal
-	Recipes      []recipe.Recipe
+	Recipes      []value.Recipe
 	Adults       int
 	Children     int
 	ChildrenAges []int
@@ -63,11 +63,11 @@ type rawLlmResult struct {
 // Analyst handles the high-reasoning logic for creating a meal schedule.
 type Analyst struct {
 	llm      llm.TextGenerator
-	searcher RecipeSearcher
+	searcher shared.RecipeSearcher
 }
 
 // NewAnalyst creates a new Analyst instance.
-func NewAnalyst(llm llm.TextGenerator, searcher RecipeSearcher) *Analyst {
+func NewAnalyst(llm llm.TextGenerator, searcher shared.RecipeSearcher) *Analyst {
 	return &Analyst{
 		llm:      llm,
 		searcher: searcher,
@@ -79,7 +79,6 @@ func (a *Analyst) Run(
 	ctx context.Context,
 	userRequest string,
 	planingCtx PlanningContext,
-	recipePool []recipe.Recipe,
 	recipesRecentlyUsed []string,
 ) (AnalystResult, error) {
 	start := time.Now()
@@ -87,7 +86,6 @@ func (a *Analyst) Run(
 	// 1. Setup Prompt & State
 	userContextPromptStr, err := buildUserContext(userContextData{
 		UserRequest:  userRequest,
-		Recipes:      recipePool,
 		Adults:       planingCtx.Adults,
 		Children:     planingCtx.Children,
 		ChildrenAges: planingCtx.ChildrenAges,
@@ -104,35 +102,27 @@ func (a *Analyst) Run(
 		Content: userContextPromptStr,
 	}}
 
-	initialLookup := make(map[string]recipe.Recipe)
-	for _, r := range recipePool {
-		initialLookup[r.Title] = r
-	}
+	initialLookup := make(map[string]value.Recipe)
 
 	// 2. Setup Tool Handlers
-	recentlyUsed := recipesRecentlyUsed
-	searchHandler := func(ctx context.Context, toolCall llm.ToolCall) (llm.Message, []recipe.Recipe, error) {
-		recipes, msg, err := HandleRecipeSearch(ctx, a.searcher, toolCall, recentlyUsed)
-		if err != nil {
-			return llm.Message{}, nil, err
-		}
-		// Update the exclusion list for subsequent turns in the same run
-		for _, r := range recipes {
-			recentlyUsed = append(recentlyUsed, r.ID)
-		}
-		return msg, recipes, nil
-	}
-
-	handlers := map[string]ToolHandler[[]recipe.Recipe]{
-		searchRecipesTool.Name: searchHandler,
+	handlers := map[string]ToolHandler[[]value.Recipe]{
+		searchRecipesSemanticTool.Name: func(ctx context.Context, toolCall llm.ToolCall) (llm.Message, []value.Recipe, error) {
+			return HandleRecipeSemanticSearch(ctx, a.searcher, toolCall, recipesRecentlyUsed)
+		},
+		searchRecipesRandomTool.Name: func(ctx context.Context, toolCall llm.ToolCall) (llm.Message, []value.Recipe, error) {
+			return HandleRecipeRandomSearch(ctx, a.searcher, toolCall, recipesRecentlyUsed)
+		},
 	}
 
 	// 3. Execute the autonomous loop via the Engine
-	resp, recipeBatches, toolMetas, err := ExecuteAgentLoop[[]recipe.Recipe](
+	resp, recipeBatches, toolMetas, err := ExecuteAgentLoop[[]value.Recipe](
 		ctx,
 		a.llm,
 		chat,
-		[]llm.Tool{searchRecipesTool},
+		[]llm.Tool{
+			searchRecipesSemanticTool,
+			searchRecipesRandomTool,
+		},
 		handlers,
 	)
 	if err != nil {
@@ -179,10 +169,10 @@ func (a *Analyst) Run(
 
 func buildMealProposal(
 	raw rawLlmResult,
-	recipeLookup map[string]recipe.Recipe,
+	recipeLookup map[string]value.Recipe,
 	pCtx PlanningContext,
 ) *MealProposal {
-	selectedRecipes := []recipe.Recipe{}
+	selectedRecipes := []value.Recipe{}
 	seen := make(map[string]struct{})
 	finalPlannedMeals := []PlannedMeal{}
 

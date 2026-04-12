@@ -6,7 +6,7 @@ import (
 
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/llm"
-	"ai-meal-planner/internal/recipe"
+	"ai-meal-planner/internal/value"
 )
 
 // TestAnalyst_LiveEval performs a real LLM call to evaluate the Analyst's
@@ -26,16 +26,9 @@ func TestAnalyst_LiveEval(t *testing.T) {
 
 	// Use Groq for fast, cheap evals
 	groqClient := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
-	p := &Planner{
-		analystGenerator: groqClient,
-		recipeService:    &RecipeService{}, // Placeholder, as search tool is not expected to be used in this basic test
-	}
-
-	// 2. Define a "Hard" Scenario
-	userRequest := "We need high-protein meals for the week, but my kids hate spicy food."
 
 	// Provide a mix of spicy and non-spicy recipes
-	mockRecipes := []recipe.Recipe{
+	mockRecipes := []value.Recipe{
 		{Title: "Spicy Chili Con Carne", Tags: []string{"Spicy", "Beef", "High-Protein"}},
 		{Title: "Mild Chicken Thighs", Tags: []string{"Kid-Friendly", "Chicken", "High-Protein"}},
 		{Title: "Lentil Soup", Tags: []string{"Vegetarian", "Healthy"}},
@@ -46,6 +39,16 @@ func TestAnalyst_LiveEval(t *testing.T) {
 		{Title: "Greek Salad", Tags: []string{"Fresh", "Vegetarian", "Light"}},
 		{Title: "Pasta Bolognese", Tags: []string{"Pasta", "Beef", "Family"}},
 	}
+	
+	mockSearcher := &mockSearcher{recipes: mockRecipes}
+	
+	p := &Planner{
+		analystGenerator: groqClient,
+		RecipeSearcher:   mockSearcher,
+	}
+
+	// 2. Define a "Hard" Scenario
+	userRequest := "We need high-protein meals for the week, but my kids hate spicy food."
 
 	pCtx := PlanningContext{
 		Adults:       2,
@@ -54,8 +57,8 @@ func TestAnalyst_LiveEval(t *testing.T) {
 	}
 
 	// 3. Execute
-	analyst := NewAnalyst(p.analystGenerator, p.recipeService)
-	result, err := analyst.Run(ctx, userRequest, pCtx, mockRecipes, nil)
+	analyst := NewAnalyst(p.analystGenerator, p.RecipeSearcher)
+	result, err := analyst.Run(ctx, userRequest, pCtx, nil)
 	if err != nil {
 		t.Fatalf("Analyst failed to respond: %v", err)
 	}

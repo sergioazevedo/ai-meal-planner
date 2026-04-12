@@ -3,6 +3,7 @@ package recipe
 import (
 	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/shared"
+	"ai-meal-planner/internal/value"
 	"bytes"
 	"context"
 	"crypto/md5"
@@ -20,11 +21,11 @@ import (
 var extractorPrompt string
 
 type ExtractorResult struct {
-	Recipe Recipe
+	Recipe value.Recipe
 	Meta   shared.AgentMeta
 }
 
-// Extractor encapsulates dependencies for recipe extraction and embedding processes.
+// Extractor encapsulates dependencies for value.recipe extraction and embedding processes.
 type Extractor struct {
 	textGen    llm.TextGenerator
 	embGen     llm.EmbeddingGenerator
@@ -40,7 +41,7 @@ func NewExtractor(textGen llm.TextGenerator, embGen llm.EmbeddingGenerator, vect
 	}
 }
 
-// ExtractRecipe takes raw recipe data and extracts structured information using an LLM.
+// Extractvalue.Recipe takes raw value.recipe data and extracts structured information using an LLM.
 func (e *Extractor) ExtractRecipe(
 	ctx context.Context,
 	data PostData,
@@ -57,7 +58,7 @@ func (e *Extractor) ExtractRecipe(
 		return ExtractorResult{}, fmt.Errorf("failed to get LLM response: %w", err)
 	}
 
-	rec := Recipe{}
+	rec := value.Recipe{}
 	if err := json.Unmarshal([]byte(llmResp.Message.Content), &rec); err != nil {
 		return ExtractorResult{
 				Recipe: rec,
@@ -101,11 +102,11 @@ func (e *Extractor) ExtractRecipe(
 	}, nil
 }
 
-// ProcessAndSaveEmbedding generates and saves the embedding for a given recipe,
+// ProcessAndSaveEmbedding generates and saves the embedding for a given value.recipe,
 // utilizing a caching mechanism.
 func (e *Extractor) ProcessAndSaveEmbedding(
 	ctx context.Context,
-	rec Recipe, // Already extracted recipe
+	rec value.Recipe, // Already extracted value.recipe
 ) (embedding []float32, meta shared.AgentMeta, err error) {
 	embeddingSourceText := rec.ToEmbeddingText()
 	hasher := md5.New()
@@ -142,7 +143,7 @@ func (e *Extractor) ProcessAndSaveEmbedding(
 	}
 
 	// Save the embedding (will upsert in DB) with the new hash
-	// This ensures the hash is always up-to-date even if only recipe data changed.
+	// This ensures the hash is always up-to-date even if only value.recipe data changed.
 	if err := e.vectorRepo.Save(ctx, rec.ID, embedding, currentTextHash); err != nil {
 		return nil, embedMeta, fmt.Errorf("failed to save embedding with hash: %w", err)
 	}

@@ -2,6 +2,7 @@ package recipe
 
 import (
 	db "ai-meal-planner/internal/recipe/db"
+	"ai-meal-planner/internal/value"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -32,7 +33,7 @@ func (r *Repository) WithTx(tx *sql.Tx) *Repository {
 }
 
 // Save inserts or updates a recipe in the database.
-func (r *Repository) Save(ctx context.Context, rec Recipe) error {
+func (r *Repository) Save(ctx context.Context, rec value.Recipe) error {
 	recipeJSON, err := json.Marshal(rec)
 	if err != nil {
 		return fmt.Errorf("failed to marshal recipe to JSON: %w", err)
@@ -64,30 +65,30 @@ func (r *Repository) Save(ctx context.Context, rec Recipe) error {
 }
 
 // Get retrieves a recipe by its ID.
-func (r *Repository) Get(ctx context.Context, id string) (Recipe, error) {
+func (r *Repository) Get(ctx context.Context, id string) (value.Recipe, error) {
 	dbRecipe, err := r.queries.GetRecipeByID(ctx, id)
 	if err != nil {
-		return Recipe{}, err
+		return value.Recipe{}, err
 	}
 
-	var rec Recipe
+	var rec value.Recipe
 	if err := json.Unmarshal([]byte(dbRecipe.Data), &rec); err != nil {
-		return Recipe{}, fmt.Errorf("failed to unmarshal recipe JSON: %w", err)
+		return value.Recipe{}, fmt.Errorf("failed to unmarshal recipe JSON: %w", err)
 	}
 
 	return rec, nil
 }
 
 // GetByIds retrieves multiple recipes by their IDs.
-func (r *Repository) GetByIds(ctx context.Context, ids []string) ([]Recipe, error) {
+func (r *Repository) GetByIds(ctx context.Context, ids []string) ([]value.Recipe, error) {
 	dbRecipes, err := r.queries.GetRecipesByIDs(ctx, ids)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get recipes by IDs: %w", err)
 	}
 
-	var recipes []Recipe
+	var recipes []value.Recipe
 	for _, dbRec := range dbRecipes {
-		var rec Recipe
+		var rec value.Recipe
 		if err := json.Unmarshal([]byte(dbRec.Data), &rec); err != nil {
 			fmt.Printf("Warning: Failed to unmarshal recipe JSON for ID %s: %v\n", dbRec.ID, err)
 			continue
@@ -98,7 +99,7 @@ func (r *Repository) GetByIds(ctx context.Context, ids []string) ([]Recipe, erro
 }
 
 // List retrieves all recipes, optionally excluding specified IDs.
-func (r *Repository) List(ctx context.Context, excludeIDs []string) ([]Recipe, error) {
+func (r *Repository) List(ctx context.Context, excludeIDs []string) ([]value.Recipe, error) {
 	var dbRecipes []db.Recipe
 	var err error
 
@@ -112,9 +113,13 @@ func (r *Repository) List(ctx context.Context, excludeIDs []string) ([]Recipe, e
 		return nil, fmt.Errorf("failed to list recipes: %w", err)
 	}
 
-	var recipes []Recipe
-	for _, dbRec := range dbRecipes {
-		var rec Recipe
+	return mapRowsToRecipe(dbRecipes), nil
+}
+
+func mapRowsToRecipe(rows []db.Recipe) []value.Recipe {
+	var recipes []value.Recipe
+	for _, dbRec := range rows {
+		var rec value.Recipe
 		if err := json.Unmarshal([]byte(dbRec.Data), &rec); err != nil {
 			// Log error and skip invalid recipe, or return error for corrupted data
 			fmt.Printf("Warning: Failed to unmarshal recipe JSON for ID %s: %v\n", dbRec.ID, err)
@@ -123,16 +128,23 @@ func (r *Repository) List(ctx context.Context, excludeIDs []string) ([]Recipe, e
 		// ID populated from JSON.
 		recipes = append(recipes, rec)
 	}
-	return recipes, nil
+	return recipes
 }
 
-// Count returns the number of recipes in the database.
-func (r *Repository) Count(ctx context.Context) (int, error) {
-	count, err := r.queries.CountRecipes(ctx)
+func (r *Repository) GetRandomReipes(
+	ctx context.Context,
+	limit int64,
+	excludeIDs []string,
+) ([]value.Recipe, error) {
+	rows, err := r.queries.GetRandomRecipes(ctx, db.GetRandomRecipesParams{
+		ExcludeIds: excludeIDs,
+		Limit:      limit,
+	})
 	if err != nil {
-		return 0, fmt.Errorf("failed to count recipes: %w", err)
+		return nil, fmt.Errorf("failed to get random recipes: %w", err)
 	}
-	return int(count), nil
+
+	return mapRowsToRecipe(rows), nil
 }
 
 func (r *Repository) Delete(ctx context.Context, id string) error {

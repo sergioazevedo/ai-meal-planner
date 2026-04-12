@@ -127,8 +127,8 @@ func TestFullWorkflow(t *testing.T) {
 
 	metricsStore := metrics.NewStore(db.SQL)
 
-	recipeService := planner.NewRecipeService(recipeRepo, vectorRepo, mockEmbeddingGenerator)
-	mealPlanner := planner.NewPlanner(recipeService, planRepo, mockTextGenerator, mockTextGenerator, mockTextGenerator)
+	recipeSearchService := recipe.NewSearchService(recipeRepo, vectorRepo, mockEmbeddingGenerator)
+	mealPlanner := planner.NewPlanner(recipeSearchService, planRepo, mockTextGenerator, mockTextGenerator, mockTextGenerator)
 	recipeClipper := clipper.NewClipper(ghostClient, mockTextGenerator)
 	application := app.NewApp(ghostClient, mockTextGenerator, mockEmbeddingGenerator, metricsStore, mealPlanner, recipeClipper, &config.Config{
 		DefaultAdults:           2,

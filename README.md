@@ -9,13 +9,13 @@ While originally built as a CLI tool, the project has evolved into an intelligen
 *   **Multi-Agent Architecture**: Specialized agents (Analyst for strategy, Chef for execution) collaborate with a handover pattern to refine meal plans.
 *   **Ghost CMS Integration**: Automatically fetches and updates recipes from your blog. *Efficiently handles recipe updates, only processing and saving newer versions.*
 *   **AI Normalization**: Uses Gemini 1.5 Pro and Groq Llama3 7b to extract structured data (ingredients, quantities, steps, prep time, servings) from raw HTML posts.
-*   **RAG Pipeline**: Generates vector embeddings for every recipe and performs local semantic search to find the best matches. *Intelligent caching reduces LLM API calls and improves embedding quality.*
+*   **Agentic RAG Pipeline**: Generates vector embeddings for every recipe and provides the agent with specialized tools for both **Semantic Search** (conceptual matching) and **Random Discovery** (variety/serendipity).
 *   **Database Migrations**: Seamless schema evolution for your SQLite database, preserving data across updates.
 *   **Observability & Metrics**: Built-in SQLite-backed tracking for token usage, latency, and system health with proactive Telegram alerts for "context bloat".
 *   **Recipe Clipper**: Send any recipe URL to the Telegram bot; it extracts the details, publishes to your Ghost blog, and immediately indexes them.
 *   **Batch Cooking & Leftovers**: Smart 5-session cooking cadence that maximizes efficiency by bridging weekday dinners and weekend lunches.
 *   **Household Scaling**: Automatically adjusts ingredient quantities based on household composition (Adults vs. Children with age adjustments).
-*   **Recipe Memory**: Avoids repetition by tracking recently-used recipes and excluding them from future meal plans.
+*   **Recipe Memory**: Avoids repetition by tracking recently-used recipes at the database level to ensure long-term variety.
 *   **Telegram Bot Interface**: Chat with your planner, request meals, check `/metrics`, and get instant markdown plans on your phone.
 *   **Centralized Storage**: Single SQLite database for recipes, embeddings, meal plans, and metrics with robust schema management via migrations.
 
@@ -23,7 +23,7 @@ While originally built as a CLI tool, the project has evolved into an intelligen
 
 1. **One-time Setup**: Ghost blog recipes are ingested, normalized, and embedded into SQLite
 2. **Chat Request**: You message the Telegram bot with meal preferences
-3. **Smart Search**: RAG pipeline finds relevant recipes using semantic search
+3. **Agent-Led Discovery**: Multi-agent system analyzes the intent and chooses the right tool (**Semantic** for specific needs, **Random** for broad variety) to pull recipes.
 4. **AI Planning**: Multi-agent system creates an optimized meal plan (Analyst selects recipes, Chef scales and formats)
 5. **Instant Response**: Receive formatted weekly menu + aggregated shopping list in seconds
 

@@ -6,6 +6,7 @@ import (
 	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/llm/llmtest"
 	"ai-meal-planner/internal/recipe" // Import the recipe package
+	"ai-meal-planner/internal/value"
 	"context"
 	"log"
 	"os"
@@ -133,7 +134,7 @@ func TestVectorSearchRecallIntegration(t *testing.T) {
 	// --- Populate Test Database with Dummy Recipes & Embeddings ---
 	// These are dummy recipes that should align with your goldenTests.
 	// The ToEmbeddingText() method from internal/recipe/recipe.go is used.
-	dummyRecipes := []recipe.Recipe{
+	dummyRecipes := []value.Recipe{
 		{
 			ID:          "recipe-pasta-arrabbiata",
 			Title:       "Spicy Penne Arrabbiata",

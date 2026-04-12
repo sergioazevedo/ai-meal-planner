@@ -4,6 +4,7 @@ import (
 	"ai-meal-planner/internal/ghost"
 	"ai-meal-planner/internal/metrics"
 	"ai-meal-planner/internal/recipe"
+	"ai-meal-planner/internal/value"
 	"context"
 	"database/sql"
 	"errors"
@@ -42,14 +43,14 @@ func ensureRecipe(
 	metricsStore *metrics.Store,
 	post ghost.Post,
 	force bool,
-) (recipe.Recipe, error) {
+) (value.Recipe, error) {
 	if !force {
 		rec, err := recipeRepo.Get(ctx, post.ID)
 		if err == nil {
 			return rec, nil
 		}
 		if !errors.Is(err, sql.ErrNoRows) {
-			return recipe.Recipe{}, fmt.Errorf("failed to get recipe from repo: %w", err)
+			return value.Recipe{}, fmt.Errorf("failed to get recipe from repo: %w", err)
 		}
 	}
 
@@ -67,11 +68,11 @@ func ensureRecipe(
 		Tags:      tags,
 	})
 	if err != nil {
-		return recipe.Recipe{}, fmt.Errorf("failed to extract recipe: %w", err)
+		return value.Recipe{}, fmt.Errorf("failed to extract recipe: %w", err)
 	}
 
 	if err := recipeRepo.Save(ctx, res.Recipe); err != nil {
-		return recipe.Recipe{}, fmt.Errorf("failed to save recipe: %w", err)
+		return value.Recipe{}, fmt.Errorf("failed to save recipe: %w", err)
 	}
 
 	if err := metricsStore.RecordMeta(res.Meta); err != nil {

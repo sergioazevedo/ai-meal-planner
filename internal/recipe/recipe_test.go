@@ -3,6 +3,7 @@ package recipe
 import (
 	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/llm/llmtest"
+	"ai-meal-planner/internal/value"
 	"context"
 	"crypto/md5"   // New import
 	"database/sql" // Added for sql.ErrNoRows
@@ -126,7 +127,7 @@ func TestExtractor_ExtractRecipe(t *testing.T) {
 
 func TestExtractor_ProcessAndSaveEmbedding(t *testing.T) {
 	ctx := context.Background()
-	sampleRecipe := Recipe{
+	sampleRecipe := value.Recipe{
 		ID:          "test-recipe-id",
 		Title:       "Sample Recipe",
 		Ingredients: []string{"ing1", "ing2"},

@@ -10,6 +10,8 @@ import (
 	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/llm/llmtest"
 	"ai-meal-planner/internal/recipe"
+	"ai-meal-planner/internal/value"
+
 	_ "modernc.org/sqlite"
 )
 
@@ -37,10 +39,10 @@ func TestGeneratePlan(t *testing.T) {
 	planRepo := NewPlanRepository(db.SQL)
 
 	// 2. Add some recipes to database
-	rec1 := recipe.Recipe{ID: "1", Title: "Pasta", Ingredients: []string{"Pasta", "Tomato"}, UpdatedAt: "2023-01-01T00:00:00Z"}
+	rec1 := value.Recipe{ID: "1", Title: "Pasta", Ingredients: []string{"Pasta", "Tomato"}, UpdatedAt: "2023-01-01T00:00:00Z"}
 	emb1 := []float32{1.0, 0.0}
 
-	rec2 := recipe.Recipe{ID: "2", Title: "Salad", Ingredients: []string{"Lettuce", "Tomato"}, UpdatedAt: "2023-01-01T00:00:00Z"}
+	rec2 := value.Recipe{ID: "2", Title: "Salad", Ingredients: []string{"Lettuce", "Tomato"}, UpdatedAt: "2023-01-01T00:00:00Z"}
 	emb2 := []float32{0.0, 1.0}
 
 	_ = recipeRepo.Save(ctx, rec1)
@@ -66,7 +68,7 @@ func TestGeneratePlan(t *testing.T) {
 		},
 	}
 	mockEmbedGen := &llmtest.MockEmbeddingGenerator{Values: []float32{1.0, 0.0}}
-	recipeService := NewRecipeService(recipeRepo, vectorRepo, mockEmbedGen)
+	recipeService := recipe.NewSearchService(recipeRepo, vectorRepo, mockEmbedGen)
 	p := NewPlanner(recipeService, planRepo, mockGen, mockGen, mockGen)
 
 	// 4. Run GeneratePlan

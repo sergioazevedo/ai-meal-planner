@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"ai-meal-planner/internal/llm"
-	"ai-meal-planner/internal/recipe"
 	"ai-meal-planner/internal/shared"
+	"ai-meal-planner/internal/value"
 )
 
 // ToolHandler is a generic function that processes a tool call and returns a side effect of type T.
@@ -29,7 +29,7 @@ func ExecuteAgentLoop[T any](
 	var metas []shared.ToolCallMeta
 	var sideEffects []T
 
-	const maxTurns = 5
+	const maxTurns = 15
 	turnCount := 0
 
 	for {
@@ -76,13 +76,8 @@ func ExecuteAgentLoop[T any](
 	return resp, sideEffects, metas, nil
 }
 
-// RecipeSearcher defines the interface for searching recipes.
-type RecipeSearcher interface {
-	GetRecipeCandidates(ctx context.Context, query string, excludeIDs []string) ([]recipe.Recipe, error)
-}
-
-var searchRecipesTool = llm.Tool{
-	Name:        "search_recipes",
+var searchRecipesSemanticTool = llm.Tool{
+	Name:        "search_recipes_semantic",
 	Description: "Search for recipes based on a query to find meals that fit the user's requirements.",
 	Parameters: llm.ToolParameters{
 		Type: llm.ParameterTypeObject,
@@ -96,25 +91,25 @@ var searchRecipesTool = llm.Tool{
 	},
 }
 
-// HandleRecipeSearch executes the search_recipes tool and formats the result as an LLM message.
-func HandleRecipeSearch(
+// HandleRecipeSemanticSearch executes the search_recipes tool and formats the result as an LLM message.
+func HandleRecipeSemanticSearch(
 	ctx context.Context,
-	searcher RecipeSearcher,
+	searcher shared.RecipeSearcher,
 	toolCall llm.ToolCall,
 	recipesRecentlyUsed []string,
-) ([]recipe.Recipe, llm.Message, error) {
-	recipes, err := searcher.GetRecipeCandidates(
+) (llm.Message, []value.Recipe, error) {
+	recipes, err := searcher.RecipeSemanticSearch(
 		ctx,
 		toolCall.Args["query"].(string),
 		recipesRecentlyUsed,
 	)
 	if err != nil {
-		return nil, llm.Message{}, err
+		return llm.Message{}, nil, err
 	}
 
 	recipesJson, err := json.Marshal(recipes)
 	if err != nil {
-		return nil, llm.Message{}, err
+		return llm.Message{}, nil, err
 	}
 
 	msg := llm.Message{
@@ -123,5 +118,53 @@ func HandleRecipeSearch(
 		ToolCallID: toolCall.ID,
 	}
 
-	return recipes, msg, nil
+	return msg, recipes, nil
+}
+
+var searchRecipesRandomTool = llm.Tool{
+	Name:        "search_recipes_random",
+	Description: "Search for random recipes.",
+	Parameters: llm.ToolParameters{
+		Type: llm.ParameterTypeObject,
+		Properties: map[string]llm.Property{
+			"limit": {
+				Type:        llm.PropertyTypeInteger,
+				Description: "The number of random recipes to retrieve. Default is 10",
+			},
+		},
+		Required: []string{"limit"},
+	},
+}
+
+func HandleRecipeRandomSearch(
+	ctx context.Context,
+	searcher shared.RecipeSearcher,
+	toolCall llm.ToolCall,
+	recipesRecentlyUsed []string,
+) (llm.Message, []value.Recipe, error) {
+	limit := int64(10)
+	if value, ok := toolCall.Args["limit"].(float64); ok {
+		limit = int64(value)
+	}
+	recipes, err := searcher.RandomRecipes(
+		ctx,
+		limit,
+		recipesRecentlyUsed,
+	)
+	if err != nil {
+		return llm.Message{}, nil, err
+	}
+
+	recipesJson, err := json.Marshal(recipes)
+	if err != nil {
+		return llm.Message{}, nil, err
+	}
+
+	msg := llm.Message{
+		Role:       "tool",
+		Content:    string(recipesJson),
+		ToolCallID: toolCall.ID,
+	}
+
+	return msg, recipes, nil
 }
