@@ -90,7 +90,7 @@ func TestPlanReviewer_LiveEval(t *testing.T) {
 
 	// EVAL D: Tool Usage
 	if len(result.Meta.ToolCalls) == 0 {
-		t.Errorf("QUALITY FAIL: Agent did not use the 'search_recipes' tool to find a replacement.")
+		t.Errorf("QUALITY FAIL: Agent did not use any search tools to find a replacement.")
 	} else {
 		t.Logf("Agent successfully used tool '%s' with input: %v",
 			result.Meta.ToolCalls[0].ToolName, result.Meta.ToolCalls[0].Input)

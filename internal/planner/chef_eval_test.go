@@ -28,7 +28,6 @@ func TestChef_LiveEval(t *testing.T) {
 	groqClient := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.1)
 	p := &Planner{
 		chefGenerator: groqClient,
-		recipeService: &RecipeService{},
 	}
 
 	// 1. Setup a Mock Proposal (The input the Chef expects from the Analyst)
