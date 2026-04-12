@@ -6,7 +6,7 @@ import (
 
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/llm"
-	"ai-meal-planner/internal/recipe"
+	"ai-meal-planner/internal/value"
 )
 
 // TestAnalyst_LiveEval performs a real LLM call to evaluate the Analyst's
@@ -35,7 +35,7 @@ func TestAnalyst_LiveEval(t *testing.T) {
 	userRequest := "We need high-protein meals for the week, but my kids hate spicy food."
 
 	// Provide a mix of spicy and non-spicy recipes
-	mockRecipes := []recipe.Recipe{
+	mockRecipes := []value.Recipe{
 		{Title: "Spicy Chili Con Carne", Tags: []string{"Spicy", "Beef", "High-Protein"}},
 		{Title: "Mild Chicken Thighs", Tags: []string{"Kid-Friendly", "Chicken", "High-Protein"}},
 		{Title: "Lentil Soup", Tags: []string{"Vegetarian", "Healthy"}},

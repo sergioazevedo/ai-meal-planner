@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"ai-meal-planner/internal/llm"
-	"ai-meal-planner/internal/recipe"
 	"ai-meal-planner/internal/shared"
+	"ai-meal-planner/internal/value"
 )
 
 // ToolHandler is a generic function that processes a tool call and returns a side effect of type T.
@@ -76,11 +76,6 @@ func ExecuteAgentLoop[T any](
 	return resp, sideEffects, metas, nil
 }
 
-// RecipeSearcher defines the interface for searching recipes.
-type RecipeSearcher interface {
-	GetRecipeCandidates(ctx context.Context, query string, excludeIDs []string) ([]recipe.Recipe, error)
-}
-
 var searchRecipesTool = llm.Tool{
 	Name:        "search_recipes",
 	Description: "Search for recipes based on a query to find meals that fit the user's requirements.",
@@ -99,11 +94,11 @@ var searchRecipesTool = llm.Tool{
 // HandleRecipeSearch executes the search_recipes tool and formats the result as an LLM message.
 func HandleRecipeSearch(
 	ctx context.Context,
-	searcher RecipeSearcher,
+	searcher shared.RecipeSearcher,
 	toolCall llm.ToolCall,
 	recipesRecentlyUsed []string,
-) ([]recipe.Recipe, llm.Message, error) {
-	recipes, err := searcher.GetRecipeCandidates(
+) ([]value.Recipe, llm.Message, error) {
+	recipes, err := searcher.RecipeSemanticSearch(
 		ctx,
 		toolCall.Args["query"].(string),
 		recipesRecentlyUsed,

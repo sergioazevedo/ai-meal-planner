@@ -12,6 +12,7 @@ import (
 	"ai-meal-planner/internal/llm/llmtest"
 	"ai-meal-planner/internal/metrics"
 	"ai-meal-planner/internal/recipe"
+	"ai-meal-planner/internal/value"
 
 	_ "modernc.org/sqlite"
 )
@@ -66,7 +67,7 @@ func TestIngestRecipes_Cleanup(t *testing.T) {
 
 	// 2. Pre-populate DB with an orphaned recipe
 	orphanedID := "orphaned-1"
-	err = recipeRepo.Save(ctx, recipe.Recipe{
+	err = recipeRepo.Save(ctx, value.Recipe{
 		ID:    orphanedID,
 		Title: "Orphaned Recipe",
 	})

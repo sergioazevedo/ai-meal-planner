@@ -8,7 +8,7 @@ import (
 
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/llm"
-	"ai-meal-planner/internal/recipe"
+	"ai-meal-planner/internal/value"
 )
 
 // Run with: go test -v ./internal/planner -run TestPlanReviewer_LiveEval
@@ -30,7 +30,7 @@ func TestPlanReviewer_LiveEval(t *testing.T) {
 
 	// Create a simple mock searcher that returns vegetarian options when called
 	mockSearcher := &mockSearcher{
-		recipes: []recipe.Recipe{
+		recipes: []value.Recipe{
 			{ID: "r_veg1", Title: "Vegetarian Lentil Curry", Tags: []string{"Vegetarian", "Curry"}},
 			{ID: "r_veg2", Title: "Mushroom Risotto", Tags: []string{"Vegetarian", "Rice"}},
 		},
@@ -97,14 +97,4 @@ func TestPlanReviewer_LiveEval(t *testing.T) {
 	}
 
 	t.Logf("✅ Eval complete. Revised plan successfully updated Wednesday to: %s", wednesday.RecipeTitle)
-}
-
-// mockSearcher is a lightweight helper for the eval test
-type mockSearcher struct {
-	recipes []recipe.Recipe
-}
-
-func (m *mockSearcher) GetRecipeCandidates(ctx context.Context, query string, excludeIDs []string) ([]recipe.Recipe, error) {
-	// Simple mock: just return the static list regardless of the exact query
-	return m.recipes, nil
 }

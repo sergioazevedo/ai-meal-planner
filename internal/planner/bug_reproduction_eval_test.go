@@ -7,7 +7,7 @@ import (
 
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/llm"
-	"ai-meal-planner/internal/recipe"
+	"ai-meal-planner/internal/value"
 )
 
 // Run with: go test -v ./internal/planner -run TestPlanReviewer_BugReproduction_Eval
@@ -26,8 +26,8 @@ func TestPlanReviewer_BugReproduction_Eval(t *testing.T) {
 	groqClient := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
 
 	// Mock searcher with specific candidates to test Context and History
-	mockSearcher := &bugReproductionSearcher{
-		recipes: []recipe.Recipe{
+	mockSearcher := &mockSearcher{
+		recipes: []value.Recipe{
 			{ID: "v_curry", Title: "Vegan Lentil Curry", PrepTime: "45min", Tags: []string{"Vegan", "Curry"}},
 			{ID: "fast_beef", Title: "Fast Beef Stir Fry", PrepTime: "10min", Tags: []string{"Meat", "Quick"}},
 			{ID: "fast_tofu", Title: "Quick Tofu Scramble", PrepTime: "10min", Tags: []string{"Vegan", "Quick"}},
@@ -93,27 +93,4 @@ func TestPlanReviewer_BugReproduction_Eval(t *testing.T) {
 
 	t.Logf("✅ Bug Reproduction Eval complete.")
 	t.Logf("Monday was: %s -> Now: %s", currentPlan.Plan[0].RecipeTitle, revised.Plan[0].RecipeTitle)
-}
-
-type bugReproductionSearcher struct {
-	recipes []recipe.Recipe
-}
-
-func (m *bugReproductionSearcher) GetRecipeCandidates(ctx context.Context, query string, excludeIDs []string) ([]recipe.Recipe, error) {
-	// Filter out excluded IDs manually to simulate real DB behavior
-	var filtered []recipe.Recipe
-	excludedMap := make(map[string]bool)
-	for _, id := range excludeIDs {
-		excludedMap[id] = true
-	}
-
-	for _, r := range m.recipes {
-		if !excludedMap[r.ID] {
-			filtered = append(filtered, r)
-		}
-	}
-
-	// In a real scenario, the LLM would see these.
-	// We return all non-excluded ones to see if the LLM picks the Vegan one.
-	return filtered, nil
 }

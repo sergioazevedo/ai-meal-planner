@@ -2,8 +2,8 @@ package planner
 
 import (
 	"ai-meal-planner/internal/llm"
-	"ai-meal-planner/internal/recipe"
 	"ai-meal-planner/internal/shared"
+	"ai-meal-planner/internal/value"
 	"bytes"
 	"context"
 	_ "embed"
@@ -36,11 +36,11 @@ type PlanReviewerResult struct {
 // PlanReviewer handles the revision of an existing meal plan based on user feedback.
 type PlanReviewer struct {
 	llm      llm.TextGenerator
-	searcher RecipeSearcher
+	searcher shared.RecipeSearcher
 }
 
 // NewPlanReviewer creates a new PlanReviewer instance.
-func NewPlanReviewer(llm llm.TextGenerator, searcher RecipeSearcher) *PlanReviewer {
+func NewPlanReviewer(llm llm.TextGenerator, searcher shared.RecipeSearcher) *PlanReviewer {
 	return &PlanReviewer{
 		llm:      llm,
 		searcher: searcher,
@@ -80,9 +80,9 @@ func (r *PlanReviewer) Run(
 
 	// 1. Setup Tool Handlers
 	recentlyUsed := recipesRecentlyUsed
-	initialLookup := make(map[string]recipe.Recipe) // Used for mapping titles back to IDs
+	initialLookup := make(map[string]value.Recipe) // Used for mapping titles back to IDs
 
-	searchHandler := func(ctx context.Context, toolCall llm.ToolCall) (llm.Message, []recipe.Recipe, error) {
+	searchHandler := func(ctx context.Context, toolCall llm.ToolCall) (llm.Message, []value.Recipe, error) {
 		recipes, msg, err := HandleRecipeSearch(ctx, r.searcher, toolCall, recentlyUsed)
 		if err != nil {
 			return llm.Message{}, nil, err
@@ -94,12 +94,12 @@ func (r *PlanReviewer) Run(
 		return msg, recipes, nil
 	}
 
-	handlers := map[string]ToolHandler[[]recipe.Recipe]{
+	handlers := map[string]ToolHandler[[]value.Recipe]{
 		searchRecipesTool.Name: searchHandler,
 	}
 
 	// 2. Execute the autonomous loop via the Engine
-	resp, recipeBatches, toolMetas, err := ExecuteAgentLoop[[]recipe.Recipe](
+	resp, recipeBatches, toolMetas, err := ExecuteAgentLoop[[]value.Recipe](
 		ctx,
 		r.llm,
 		chat,

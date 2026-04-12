@@ -12,7 +12,7 @@ import (
 
 // Planner handles the orchestration of meal plan generation.
 type Planner struct {
-	recipeService     *RecipeService
+	RecipeSearcher    shared.RecipeSearcher
 	planRepo          *PlanRepository
 	analystGenerator  llm.TextGenerator // High-reasoning model (e.g., 70B)
 	chefGenerator     llm.TextGenerator // High-throughput model (e.g., 8B)
@@ -21,14 +21,14 @@ type Planner struct {
 
 // NewPlanner creates a new Planner instance.
 func NewPlanner(
-	recipeService *RecipeService,
+	RecipeSearcher shared.RecipeSearcher,
 	planRepo *PlanRepository,
 	analystGen llm.TextGenerator,
 	chefGen llm.TextGenerator,
 	reviewerGen llm.TextGenerator,
 ) *Planner {
 	return &Planner{
-		recipeService:     recipeService,
+		RecipeSearcher:    RecipeSearcher,
 		planRepo:          planRepo,
 		analystGenerator:  analystGen,
 		chefGenerator:     chefGen,
@@ -87,19 +87,12 @@ func (p *Planner) GeneratePlan(ctx context.Context, userID string, userRequest s
 	// 0. Fetch recent history to avoid repetition
 	excludeIDs := p.receiptIDsRecentlyUsed(ctx, userID, targetWeek)
 
-	// 1. Fetch intial set of recipes
-	recipeSelection, err := p.recipeService.GetRecipeCandidates(ctx, userRequest, excludeIDs)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	// 1. Call Analyst agent to create a meal schedule
-	analyst := NewAnalyst(p.analystGenerator, p.recipeService)
+	analyst := NewAnalyst(p.analystGenerator, p.RecipeSearcher)
 	analystResult, err := analyst.Run(
 		ctx,
 		userRequest,
 		pCtx,
-		recipeSelection,
 		excludeIDs,
 	)
 	if err != nil {
@@ -107,7 +100,7 @@ func (p *Planner) GeneratePlan(ctx context.Context, userID string, userRequest s
 	}
 	metas = append(metas, analystResult.Meta)
 
-	// 5. Handover meal schedule to the chef to prempare
+	// 2. Handover meal schedule to the chef to prempare
 	// the MealPlan and the consolidate shooping list
 	chef := NewChef(p.chefGenerator)
 	chefResult, err := chef.Run(ctx, analystResult.Proposal, targetWeek)
@@ -154,7 +147,7 @@ func (p *Planner) GenerateShoppingList(ctx context.Context, plan *MealPlan, pCtx
 		recipeIDs = append(recipeIDs, id)
 	}
 
-	recipes, err := p.recipeService.GetByIds(ctx, recipeIDs)
+	recipes, err := p.RecipeSearcher.GetByIds(ctx, recipeIDs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch recipes: %w", err)
 	}
@@ -198,6 +191,6 @@ func (p *Planner) RevisePlan(
 	}
 
 	// Run the reviewer agent
-	reviewer := NewPlanReviewer(p.reviewerGenerator, p.recipeService)
+	reviewer := NewPlanReviewer(p.reviewerGenerator, p.RecipeSearcher)
 	return reviewer.Run(ctx, currentPlan, originalRequest, feedback, pCtx, recentlyUsed)
 }

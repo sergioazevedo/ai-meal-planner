@@ -1,19 +1,11 @@
-package recipe
+package value
 
 import (
 	_ "embed"
 	"fmt"
 )
 
-type PostData struct {
-	ID        string
-	Title     string
-	UpdatedAt string
-	HTML      string
-	Tags      []string
-}
-
-// Recipe represents a recipe after being normalized by the LLM.
+// Recipe represents a recipe
 type Recipe struct {
 	ID          string   `json:"id"`
 	Title       string   `json:"title"`
@@ -34,10 +26,4 @@ func (r *Recipe) ToEmbeddingText() string {
 		r.Ingredients,
 		r.PrepTime,
 	)
-}
-
-// RecipeWithEmbedding contains the recipe data along with its vector embedding.
-type RecipeWithEmbedding struct {
-	Recipe
-	Embedding []float32 `json:"embedding"`
 }
