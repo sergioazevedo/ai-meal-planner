@@ -105,21 +105,13 @@ func (a *Analyst) Run(
 	initialLookup := make(map[string]value.Recipe)
 
 	// 2. Setup Tool Handlers
-	recentlyUsed := recipesRecentlyUsed
-	searchHandler := func(ctx context.Context, toolCall llm.ToolCall) (llm.Message, []value.Recipe, error) {
-		recipes, msg, err := HandleRecipeSearch(ctx, a.searcher, toolCall, recentlyUsed)
-		if err != nil {
-			return llm.Message{}, nil, err
-		}
-		// Update the exclusion list for subsequent turns in the same run
-		for _, r := range recipes {
-			recentlyUsed = append(recentlyUsed, r.ID)
-		}
-		return msg, recipes, nil
-	}
-
 	handlers := map[string]ToolHandler[[]value.Recipe]{
-		searchRecipesTool.Name: searchHandler,
+		searchRecipesSemanticTool.Name: func(ctx context.Context, toolCall llm.ToolCall) (llm.Message, []value.Recipe, error) {
+			return HandleRecipeSemanticSearch(ctx, a.searcher, toolCall, recipesRecentlyUsed)
+		},
+		searchRecipesRandomTool.Name: func(ctx context.Context, toolCall llm.ToolCall) (llm.Message, []value.Recipe, error) {
+			return HandleRecipeRandomSearch(ctx, a.searcher, toolCall, recipesRecentlyUsed)
+		},
 	}
 
 	// 3. Execute the autonomous loop via the Engine
@@ -127,7 +119,10 @@ func (a *Analyst) Run(
 		ctx,
 		a.llm,
 		chat,
-		[]llm.Tool{searchRecipesTool},
+		[]llm.Tool{
+			searchRecipesSemanticTool,
+			searchRecipesRandomTool,
+		},
 		handlers,
 	)
 	if err != nil {

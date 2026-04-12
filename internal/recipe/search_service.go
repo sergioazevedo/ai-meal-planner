@@ -28,8 +28,6 @@ func NewSearchService(
 	}
 }
 
-const SEARCH_LIMIT = 10
-
 // RecipeSemanticSearch retrieves recipe candidates based on a query string using semantic search.
 func (s *SearchService) RecipeSemanticSearch(
 	ctx context.Context,
@@ -41,7 +39,7 @@ func (s *SearchService) RecipeSemanticSearch(
 		return nil, fmt.Errorf("failed to generate embedding for request: %w", err)
 	}
 
-	recipeIds, err := s.vectorRepo.FindSimilar(ctx, queryEmbedding, SEARCH_LIMIT, excludeIDs)
+	recipeIds, err := s.vectorRepo.FindSimilar(ctx, queryEmbedding, 10, excludeIDs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve similar recipes: %w", err)
 	}
@@ -59,7 +57,7 @@ func (s *SearchService) RandomRecipes(
 	limit int64,
 	excludeIDs []string,
 ) ([]value.Recipe, error) {
-	return s.recipeRepo.GetRandomReipes(ctx, SEARCH_LIMIT, excludeIDs)
+	return s.recipeRepo.GetRandomReipes(ctx, limit, excludeIDs)
 }
 
 func (s *SearchService) GetByIds(
