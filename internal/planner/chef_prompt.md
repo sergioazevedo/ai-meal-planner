@@ -42,7 +42,8 @@ Use these details to compile the shopping list and estimate prep times.
 
 ### Output Format
 
-Return ONLY a valid JSON object with this structure:
+**You are a helpful assistant that only returns valid JSON. Do not add any other text. Do not wrap in markdown.**
+**REPLY WITH ONLY THE RAW JSON OBJECT.**
 
 {
   "plan": [

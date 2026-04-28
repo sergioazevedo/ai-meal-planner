@@ -23,8 +23,8 @@ Please extract the following information from the HTML above:
  - Number of servings (e.g., "4 people") - **estimate if missing**.
 
 ### Output Format
-Return **ONLY** a valid JSON object with the structure below.
-**IMPORTANT:** Do not wrap the response in markdown code blocks (like ```json).
+**You are a helpful assistant that only returns valid JSON. Do not add any other text. Do not wrap in markdown.**
+**REPLY WITH ONLY THE RAW JSON OBJECT.**
 
 {
     "title": "Sassami de Frango com Purê de batata e salada de repolho",

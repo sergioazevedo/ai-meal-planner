@@ -119,7 +119,8 @@ func (r *PlanReviewer) Run(
 		Plan []DayPlan `json:"plan"`
 	}{}
 
-	if err = json.Unmarshal([]byte(resp.Message.Content), &rawResponse); err != nil {
+	cleanedJSON := llm.CleanJSON(resp.Message.Content)
+	if err = json.Unmarshal([]byte(cleanedJSON), &rawResponse); err != nil {
 		return PlanReviewerResult{
 				Meta: shared.AgentMeta{
 					AgentName: "PlanReviewer",

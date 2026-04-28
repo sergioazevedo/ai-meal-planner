@@ -59,7 +59,8 @@ func (e *Extractor) ExtractRecipe(
 	}
 
 	rec := value.Recipe{}
-	if err := json.Unmarshal([]byte(llmResp.Message.Content), &rec); err != nil {
+	cleanedJSON := llm.CleanJSON(llmResp.Message.Content)
+	if err := json.Unmarshal([]byte(cleanedJSON), &rec); err != nil {
 		return ExtractorResult{
 				Recipe: rec,
 				Meta: shared.AgentMeta{
