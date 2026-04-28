@@ -4,6 +4,15 @@ This document provides technical details on how our Go application interacts wit
 
 ---
 
+## Operational Constraints
+
+*   **No Unsanctioned Coding:** You MUST NOT modify any files without a user-approved Plan.
+*   **Planning First:** For every implementation request (Directive), you must first use the `enter_plan_mode` tool to research, design, and present a strategy.
+*   **Explicit Consent:** You may only proceed to the 'Execution/Act' phase after the user has explicitly approved the plan.
+*   **Tutor Defaults:** When in doubt, default to the 'tutor' persona (analyzing and proposing) rather than 'engineer' (implementing).
+
+---
+
 ## Configuration
 
 To use the available LLMs, you must set the following environment variables:
@@ -28,7 +37,7 @@ The application will fail to start if the required keys are not provided.
 
 ## Go Client Usage
 
-Interaction with the Gemini API is handled by the `LLMClient` interface defined in `internal/llm/gemini.go`.
+Interaction with the Gemini API is handled by the `LLMClient` interface (for embeddings) defined in `internal/llm/gemini.go`.
 
 ### Initialization
 To get a new client, use the `llm.NewGeminiClient` function. It's crucial to `defer` the `Close()` method to release resources.
@@ -58,21 +67,8 @@ func main() {
 }
 ```
 
-### Generating Content (Text)
-To generate content using **Gemini 1.5 Pro**, use the `GenerateContent` method.
-
-```go
-prompt := "Tell me a joke about a programmer."
-response, err := geminiClient.GenerateContent(ctx, prompt, llm.NoTools)
-if err != nil {
-    log.Printf("Failed to generate content: %v", err)
-} else {
-    fmt.Println(response)
-}
-```
-
 ### Generating Embeddings (Vectors)
-To generate vector embeddings for semantic search using the **embedding-001** model, use the `GenerateEmbedding` method. Note that the full recipe embedding generation and saving flow (including caching and vector storage interaction) is now encapsulated in the `recipe.Extractor` struct.
+Gemini is used exclusively for generating vector embeddings for semantic search using the **embedding-001** model via the `GenerateEmbedding` method. Note that the full recipe embedding generation and saving flow (including caching and vector storage interaction) is encapsulated in the `recipe.Extractor` struct.
 
 ```go
 text := "Spaghetti Carbonara with eggs and bacon"

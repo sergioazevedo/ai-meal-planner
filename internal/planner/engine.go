@@ -78,13 +78,13 @@ func ExecuteAgentLoop[T any](
 
 var searchRecipesSemanticTool = llm.Tool{
 	Name:        "search_recipes_semantic",
-	Description: "Search for recipes based on a query to find meals that fit the user's requirements.",
+	Description: "Search for specific recipes based on a query. Use this tool when the user has specific requests, dietary needs, cuisines, or ingredients they want to include or avoid.",
 	Parameters: llm.ToolParameters{
 		Type: llm.ParameterTypeObject,
 		Properties: map[string]llm.Property{
 			"query": {
 				Type:        llm.PropertyTypeString,
-				Description: "The search query (e.g., 'chicken dinner', 'quick vegetarian').",
+				Description: "The search query (e.g., 'spicy chicken', 'low carb', 'Italian').",
 			},
 		},
 		Required: []string{"query"},
@@ -138,13 +138,13 @@ func HandleRecipeSemanticSearch(
 
 var searchRecipesRandomTool = llm.Tool{
 	Name:        "search_recipes_random",
-	Description: "Search for random recipes.",
+	Description: "Discover random recipes. Use this tool when the request is generic (e.g., 'plan for the week') or when you need to introduce variety and unexpected options into the meal plan.",
 	Parameters: llm.ToolParameters{
 		Type: llm.ParameterTypeObject,
 		Properties: map[string]llm.Property{
 			"limit": {
 				Type:        llm.PropertyTypeInteger,
-				Description: "The number of random recipes to retrieve. Default is 10",
+				Description: "The number of random recipes to retrieve. Default is 10.",
 			},
 		},
 		Required: []string{"limit"},

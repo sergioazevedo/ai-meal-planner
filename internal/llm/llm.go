@@ -3,7 +3,20 @@ package llm
 import (
 	"ai-meal-planner/internal/shared"
 	"context"
+	"regexp"
+	"strings"
 )
+
+var jsonRegex = regexp.MustCompile("(?s)```(?:json)?\n?(.*?)\n?```")
+
+// CleanJSON removes markdown code blocks from a string if present.
+func CleanJSON(input string) string {
+	input = strings.TrimSpace(input)
+	if matches := jsonRegex.FindStringSubmatch(input); len(matches) > 1 {
+		return strings.TrimSpace(matches[1])
+	}
+	return input
+}
 
 type Tool struct {
 	Name        string

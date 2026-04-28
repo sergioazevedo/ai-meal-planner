@@ -139,7 +139,8 @@ func (a *Analyst) Run(
 
 	// 5. Parse JSON
 	raw := &rawLlmResult{}
-	if err = json.Unmarshal([]byte(resp.Message.Content), raw); err != nil {
+	cleanedJSON := llm.CleanJSON(resp.Message.Content)
+	if err = json.Unmarshal([]byte(cleanedJSON), raw); err != nil {
 		return AnalystResult{
 				Meta: shared.AgentMeta{
 					AgentName: "Analyst",

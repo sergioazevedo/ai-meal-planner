@@ -50,7 +50,8 @@ func (c *Chef) Run(
 	}
 
 	result := &MealPlan{}
-	if err = json.Unmarshal([]byte(resp.Message.Content), result); err != nil {
+	cleanedJSON := llm.CleanJSON(resp.Message.Content)
+	if err = json.Unmarshal([]byte(cleanedJSON), result); err != nil {
 		return ChefResult{
 				Meta: shared.AgentMeta{
 					Usage:     resp.Usage,
