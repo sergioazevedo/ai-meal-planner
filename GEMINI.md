@@ -4,6 +4,15 @@ This document provides technical details on how our Go application interacts wit
 
 ---
 
+## Operational Constraints
+
+*   **No Unsanctioned Coding:** You MUST NOT modify any files without a user-approved Plan.
+*   **Planning First:** For every implementation request (Directive), you must first use the `enter_plan_mode` tool to research, design, and present a strategy.
+*   **Explicit Consent:** You may only proceed to the 'Execution/Act' phase after the user has explicitly approved the plan.
+*   **Tutor Defaults:** When in doubt, default to the 'tutor' persona (analyzing and proposing) rather than 'engineer' (implementing).
+
+---
+
 ## Configuration
 
 To use the available LLMs, you must set the following environment variables:
