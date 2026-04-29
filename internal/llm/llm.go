@@ -33,6 +33,7 @@ type ToolParameters struct {
 type Property struct {
 	Type        string
 	Description string
+	Items       *Property // Used when Type is PropertyTypeArray
 }
 
 type ParameterType string
@@ -48,6 +49,7 @@ const (
 	PropertyTypeNumber  = "number"
 	PropertyTypeBoolean = "boolean"
 	PropertyTypeInteger = "integer"
+	PropertyTypeArray   = "array"
 )
 
 // ContentResponse contains the generated text and metadata like token usage.

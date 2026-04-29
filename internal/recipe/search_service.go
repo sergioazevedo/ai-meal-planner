@@ -33,6 +33,7 @@ func (s *SearchService) RecipeSemanticSearch(
 	ctx context.Context,
 	query string,
 	excludeIDs []string,
+	excludeTags []string,
 ) ([]value.Recipe, error) {
 	queryEmbedding, err := s.embedGen.GenerateEmbedding(ctx, query)
 	if err != nil {
@@ -56,6 +57,7 @@ func (s *SearchService) RandomRecipes(
 	ctx context.Context,
 	limit int64,
 	excludeIDs []string,
+	excludeTags []string,
 ) ([]value.Recipe, error) {
 	return s.recipeRepo.GetRandomReipes(ctx, limit, excludeIDs)
 }

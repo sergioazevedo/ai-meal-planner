@@ -32,7 +32,7 @@ func (r *Repository) WithTx(tx *sql.Tx) *Repository {
 	}
 }
 
-// Save inserts or updates a recipe in the database.
+// Save inserts or updates a recipe in the database, including its tags.
 func (r *Repository) Save(ctx context.Context, rec value.Recipe) error {
 	recipeJSON, err := json.Marshal(rec)
 	if err != nil {
@@ -61,7 +61,27 @@ func (r *Repository) Save(ctx context.Context, rec value.Recipe) error {
 		UpdatedAt: dbUpdatedAt, // Use the determined time
 	}
 
-	return r.queries.InsertRecipe(ctx, params)
+	// We should probably use a transaction here, but for simplicity we'll just execute sequentially on the connection.
+	// If r.db is available, we could use it, but r.queries is what we have directly for these methods.
+	if err := r.queries.InsertRecipe(ctx, params); err != nil {
+		return fmt.Errorf("failed to insert recipe: %w", err)
+	}
+
+	// Update tags: delete old, insert new
+	if err := r.queries.DeleteRecipeTags(ctx, rec.ID); err != nil {
+		return fmt.Errorf("failed to delete old recipe tags: %w", err)
+	}
+
+	for _, tag := range rec.Tags {
+		if err := r.queries.InsertRecipeTag(ctx, db.InsertRecipeTagParams{
+			RecipeID: rec.ID,
+			Tag:      tag,
+		}); err != nil {
+			return fmt.Errorf("failed to insert recipe tag '%s': %w", tag, err)
+		}
+	}
+
+	return nil
 }
 
 // Get retrieves a recipe by its ID.

@@ -20,6 +20,16 @@ func (q *Queries) DeleteRecipeByID(ctx context.Context, id string) error {
 	return err
 }
 
+const deleteRecipeTags = `-- name: DeleteRecipeTags :exec
+DELETE FROM recipe_tags
+WHERE recipe_id = ?
+`
+
+func (q *Queries) DeleteRecipeTags(ctx context.Context, recipeID string) error {
+	_, err := q.db.ExecContext(ctx, deleteRecipeTags, recipeID)
+	return err
+}
+
 const getRandomRecipes = `-- name: GetRandomRecipes :many
 SELECT id, data, updated_at FROM recipes
 WHERE id NOT IN (/*SLICE:exclude_ids*/?)
@@ -78,6 +88,45 @@ func (q *Queries) GetRecipeByID(ctx context.Context, id string) (Recipe, error) 
 	return i, err
 }
 
+const getRecipeIDsByTags = `-- name: GetRecipeIDsByTags :many
+SELECT DISTINCT recipe_id
+FROM recipe_tags
+WHERE tag IN (/*SLICE:tags*/?)
+`
+
+func (q *Queries) GetRecipeIDsByTags(ctx context.Context, tags []string) ([]string, error) {
+	query := getRecipeIDsByTags
+	var queryParams []interface{}
+	if len(tags) > 0 {
+		for _, v := range tags {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:tags*/?", strings.Repeat(",?", len(tags))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:tags*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var recipe_id string
+		if err := rows.Scan(&recipe_id); err != nil {
+			return nil, err
+		}
+		items = append(items, recipe_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getRecipesByIDs = `-- name: GetRecipesByIDs :many
 SELECT id, data, updated_at FROM recipes
 WHERE id IN (/*SLICE:ids*/?)
@@ -133,6 +182,22 @@ type InsertRecipeParams struct {
 
 func (q *Queries) InsertRecipe(ctx context.Context, arg InsertRecipeParams) error {
 	_, err := q.db.ExecContext(ctx, insertRecipe, arg.ID, arg.Data, arg.UpdatedAt)
+	return err
+}
+
+const insertRecipeTag = `-- name: InsertRecipeTag :exec
+INSERT INTO recipe_tags (recipe_id, tag)
+VALUES (?, ?)
+ON CONFLICT (recipe_id, tag) DO NOTHING
+`
+
+type InsertRecipeTagParams struct {
+	RecipeID string
+	Tag      string
+}
+
+func (q *Queries) InsertRecipeTag(ctx context.Context, arg InsertRecipeTagParams) error {
+	_, err := q.db.ExecContext(ctx, insertRecipeTag, arg.RecipeID, arg.Tag)
 	return err
 }
 

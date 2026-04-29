@@ -86,8 +86,19 @@ var searchRecipesSemanticTool = llm.Tool{
 				Type:        llm.PropertyTypeString,
 				Description: "The search query (e.g., 'spicy chicken', 'low carb', 'Italian').",
 			},
+			"exclude_tags": {
+				Type:        llm.PropertyTypeArray,
+				Description: "A list of tags (in English) to completely exclude from the search (e.g., ['chicken', 'beef', 'dairy']). Use this to enforce negative constraints.",
+				Items: &llm.Property{
+					Type: llm.PropertyTypeString,
+				},
+			},
+			"reasoning": {
+				Type:        llm.PropertyTypeString,
+				Description: "A brief explanation of why you are running this search and what you hope to find based on previous results.",
+			},
 		},
-		Required: []string{"query"},
+		Required: []string{"query", "reasoning"},
 	},
 }
 
@@ -113,10 +124,20 @@ func HandleRecipeSemanticSearch(
 	toolCall llm.ToolCall,
 	recipesRecentlyUsed []string,
 ) (llm.Message, []value.Recipe, error) {
+	var excludeTags []string
+	if tags, ok := toolCall.Args["exclude_tags"].([]interface{}); ok {
+		for _, tag := range tags {
+			if strTag, ok := tag.(string); ok {
+				excludeTags = append(excludeTags, strTag)
+			}
+		}
+	}
+
 	recipes, err := searcher.RecipeSemanticSearch(
 		ctx,
 		toolCall.Args["query"].(string),
 		recipesRecentlyUsed,
+		excludeTags, // Passed down!
 	)
 	if err != nil {
 		return llm.Message{}, nil, err
@@ -146,8 +167,19 @@ var searchRecipesRandomTool = llm.Tool{
 				Type:        llm.PropertyTypeInteger,
 				Description: "The number of random recipes to retrieve. Default is 10.",
 			},
+			"exclude_tags": {
+				Type:        llm.PropertyTypeArray,
+				Description: "A list of tags (in English) to completely exclude from the search (e.g., ['chicken', 'beef', 'dairy']). Use this to enforce negative constraints.",
+				Items: &llm.Property{
+					Type: llm.PropertyTypeString,
+				},
+			},
+			"reasoning": {
+				Type:        llm.PropertyTypeString,
+				Description: "A brief explanation of why you are running this search and what you hope to find based on previous results.",
+			},
 		},
-		Required: []string{"limit"},
+		Required: []string{"limit", "reasoning"},
 	},
 }
 
@@ -158,13 +190,24 @@ func HandleRecipeRandomSearch(
 	recipesRecentlyUsed []string,
 ) (llm.Message, []value.Recipe, error) {
 	limit := int64(10)
-	if value, ok := toolCall.Args["limit"].(float64); ok {
-		limit = int64(value)
+	if val, ok := toolCall.Args["limit"].(float64); ok {
+		limit = int64(val)
 	}
+
+	var excludeTags []string
+	if tags, ok := toolCall.Args["exclude_tags"].([]interface{}); ok {
+		for _, tag := range tags {
+			if strTag, ok := tag.(string); ok {
+				excludeTags = append(excludeTags, strTag)
+			}
+		}
+	}
+
 	recipes, err := searcher.RandomRecipes(
 		ctx,
 		limit,
 		recipesRecentlyUsed,
+		excludeTags, // Passed down!
 	)
 	if err != nil {
 		return llm.Message{}, nil, err

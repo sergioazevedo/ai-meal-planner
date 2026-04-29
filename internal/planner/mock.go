@@ -13,11 +13,11 @@ func (m *mockSearcher) GetByIds(ctx context.Context, recipeIds []string) ([]valu
 	return m.recipes, nil
 }
 
-func (m *mockSearcher) RandomRecipes(ctx context.Context, limit int64, excludeIDs []string) ([]value.Recipe, error) {
+func (m *mockSearcher) RandomRecipes(ctx context.Context, limit int64, excludeIDs []string, excludeTags []string) ([]value.Recipe, error) {
 	return m.recipes, nil
 }
 
-func (m *mockSearcher) RecipeSemanticSearch(ctx context.Context, query string, excludeIDs []string) ([]value.Recipe, error) {
+func (m *mockSearcher) RecipeSemanticSearch(ctx context.Context, query string, excludeIDs []string, excludeTags []string) ([]value.Recipe, error) {
 	// Filter out excluded IDs manually to simulate real DB behavior
 	var filtered []value.Recipe
 	excludedMap := make(map[string]bool)

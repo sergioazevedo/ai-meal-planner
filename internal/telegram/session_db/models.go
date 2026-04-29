@@ -51,6 +51,11 @@ type RecipeEmbedding struct {
 	TextHash  string
 }
 
+type RecipeTag struct {
+	RecipeID string
+	Tag      string
+}
+
 type ShoppingList struct {
 	ID         int64
 	UserID     string
