@@ -40,6 +40,11 @@ func (s *SearchService) RecipeSemanticSearch(
 		return nil, fmt.Errorf("failed to generate embedding for request: %w", err)
 	}
 
+	excludeIDs, err = s.combineTagAndIDsExclusion(ctx, excludeIDs, excludeTags)
+	if err != nil {
+		return nil, err
+	}
+
 	recipeIds, err := s.vectorRepo.FindSimilar(ctx, queryEmbedding, 10, excludeIDs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve similar recipes: %w", err)
@@ -59,6 +64,11 @@ func (s *SearchService) RandomRecipes(
 	excludeIDs []string,
 	excludeTags []string,
 ) ([]value.Recipe, error) {
+	excludeIDs, err := s.combineTagAndIDsExclusion(ctx, excludeIDs, excludeTags)
+	if err != nil {
+		return nil, err
+	}
+
 	return s.recipeRepo.GetRandomReipes(ctx, limit, excludeIDs)
 }
 
@@ -67,4 +77,21 @@ func (s *SearchService) GetByIds(
 	IDs []string,
 ) ([]value.Recipe, error) {
 	return s.recipeRepo.GetByIds(ctx, IDs)
+}
+
+func (s *SearchService) combineTagAndIDsExclusion(
+	ctx context.Context,
+	excludeIDs []string,
+	excludeTags []string,
+) ([]string, error) {
+	if len(excludeTags) == 0 {
+		return excludeIDs, nil
+	}
+
+	tagIds, err := s.recipeRepo.RecipeIDsByTags(ctx, excludeTags)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(excludeIDs, tagIds...), nil
 }
