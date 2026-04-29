@@ -18,7 +18,7 @@ Please extract the following information from the HTML above:
  - **Ingredients** (include quantities):
     - Include all ingredients for the main dish.
     - **IMPORTANT**: You MUST also add the basic ingredients for the side dish and salad (whether they were in the source or suggested by you).
- - **Relevant tags**: (e.g., "Massa", "Peixe", "Rápido", "Jantar", "Vegetariano").
+ - **Relevant tags**: Extract key ingredients and dietary categories. You MUST provide tags in BOTH the original recipe language and English to ensure robust search coverage (e.g., `["frango", "chicken", "carne", "beef", "vegetariano", "vegetarian"]`).
  - Preparation time (e.g., "30 mins") - **MANDATORY: If missing from source, YOU MUST ESTIMATE based on ingredients. Do NOT return "Unknown".**
  - Number of servings (e.g., "4 people") - **estimate if missing**.
 

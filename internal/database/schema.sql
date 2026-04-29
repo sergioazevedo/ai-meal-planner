@@ -97,3 +97,12 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 );
 CREATE INDEX IF NOT EXISTS idx_audit_logs_plan_id ON audit_logs(plan_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
+
+-- recipe_tags table
+CREATE TABLE IF NOT EXISTS recipe_tags (
+    recipe_id TEXT NOT NULL,
+    tag TEXT NOT NULL,
+    PRIMARY KEY (recipe_id, tag),
+    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_recipe_tags_tag ON recipe_tags(tag);
