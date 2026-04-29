@@ -136,21 +136,6 @@ func (r *Repository) List(ctx context.Context, excludeIDs []string) ([]value.Rec
 	return mapRowsToRecipe(dbRecipes), nil
 }
 
-func mapRowsToRecipe(rows []db.Recipe) []value.Recipe {
-	var recipes []value.Recipe
-	for _, dbRec := range rows {
-		var rec value.Recipe
-		if err := json.Unmarshal([]byte(dbRec.Data), &rec); err != nil {
-			// Log error and skip invalid recipe, or return error for corrupted data
-			fmt.Printf("Warning: Failed to unmarshal recipe JSON for ID %s: %v\n", dbRec.ID, err)
-			continue
-		}
-		// ID populated from JSON.
-		recipes = append(recipes, rec)
-	}
-	return recipes
-}
-
 func (r *Repository) GetRandomReipes(
 	ctx context.Context,
 	limit int64,
@@ -172,4 +157,31 @@ func (r *Repository) Delete(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to delete recipe: %w", err)
 	}
 	return nil
+}
+
+func (r *Repository) RecipeIDsByTags(
+	ctx context.Context,
+	tags []string,
+) ([]string, error) {
+	ids, err := r.queries.GetRecipeIDsByTags(ctx, tags)
+	if err != nil {
+		return nil, err
+	}
+
+	return ids, nil
+}
+
+func mapRowsToRecipe(rows []db.Recipe) []value.Recipe {
+	var recipes []value.Recipe
+	for _, dbRec := range rows {
+		var rec value.Recipe
+		if err := json.Unmarshal([]byte(dbRec.Data), &rec); err != nil {
+			// Log error and skip invalid recipe, or return error for corrupted data
+			fmt.Printf("Warning: Failed to unmarshal recipe JSON for ID %s: %v\n", dbRec.ID, err)
+			continue
+		}
+		// ID populated from JSON.
+		recipes = append(recipes, rec)
+	}
+	return recipes
 }

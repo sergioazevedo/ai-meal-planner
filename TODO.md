@@ -83,10 +83,10 @@
     - [x] Add unit tests for each agent's specialized prompt and output (Live Evals).
 
 ## Phase 8: Advanced RAG & Search Optimization
-- [ ] **Metadata Pre-filtering**
-    - [ ] Update `NormalizedRecipe` to include strict dietary flags (e.g., `is_vegan`, `is_vegetarian`, `is_gluten_free`, `is_dairy_free`).
-    - [ ] Update the Normalization prompt to accurately extract these flags.
-    - [ ] Modify the search logic to apply SQL `WHERE` filters *before* calculating vector similarity to ensure dietary constraints are 100% respected.
+- [x] **Metadata Pre-filtering (Tag-Based Exclusion)**
+    - [x] Update database schema to include `recipe_tags` lookup table.
+    - [x] Update the Extractor prompt to accurately extract bilingual tags.
+    - [x] Modify the search logic to apply SQL filters to exclude tags *before* calculating vector similarity to ensure negative constraints are 100% respected.
 - [x] **In-Database Vector Search**
     - [x] Implement Random Discovery using native SQL `ORDER BY RANDOM()`.
     - [ ] Migrate from the current in-memory Go similarity loop to a native SQLite vector extension (e.g., `sqlite-vec`).
@@ -106,6 +106,10 @@
     - [x] Implement mechanical guardrails (`maxTurns`) and error handling for tool hallucinations.
 - [x] **The Deterministic Trap Fix**
     - [x] Split `search_recipes` into `semantic` and `random` tools.
+    - [x] Remove pre-fetching and trust LLM agency.
+- [ ] **Implement Nutritionist as Consultant**
+    - [ ] Add `get_nutrition_advice` tool to the Analyst's toolset.
+    - [ ] Implement a lightweight Nutritionist tool/agent to provide meal alternatives.tic` and `random` tools.
     - [x] Remove pre-fetching and trust LLM agency.
 - [ ] **Implement Nutritionist as Consultant**
     - [ ] Add `get_nutrition_advice` tool to the Analyst's toolset.

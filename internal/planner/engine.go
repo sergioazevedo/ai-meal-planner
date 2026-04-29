@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"ai-meal-planner/internal/llm"
@@ -43,7 +44,7 @@ func ExecuteAgentLoop[T any](
 			return llm.ContentResponse{}, nil, nil, err
 		}
 
-		chat = append(chat, resp.Message)
+		chat = chat.Add(resp.Message)
 		if !resp.Message.IsAToolCall() {
 			break // Loop complete, we have final text/JSON
 		}
@@ -68,12 +69,37 @@ func ExecuteAgentLoop[T any](
 				Latency:  time.Since(start),
 			})
 
-			chat = append(chat, msg)
+			chat = chat.Add(msg)
+			if msg.IsAToolResponse() {
+				chat, err = chat.Compact(recipeCompactor)
+				if err != nil {
+					return llm.ContentResponse{}, nil, nil, err
+				}
+			}
 			sideEffects = append(sideEffects, effect)
 		}
 	}
 
 	return resp, sideEffects, metas, nil
+}
+
+var recipeCompactor = func(content string) (string, error) {
+	var recipes []value.Recipe
+	if err := json.Unmarshal([]byte(content), &recipes); err != nil {
+		// If the tool response doesn't have Recipes
+		// don't fail! Just return the original content unchanged.
+		return content, nil
+	}
+
+	var data []string
+	for _, r := range recipes {
+		data = append(
+			data,
+			fmt.Sprintf("%s (%s)", r.Title, r.PrepTime),
+		)
+	}
+
+	return strings.Join(data, ","), nil
 }
 
 var searchRecipesSemanticTool = llm.Tool{

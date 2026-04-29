@@ -80,8 +80,67 @@ func (m *Message) IsAToolCall() bool {
 	return m.Content == "" && len(m.ToolCalls) > 0
 }
 
+func (m *Message) IsAToolResponse() bool {
+	return m.Role == "tool"
+}
+
+// Compactor is a function that takes the raw Content of a tool response
+// and returns a distilled version of it.
+type Compactor func(content string) (string, error)
+
 // Conversation is a sequence of messages representing a chat history.
 type Conversation []Message
+
+func (c Conversation) Add(msg Message) Conversation {
+	return append(c, msg)
+}
+
+func (c Conversation) Compact(fn Compactor) (Conversation, error) {
+	lastToolIdx := -1
+	for i := len(c) - 1; i >= 0; i-- {
+		if c[i].IsAToolResponse() {
+			lastToolIdx = i
+			break
+		}
+	}
+
+	var result Conversation
+	for msgIdx, msg := range c {
+
+		// if its a regular message we keep as is
+		if !msg.IsAToolResponse() {
+			result = result.Add(msg)
+
+			continue
+		}
+
+		// we don't compact the last tool Response
+		if msgIdx == lastToolIdx {
+			result = result.Add(msg)
+
+			continue
+		}
+
+		// //all other tool responses will be compacted
+		newContent, err := fn(msg.Content)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(
+			result,
+			Message{
+				Role:       msg.Role,
+				Content:    newContent,
+				ToolCalls:  msg.ToolCalls,
+				ToolCallID: msg.ToolCallID,
+			},
+		)
+
+	}
+
+	return result, nil
+}
 
 // TextGenerator is an interface for generating text from a prompt.
 type TextGenerator interface {
