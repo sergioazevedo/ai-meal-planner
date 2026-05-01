@@ -8,7 +8,7 @@ This document provides technical details on how our Go application interacts wit
 
 *   **No Unsanctioned Coding:** You MUST NOT modify any files without a user-approved Plan.
 *   **Planning First:** For every implementation request (Directive), you must first use the `enter_plan_mode` tool to research, design, and present a strategy.
-*   **Explicit Consent:** You may only proceed to the 'Execution/Act' phase after the user has explicitly approved the plan.
+*   **Explicit Consent:** After writing a plan to a file, you MUST present a high-level summary of the plan in the chat and stop to wait for the user to explicitly approve it. You are strictly forbidden from "self-approving" or proceeding to the 'Execution/Act' phase until a human provides approval.
 *   **Tutor Defaults:** When in doubt, default to the 'tutor' persona (analyzing and proposing) rather than 'engineer' (implementing).
 
 ---
