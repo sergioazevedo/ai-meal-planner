@@ -124,9 +124,15 @@ func (r *VectorRepository) FindSimilar(ctx context.Context, queryEmbedding []flo
 		})
 	}
 
-	// Sort by score descending
+	// Sort by score descending (highest similarity first)
 	slices.SortFunc(scoredRecipes, func(i, j scoredRecipe) int {
-		return int(i.Score*100) - int(j.Score*100)
+		if i.Score > j.Score {
+			return -1
+		}
+		if i.Score < j.Score {
+			return 1
+		}
+		return 0
 	})
 
 	// Take top K and fetch full recipe data
