@@ -20,7 +20,7 @@ mkdir -p bin
 make build-linux
 
 echo "Stopping remote service to allow binary update..."
-CMD_STOP="sudo systemctl stop meal-planner-bot || true"
+CMD_STOP="systemctl --user stop meal-planner-bot || true"
 if [ -n "$PEM_KEY" ]; then
     ssh -i "$PEM_KEY" "$REMOTE_USER@$REMOTE_HOST" "$CMD_STOP"
 else
@@ -28,12 +28,18 @@ else
 fi
 
 echo "Uploading to $REMOTE_HOST..."
+FILES_TO_UPLOAD=("bin/$CLI_BINARY" "bin/$BOT_BINARY")
+if [ -f ".env" ]; then
+    echo "Found .env file, including it in the upload..."
+    FILES_TO_UPLOAD+=(".env")
+fi
+
 if [ -n "$PEM_KEY" ]; then
     # Use provided key
-    scp -i "$PEM_KEY" "bin/$CLI_BINARY" "bin/$BOT_BINARY" "$REMOTE_USER@$REMOTE_HOST:/home/$REMOTE_USER/"
+    scp -i "$PEM_KEY" "${FILES_TO_UPLOAD[@]}" "$REMOTE_USER@$REMOTE_HOST:/home/$REMOTE_USER/"
 else
     # Use SSH config or agent
-    scp "bin/$CLI_BINARY" "bin/$BOT_BINARY" "$REMOTE_USER@$REMOTE_HOST:/home/$REMOTE_USER/"
+    scp "${FILES_TO_UPLOAD[@]}" "$REMOTE_USER@$REMOTE_HOST:/home/$REMOTE_USER/"
 fi
 
 echo "Making binaries executable on $REMOTE_HOST..."
@@ -53,9 +59,9 @@ echo "BOT: /home/$REMOTE_USER/$BOT_BINARY"
 echo ""
 echo "Starting the meal-planner-bot service..."
 if [ -n "$PEM_KEY" ]; then
-    ssh -i "$PEM_KEY" "$REMOTE_USER@$REMOTE_HOST" "sudo systemctl start meal-planner-bot"
+    ssh -i "$PEM_KEY" "$REMOTE_USER@$REMOTE_HOST" "systemctl --user start meal-planner-bot"
 else
-    ssh "$REMOTE_USER@$REMOTE_HOST" "sudo systemctl start meal-planner-bot"
+    ssh "$REMOTE_USER@$REMOTE_HOST" "systemctl --user start meal-planner-bot"
 fi
 
 echo "Service started successfully."

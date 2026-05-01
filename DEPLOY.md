@@ -131,6 +131,42 @@ To keep your database healthy while maintaining enough history for the PlanRevie
 
 *Note: The `>> ingest.log 2>&1` part saves all output (and errors) to a log file so you can check if it's working.
 
+## Method 3: Automated Continuous Deployment (GitHub Actions)
+
+The project is configured to automatically deploy to production whenever changes are merged into the `main` branch. This process is handled by a GitHub Action workflow.
+
+### 1. Prerequisites
+You must have the "Direct Binary" method (Method 1) setup completed on your server once (e.g., initial directory structure, `.env` file, and `systemd` service).
+
+### 2. Configure GitHub Secrets
+To enable the automated deployment, add the following secrets to your GitHub repository (`Settings > Secrets and variables > Actions`):
+
+**Deployment Credentials:**
+*   `DEPLOY_HOST`: The IP address or DNS name of your production server.
+*   `DEPLOY_KEY`: The **entire contents** of the private SSH key used to access the server.
+
+**Application Configuration (.env):**
+*   `GROQ_API_KEY`: API key for Groq (required for evaluations and production).
+*   `EMBEDDING_API_KEY`: API key for Embeddings (required for evaluations and production).
+*   `GHOST_API_URL`: The URL of your Ghost blog.
+*   `GHOST_CONTENT_API_KEY`: Your Ghost Content API key.
+*   `GHOST_ADMIN_API_KEY`: Your Ghost Admin API key.
+*   `TELEGRAM_BOT_TOKEN`: Your Telegram Bot token.
+*   `TELEGRAM_ALLOWED_USER_IDS`: Comma-separated list of allowed Telegram IDs.
+*   `TELEGRAM_WEBHOOK_URL`: The full URL to your bot's webhook.
+
+**Optional Defaults (Overrides):**
+*   `DEFAULT_ADULTS`, `DEFAULT_CHILDREN`, `DEFAULT_COOKING_FREQUENCY`, etc.
+
+### 3. How it Works
+1.  **Trigger:** On every push to `main` (including PR merges).
+2.  **Test:** Runs standard unit tests.
+3.  **Evaluate:** Runs the Live AI Evaluation suite (`go test -run LiveEval`).
+4.  **Deploy:** If all tests pass, it:
+    *   Securely injects the `DEPLOY_KEY`.
+    *   Runs `./scripts/deploy.sh` to build, upload, and restart the service.
+    *   Runs database migrations automatically via the script.
+
 ---
 
 ## 🤖 Setting up the Telegram Bot (VPS)
@@ -150,14 +186,15 @@ TELEGRAM_ALLOW_USER_ID="12345678"
 TELEGRAM_WEBHOOK_URL="https://your-blog.com/webhook"
 ```
 
-### 2. Configure Systemd
-Create a service file to keep the bot running 24/7 and restart it if it crashes.
+### 2. Configure Systemd (Rootless)
+Create a user-level service file. This allows the bot to run without root privileges and enables the CI/CD pipeline to restart it securely.
 
 ```bash
-sudo nano /etc/systemd/system/meal-planner-bot.service
+mkdir -p ~/.config/systemd/user
+nano ~/.config/systemd/user/meal-planner-bot.service
 ```
 
-Paste this content (adjust paths if needed):
+Paste this content (note that `User=` is removed as it's implicit):
 
 ```ini
 [Unit]
@@ -166,24 +203,28 @@ After=network.target
 
 [Service]
 Type=simple
-User=ubuntu
-WorkingDirectory=/home/ubuntu
-# Load environment variables from the file we created
-EnvironmentFile=/home/ubuntu/.env
+WorkingDirectory=%h
+# Load environment variables
+EnvironmentFile=%h/.env
 # Run the binary
-ExecStart=/home/ubuntu/telegram-bot-linux
+ExecStart=%h/telegram-bot-linux
 Restart=always
 RestartSec=5
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
+```
+
+**Enable lingering** (crucial for user services to run without an active session):
+```bash
+sudo loginctl enable-linger $USER
 ```
 
 Enable and start the service:
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable meal-planner-bot
-sudo systemctl start meal-planner-bot
+systemctl --user daemon-reload
+systemctl --user enable meal-planner-bot
+systemctl --user start meal-planner-bot
 ```
 
 ### 3. Configure Nginx (Reverse Proxy)
