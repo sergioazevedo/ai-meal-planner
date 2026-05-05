@@ -105,10 +105,6 @@ func (a *App) IngestRecipes(ctx context.Context, force bool) error {
 		} else {
 			log.Printf("Successfully processed '%s'.", post.Title)
 		}
-
-		// Wait 5 seconds to stay under Rate Limits (Gemini Free Tier: 15 RPM, Groq: various)
-		// We sleep even on failure to ensure we don't hammer the API after a 429 error.
-		time.Sleep(5 * time.Second)
 	}
 
 	// Cleanup phase: remove recipes that are no longer in Ghost

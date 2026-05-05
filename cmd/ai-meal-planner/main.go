@@ -29,11 +29,8 @@ func main() {
 
 	ghostClient := ghost.NewClient(cfg)
 
-	geminiClient, err := llm.NewGeminiClient(ctx, cfg)
-	if err != nil {
-		log.Fatalf("Failed to initialize Gemini client: %v", err)
-	}
-	defer geminiClient.Close()
+	embedClient := llm.NewEmbeddingClient(cfg)
+	defer embedClient.Close()
 
 	analystModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
 	normalizerModel := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.3)
@@ -55,14 +52,14 @@ func main() {
 	metricsStore := metrics.NewStore(db.SQL)
 	defer metricsStore.Close()
 
-	recipeSearchService := recipe.NewSearchService(recipeRepo, vectorRepo, geminiClient)
+	recipeSearchService := recipe.NewSearchService(recipeRepo, vectorRepo, embedClient)
 	mealPlanner := planner.NewPlanner(recipeSearchService, planRepo, analystModel, normalizerModel, reviewerModel)
 	recipeClipper := clipper.NewClipper(ghostClient, normalizerModel)
 
 	application := app.NewApp(
 		ghostClient,
 		normalizerModel, // Use 8B for extraction
-		geminiClient,    // embedGen
+		embedClient,     // embedGen
 		metricsStore,
 		mealPlanner,
 		recipeClipper,

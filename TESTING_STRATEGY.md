@@ -22,7 +22,7 @@ Our testing suite is divided into three tiers:
 
 3.  **LLM Evals (Slow / Costly):**
     *   **What:** Testing the *reasoning* and *quality* of the AI agents using real LLM API calls.
-    *   **Tools:** Groq/Gemini APIs, Golden Dataset, LLM-as-a-Judge.
+    *   **Tools:** Groq/Embedding APIs, Golden Dataset, LLM-as-a-Judge.
     *   **Execution:** Runs via GitHub Actions on PRs to `main` (using `-run LiveEval`).
 
 ---
@@ -44,7 +44,7 @@ Once exported, this raw JSON text can be reviewed, hand-picked for the edge case
 
 **Important Data Minimization Step:**
 When curating this JSON, you should **empty the `instructions` array** for every recipe (e.g., `"instructions": []`).
-1. **Token Savings:** Instructions are the largest part of the recipe. Stripping them drastically reduces the context size sent to Groq/Gemini, making tests much faster and cheaper.
+1. **Token Savings:** Instructions are the largest part of the recipe. Stripping them drastically reduces the context size sent to Groq, making tests much faster and cheaper.
 2. **Proprietary Protection:** The step-by-step techniques are often the intellectual property of a recipe. Removing them ensures no proprietary logic is uploaded or processed during automated CI/CD runs.
 3. **Agent Independence:** The Analyst and Chef agents only require `Title`, `Tags`, `Ingredients`, and `Prep Time` to successfully construct meal plans and embeddings. They do not need to know *how* to cook the food.
 
@@ -67,7 +67,7 @@ When curating this JSON, you should **empty the `instructions` array** for every
 
 ## 3. LLM-as-a-Judge (The Evaluation Mechanism)
 
-We will replace hardcoded Go assertions (`if plan.Contains("Chicken")`) with a secondary, high-reasoning LLM (e.g., Gemini 1.5 Pro) that acts as the evaluator.
+We will replace hardcoded Go assertions (`if plan.Contains("Chicken")`) with a secondary, high-reasoning LLM (e.g., Llama 3 70B via Groq) that acts as the evaluator.
 
 ### The Mechanism:
 1.  **The Subject:** The Groq `Analyst` and `Chef` generate a plan based on a difficult prompt (e.g., "3 days of high-protein vegan, under 30 mins").
@@ -116,3 +116,4 @@ mockGen := &llmtest.MockTextGenerator{
 - [ ] Create `testdata/golden_recipes.json` with the first 10 edge-case recipes.
 - [ ] Refactor `analyst_eval_test.go` to load from the Golden Set instead of using inline Go structs.
 - [ ] Create a new `evaluator` package or agent that specifically handles the "LLM-as-a-Judge" prompting and parsing.
+and parsing.
