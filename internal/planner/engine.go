@@ -88,7 +88,14 @@ var recipeCompactor = func(content string) (string, error) {
 	if err := json.Unmarshal([]byte(content), &recipes); err != nil {
 		// If the tool response doesn't have Recipes
 		// don't fail! Just return the original content unchanged.
+		if content == "" {
+			return "No results", nil
+		}
 		return content, nil
+	}
+
+	if len(recipes) == 0 {
+		return "No recipes found matching the criteria", nil
 	}
 
 	var data []string
@@ -130,7 +137,7 @@ var searchRecipesSemanticTool = llm.Tool{
 
 // simplifyForTool reduces the payload of a recipe array to minimize token usage in the LLM context window.
 func simplifyForTool(recipes []value.Recipe) []value.Recipe {
-	var content []value.Recipe
+	content := []value.Recipe{} // Initialize to avoid nil marshaling to "null" if preferred, though "[]" is better
 	for _, r := range recipes {
 		content = append(content, value.Recipe{
 			ID:       r.ID,
