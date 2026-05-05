@@ -588,7 +588,7 @@ func (b *Bot) handleAdjustDraft(ctx context.Context, query *tgbotapi.CallbackQue
 	// Create a session to track that we're awaiting adjustment feedback
 	sessionCtx := SessionContextData{
 		PlanID:          planID,
-		OriginalRequest: "", // Will be populated from plan metadata if needed
+		OriginalRequest: plan.OriginalRequest,
 	}
 
 	sessionID, err := b.sessionRepo.Create(
@@ -702,10 +702,13 @@ func (b *Bot) handleAdjustmentFeedback(ctx context.Context, msg *tgbotapi.Messag
 		return
 	}
 
-	// Extract user request from the original plan data
+	// Extract user request from the session or original plan data
 	userRequest := contextData.OriginalRequest
 	if userRequest == "" {
-		userRequest = "meal plan" // Fallback if missing
+		userRequest = currentPlan.OriginalRequest
+	}
+	if userRequest == "" {
+		userRequest = "meal plan" // Fallback if still missing
 	}
 
 	// Call Planner to revise the plan
