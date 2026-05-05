@@ -1,6 +1,6 @@
 # AI-Assisted Recipe Meal Planner
 
-An **AI Agent project** that connects to your **Ghost CMS** blog, learns your recipes using **Google Gemini**, and generates personalized weekly meal plans using a **multi-agent role-based architecture**.
+An **AI Agent project** that connects to your **Ghost CMS** blog, learns your recipes using **generic Embedding APIs**, and generates personalized weekly meal plans using a **multi-agent role-based architecture**.
 
 While originally built as a CLI tool, the project has evolved into an intelligent system where most functionality is handled by a **Telegram Bot**.
 
@@ -8,7 +8,7 @@ While originally built as a CLI tool, the project has evolved into an intelligen
 
 *   **Multi-Agent Architecture**: Specialized agents (Analyst for strategy, Chef for execution) collaborate with a handover pattern to refine meal plans.
 *   **Ghost CMS Integration**: Automatically fetches and updates recipes from your blog. *Efficiently handles recipe updates, only processing and saving newer versions.*
-*   **AI Normalization**: Uses Gemini 1.5 Pro and Groq Llama3 7b to extract structured data (ingredients, quantities, steps, prep time, servings) from raw HTML posts.
+*   **AI Normalization**: Uses Groq Llama3 to extract structured data (ingredients, quantities, steps, prep time, servings) from raw HTML posts.
 *   **Agentic RAG Pipeline**: Generates vector embeddings for every recipe and provides the agent with specialized tools for both **Semantic Search** (conceptual matching) and **Random Discovery** (variety/serendipity).
 *   **Database Migrations**: Seamless schema evolution for your SQLite database, preserving data across updates.
 *   **Observability & Metrics**: Built-in SQLite-backed tracking for token usage, latency, and system health with proactive Telegram alerts for "context bloat".
@@ -33,7 +33,7 @@ While originally built as a CLI tool, the project has evolved into an intelligen
 
 You need the following API keys:
 1.  **Ghost Content & Admin API Keys**: To fetch and publish recipes.
-2.  **Google Gemini API Key**: For embeddings (free tier available).
+2.  **Embedding API Key**: For vector search (e.g., Mixedbread AI).
 3.  **Groq API Key**: For high-speed LLM inference (free tier available).
 
 ## ⚙️ Configuration
@@ -46,7 +46,7 @@ Create a `.env` file in your project root with the following variables:
 | :---------------------- | :--------------------------- |
 | `GHOST_URL`             | Your Ghost blog base URL     |
 | `GHOST_CONTENT_API_KEY` | Ghost Content API Key        |
-| `GEMINI_API_KEY`        | Google Gemini API Key        |
+| `EMBEDDING_API_KEY`     | Embedding API Key            |
 | `GROQ_API_KEY`          | Groq API Key                 |
 
 ### Optional (Telegram Bot)
@@ -82,7 +82,7 @@ Create a `.env` file in your project root:
 # Required
 GHOST_URL="https://your-blog.com"
 GHOST_CONTENT_API_KEY="your_ghost_content_key"
-GEMINI_API_KEY="your_google_gemini_key"
+EMBEDDING_API_KEY="your_embedding_api_key"
 GROQ_API_KEY="your_groq_api_key"
 
 # Optional: Telegram Bot
@@ -233,8 +233,7 @@ Unlike traditional recipe apps that lock you into a proprietary platform, this p
 - If issues persist, review migration logs in your deployment directory
 
 ### "API rate limits or quota exceeded"
-- Gemini has a 20-request/day limit on the free tier; use Groq for text generation instead
-- Check your usage in the Google Cloud Console and Groq dashboard
+- Check your usage in the Groq dashboard and your embedding provider's dashboard.
 - Consider spreading ingestion and planning requests throughout the day
 
 ---
@@ -243,7 +242,7 @@ Unlike traditional recipe apps that lock you into a proprietary platform, this p
 
 This tool is built with a **Zero-Cost Goal** in mind for personal use:
 
-*   **Free-Tier AI**: Optimized for the Google Gemini and Groq free tiers. The dual-provider approach ensures you stay within rate limits while spending $0 on LLM tokens for daily planning. *Intelligent embedding caching further minimizes API calls.*
+*   **Free-Tier AI**: Optimized for free-tier AI APIs. The dual-provider approach ensures you stay within rate limits while spending $0 on LLM tokens for daily planning. *Intelligent embedding caching further minimizes API calls.*
 *   **Resource Efficient**: Written in Go with a focus on minimal footprint. With an active memory usage of ~15MB, it is designed to run on extremely low-resource hardware, home servers, or the smallest cloud instances. Uses a **pure-Go SQLite driver**, requiring zero CGO and making cross-compilation trivial.
 *   **No Managed Databases**: By using SQLite, we avoid expensive managed database fees. *Schema changes are now managed gracefully by migrations.*
 *   **No Subscription Bloat**: You don't need a monthly subscription to a recipe service. Your only cost is the server you choose to host it on.
@@ -266,14 +265,6 @@ After deploying your planner:
 2. **Customize Your Profile**: Adjust household settings in `.env` (adults, children, ages, cooking frequency)
 3. **Monitor Performance**: Check `/metrics` in Telegram to see token usage and API latency
 4. **Explore Agent Behavior**: Read [AI_AGENT_ROADMAP.md](AI_AGENT_ROADMAP.md) to understand the multi-agent system's potential
-5. **Set Up Automation**: Configure a cron job to automatically ingest new recipes hourly (see [DEPLOY.md](DEPLOY.md))
-
-**Want to Contribute?** Check [TODO.md](TODO.md) for planned features and architectural decisions.
-
----
-
-## 📄 License
-MITe Agent Behavior**: Read [AI_AGENT_ROADMAP.md](AI_AGENT_ROADMAP.md) to understand the multi-agent system's potential
 5. **Set Up Automation**: Configure a cron job to automatically ingest new recipes hourly (see [DEPLOY.md](DEPLOY.md))
 
 **Want to Contribute?** Check [TODO.md](TODO.md) for planned features and architectural decisions.

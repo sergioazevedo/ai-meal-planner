@@ -20,7 +20,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o ai-meal-planner ./cmd/ai-meal-planner
 # Runtime Stage
 FROM alpine:latest
 
-# Install ca-certificates for HTTPS requests (needed for Ghost/Gemini APIs)
+# Install ca-certificates for HTTPS requests (needed for Ghost/Embedding APIs)
 RUN apk --no-cache add ca-certificates
 
 WORKDIR /root/
@@ -34,7 +34,8 @@ RUN mkdir -p data/recipes
 # Set environment variable defaults (override these at runtime)
 ENV GHOST_API_URL=""
 ENV GHOST_CONTENT_API_KEY=""
-ENV GEMINI_API_KEY=""
+ENV EMBEDDING_API_KEY=""
+ENV GROQ_API_KEY=""
 
 # Default command (can be overridden, e.g., "ingest" or "plan")
 ENTRYPOINT ["./ai-meal-planner"]

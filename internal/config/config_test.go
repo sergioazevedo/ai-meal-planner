@@ -15,7 +15,7 @@ func TestNewFromEnv(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		setEnv("GHOST_API_URL", "http://ghost.test")
 		setEnv("GHOST_CONTENT_API_KEY", "ghost_key")
-		setEnv("GEMINI_API_KEY", "gemini_key")
+		setEnv("EMBEDDING_API_KEY", "embed_key")
 		setEnv("GROQ_API_KEY", "groq_key")
 
 		cfg, err := NewFromEnv()
@@ -28,8 +28,8 @@ func TestNewFromEnv(t *testing.T) {
 		if cfg.GhostContentKey != "ghost_key" {
 			t.Errorf("Expected GhostContentKey to be 'ghost_key', got '%s'", cfg.GhostContentKey)
 		}
-		if cfg.GeminiAPIKey != "gemini_key" {
-			t.Errorf("Expected GeminiAPIKey to be 'gemini_key', got '%s'", cfg.GeminiAPIKey)
+		if cfg.EmbeddingAPIKey != "embed_key" {
+			t.Errorf("Expected EmbeddingAPIKey to be 'embed_key', got '%s'", cfg.EmbeddingAPIKey)
 		}
 		if cfg.GroqAPIKey != "groq_key" {
 			t.Errorf("Expected GroqAPIKey to be 'groq_key', got '%s'", cfg.GroqAPIKey)
@@ -38,7 +38,7 @@ func TestNewFromEnv(t *testing.T) {
 
 	t.Run("MissingGhostURL", func(t *testing.T) {
 		setEnv("GHOST_CONTENT_API_KEY", "ghost_key")
-		setEnv("GEMINI_API_KEY", "gemini_key")
+		setEnv("EMBEDDING_API_KEY", "embed_key")
 		setEnv("GROQ_API_KEY", "groq_key")
 
 		// Unset GHOST_API_URL specifically for this test
@@ -56,7 +56,7 @@ func TestNewFromEnv(t *testing.T) {
 
 	t.Run("MissingGhostContentKey", func(t *testing.T) {
 		setEnv("GHOST_API_URL", "http://ghost.test")
-		setEnv("GEMINI_API_KEY", "gemini_key")
+		setEnv("EMBEDDING_API_KEY", "embed_key")
 		setEnv("GROQ_API_KEY", "groq_key")
 
 		os.Unsetenv("GHOST_CONTENT_API_KEY")

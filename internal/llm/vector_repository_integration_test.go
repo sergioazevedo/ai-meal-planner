@@ -32,29 +32,26 @@ func TestVectorSearchRecallIntegration(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. Load configuration (permissively for integration test)
-	geminiKey := os.Getenv("GEMINI_API_KEY")
+	embedKey := os.Getenv("EMBEDDING_API_KEY")
 	groqKey := os.Getenv("GROQ_API_KEY")
 
-	if geminiKey == "" && groqKey == "" {
-		t.Skip("Skipping integration test: No GEMINI_API_KEY or GROQ_API_KEY found in environment.")
+	if embedKey == "" && groqKey == "" {
+		t.Skip("Skipping integration test: No EMBEDDING_API_KEY or GROQ_API_KEY found in environment.")
 	}
 
 	cfg := &config.Config{
-		GeminiAPIKey: geminiKey,
-		GroqAPIKey:   groqKey,
+		EmbeddingAPIKey: embedKey,
+		GroqAPIKey:      groqKey,
 	}
 
 	// Determine which LLM client to use based on config
 	var realEmbeddingGenerator llm.EmbeddingGenerator
 	var realTextGenerator llm.TextGenerator
-	if cfg.GeminiAPIKey != "" {
-		geminiClient, err := llm.NewGeminiClient(ctx, cfg)
-		if err != nil {
-			t.Skipf("Skipping Gemini integration test: failed to create Gemini client: %v\n", err)
-		}
-		defer geminiClient.Close()
-		realEmbeddingGenerator = geminiClient
-		// Use a mock for text generation since Gemini is embedding-only now
+	if cfg.EmbeddingAPIKey != "" {
+		embedClient := llm.NewEmbeddingClient(cfg)
+		defer embedClient.Close()
+		realEmbeddingGenerator = embedClient
+		// Use a mock for text generation since the embedding client is embedding-only
 		realTextGenerator = &llmtest.MockTextGenerator{
 			GenerateFn: func(conversation llm.Conversation) llm.ContentResponse {
 				// Return a dummy valid JSON for the extractor
@@ -66,17 +63,14 @@ func TestVectorSearchRecallIntegration(t *testing.T) {
 				}
 			},
 		}
-		t.Log("Using Gemini for embedding and Mock for text generation.\n")
+		t.Log("Using Generic Embedding Client for embedding and Mock for text generation.\n")
 	} else if cfg.GroqAPIKey != "" {
 		groqClient := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.1)
 		realTextGenerator = groqClient
-		// For Groq, if it doesn't have an embedding model, we might need a dummy or skip
-		// For this test, let's assume embedding is always realEmbeddingGenerator for now
 		t.Log("Using Groq for text generation (no embedding model).\n")
-		// If Groq only for text, need a fallback for embedding.
-		t.Skip("Skipping integration test: Groq does not provide embedding models suitable for this test setup. Please configure GEMINI_API_KEY.\n")
+		t.Skip("Skipping integration test: Groq does not provide embedding models suitable for this test setup. Please configure EMBEDDING_API_KEY.\n")
 	} else {
-		t.Skip("Skipping integration test: No GEMINI_API_KEY or GROQ_API_KEY found in environment.\n")
+		t.Skip("Skipping integration test: No EMBEDDING_API_KEY or GROQ_API_KEY found in environment.\n")
 	}
 
 	// Set up cache for embeddings
@@ -223,5 +217,5 @@ func TestVectorSearchRecallIntegration(t *testing.T) {
 // The schema is likely in db.go or embedding_queries.sql.
 // Let's assume vector_db.Schema is available. If not, I'll adapt.
 
-// Note: To run this test, set either GEMINI_API_KEY or GROQ_API_KEY in your environment.
-// Example: export GEMINI_API_KEY="your_key" && go test -v ./internal/llm/...
+// Note: To run this test, set either EMBEDDING_API_KEY or GROQ_API_KEY in your environment.
+// Example: export EMBEDDING_API_KEY="your_key" && go test -v ./internal/llm/...

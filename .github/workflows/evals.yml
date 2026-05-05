@@ -46,5 +46,5 @@ jobs:
     - name: Run Live AI Evals
       env:
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
       run: go test -v ./internal/planner -run LiveEval

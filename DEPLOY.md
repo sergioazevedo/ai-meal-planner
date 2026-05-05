@@ -23,7 +23,7 @@ cat << 'EOF' > .env
 GHOST_API_URL="https://your-blog.com"
 GHOST_CONTENT_API_KEY="your_key"
 GHOST_ADMIN_API_KEY="your_admin_key"
-GEMINI_API_KEY="your_key"
+EMBEDDING_API_KEY="your_key"
 GROQ_API_KEY="your_key"
 
 # Household Settings

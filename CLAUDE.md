@@ -4,7 +4,7 @@
 
 **AI-Assisted Recipe Meal Planner** is a Go-based intelligent system that:
 - Fetches recipes from Ghost CMS blogs
-- Uses Google Gemini & Groq LLMs to normalize and embed recipes
+- Uses Groq and generic Embedding APIs to normalize and embed recipes
 - Generates personalized weekly meal plans via a **multi-agent architecture**
 - Provides a Telegram bot interface for real-time interaction
 
@@ -51,7 +51,7 @@ User Request → RAG Search → Analyst Agent → Chef Agent → Telegram Respon
   - `app/` - Orchestration (ingestion pipeline, recipe processing)
   - `planner/` - Multi-agent planning system (Analyst, Chef)
   - `recipe/` - Recipe data model & repository
-  - `llm/` - LLM integrations (Gemini, Groq) + caching
+  - `llm/` - LLM integrations (Embedding, Groq) + caching
   - `ghost/` - Ghost CMS API client
   - `telegram/` - Telegram bot handler
   - `clipper/` - Recipe URL extraction & normalization
@@ -109,7 +109,7 @@ make remote-plan       # Run planning on deployed server
 **Required:**
 - `GHOST_URL` - Your Ghost blog URL
 - `GHOST_CONTENT_API_KEY` - Ghost Content API key
-- `GEMINI_API_KEY` - Google Gemini API key
+- `EMBEDDING_API_KEY` - Embedding API key (e.g. Mixedbread AI)
 - `GROQ_API_KEY` - Groq API key (for LLM inference)
 
 **Optional (Telegram):**
@@ -140,7 +140,7 @@ make remote-plan       # Run planning on deployed server
 ### RAG & Embeddings
 - **`internal/llm/vector_repository.go`** - Semantic search interface
 - **`internal/llm/cached_embedding_generator.go`** - Caching layer for embeddings
-- **`internal/llm/gemini.go`** - Gemini LLM client
+- **`internal/llm/embedding_client.go`** - Generic Embedding API client
 - **`internal/llm/groq.go`** - Groq LLM client
 
 ### Database
@@ -251,7 +251,7 @@ go test -v ./internal/planner -run TestAnalyst_LiveEval
 ### Caching Strategy
 - **Embedding caching**: Uses `text_hash` to avoid re-embedding identical content
 - **Location**: `internal/llm/cached_embedding_generator.go`
-- **Impact**: Dramatically reduces Gemini API usage during re-ingestion
+- **Impact**: Dramatically reduces Embedding API usage during re-ingestion
 
 ### RAG Pipeline
 - Semantic search via vector embeddings
@@ -306,4 +306,4 @@ go test -v ./internal/planner -run TestAnalyst_LiveEval
 
 ---
 
-Generated for Claude Code. Last updated: February 2026.
+Generated for Claude Code. Last updated: May 2026.

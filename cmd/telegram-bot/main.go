@@ -29,17 +29,12 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	ctx := context.Background()
-
 	// 2. Initialize Infrastructure (LLMs)
 	analystModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
 	normalizerModel := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.3)
 
-	geminiClient, err := llm.NewGeminiClient(ctx, cfg)
-	if err != nil {
-		log.Fatalf("Failed to create Gemini client: %v", err)
-	}
-	defer geminiClient.Close()
+	embedClient := llm.NewEmbeddingClient(cfg)
+	defer embedClient.Close()
 
 	// Initialize the new SQLite database
 	db, err := database.NewDB(cfg.DatabasePath)
@@ -65,7 +60,7 @@ func main() {
 	// Create reviewer model (use same high-reasoning model as Analyst for plan revision)
 	reviewerModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
 
-	recipeSearchService := recipe.NewSearchService(recipeRepo, vectorRepo, geminiClient)
+	recipeSearchService := recipe.NewSearchService(recipeRepo, vectorRepo, embedClient)
 	mealPlanner := planner.NewPlanner(recipeSearchService, planRepo, analystModel, normalizerModel, reviewerModel)
 	recipeClipper := clipper.NewClipper(ghostClient, normalizerModel)
 
@@ -73,7 +68,7 @@ func main() {
 	sessionRepo := telegram.NewSessionRepository(db.SQL)
 
 	// 7. Initialize Telegram Bot
-	bot, err := telegram.NewBot(cfg, mealPlanner, recipeClipper, metricsStore, normalizerModel, geminiClient, planRepo, recipeRepo, vectorRepo, shoppingRepo, sessionRepo, auditRepo)
+	bot, err := telegram.NewBot(cfg, mealPlanner, recipeClipper, metricsStore, normalizerModel, embedClient, planRepo, recipeRepo, vectorRepo, shoppingRepo, sessionRepo, auditRepo)
 	if err != nil {
 		log.Fatalf("Failed to initialize Telegram Bot: %v", err)
 	}

@@ -11,7 +11,7 @@ type Config struct {
 	GhostURL        string
 	GhostContentKey string
 	GhostAdminKey   string
-	GeminiAPIKey    string
+	EmbeddingAPIKey string
 	GroqAPIKey      string
 
 	// Telegram Config
@@ -47,9 +47,9 @@ func NewFromEnv() (*Config, error) {
 		ghostAdminKey = ghostContentKey
 	}
 
-	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
-	if geminiAPIKey == "" {
-		return nil, fmt.Errorf("GEMINI_API_KEY environment variable not set")
+	embeddingAPIKey := os.Getenv("EMBEDDING_API_KEY")
+	if embeddingAPIKey == "" {
+		return nil, fmt.Errorf("EMBEDDING_API_KEY environment variable not set")
 	}
 
 	groqAPIKey := os.Getenv("GROQ_API_KEY")
@@ -127,7 +127,7 @@ func NewFromEnv() (*Config, error) {
 		GhostURL:                ghostURL,
 		GhostContentKey:         ghostContentKey,
 		GhostAdminKey:           ghostAdminKey,
-		GeminiAPIKey:            geminiAPIKey,
+		EmbeddingAPIKey:         embeddingAPIKey,
 		GroqAPIKey:              groqAPIKey,
 		TelegramBotToken:        telegramBotToken,
 		TelegramWebhookURL:      telegramWebhookURL,

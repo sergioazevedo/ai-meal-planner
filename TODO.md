@@ -2,15 +2,15 @@
 
 ## Phase 1: Ingestion & Normalization (Current Status: Mostly Complete)
 - [x] Fetch recipes from Ghost CMS (`internal/ghost`)
-- [x] Normalize HTML to JSON using Gemini (`internal/recipe`)
+- [x] Normalize HTML to JSON using Groq (`internal/recipe`)
 - [x] Store normalized recipes locally (`internal/storage`)
 - [x] Basic CLI entry point to run ingestion (`cmd/ai-meal-planner`)
 
 ## Phase 1.5: Reliable LLM Inference (High Priority)
-- [x] **Switch to Hybrid LLM Stack (Groq + Gemini)**
+- [x] **Switch to Hybrid LLM Stack (Groq + Generic Embeddings)**
   - [x] Implement Groq API client for text generation (Normalization & Planning).
   - [x] Use Llama 3 (70B) or Mixtral for reliable, high-speed inference.
-  - [x] Keep Gemini strictly for `text-embedding-004` (Embeddings) to bypass text rate limits.
+  - [x] Use generic HTTP client for Embeddings to bypass text rate limits.
   - [x] Update `.env` and `config` to support `GROQ_API_KEY`.
 - [x] **Enhance Normalization**
   - [x] Add `PrepTime` and `Servings` fields to `NormalizedRecipe` struct.
@@ -19,19 +19,19 @@
 
 ## Phase 2: RAG Pipeline (Embeddings & Search)
 - [x] **Implement Embeddings Generation**
-  - Add functionality to generate vector embeddings for normalized recipes (using Gemini Embedding API or local model).
-  - Update `NormalizedRecipe` or create a new structure to hold embeddings.
-- [x] **Implement Vector Storage & Retrieval**
-  - Choose and implement a vector store (e.g., SQLite with vector extension, or a simple in-memory store if scale permits, or `pgvector`).
-  - Implement "Semantic Search" to find recipes matching user queries/preferences.
+  - Add functionality to generate vector embeddings for normalized recipes (using generic Embedding API or local model).
+- Update `NormalizedRecipe` or create a new structure to hold embeddings.
+- Implement Vector Storage & Retrieval
+- Choose and implement a vector store (e.g., SQLite with vector extension, or a simple in-memory store if scale permits, or `pgvector`).
+- Implement "Semantic Search" to find recipes matching user queries/preferences.
 
 ## Phase 3: Meal Planning Logic
 - [x] **Implement Planner Logic** (`internal/planner`)
-  - Create the logic to accept user constraints (e.g., "low carb", "vegetarian").
-  - Retrieve relevant recipes using the vector search.
-  - Construct the context-rich prompt for Gemini.
+- Create the logic to accept user constraints (e.g., "low carb", "vegetarian").
+- Retrieve relevant recipes using the vector search.
+- Construct the context-rich prompt for Groq.
 - [x] **Generate Meal Plan**
-  - specific function to parse Gemini's response into a structured Weekly Meal Plan.
+- specific function to parse Groq's response into a structured Weekly Meal Plan.
 
 ## Phase 4: Application Polish & CLI
 - [x] **CLI Improvements**
@@ -97,7 +97,7 @@
 ## Phase 9: Pure Agentic RAG Migration (Current Status: Complete)
 - [x] **Implement Tool-Enabled Analyst**
     - [x] Update `internal/llm/llm.go` to support Tool Definitions and Tool Calls (universal schema).
-    - [x] Implement tool-calling logic in `internal/llm/gemini.go` and `internal/llm/groq.go`.
+    - [x] Implement tool-calling logic in `internal/llm/groq.go`.
     - [x] Update `internal/planner/analyst.go` to implement the Agent Loop.
     - [x] Update `internal/planner/analyst_prompt.md` to include tool descriptions and strategic rules.
 - [x] **Implement Critic/Reviewer Feedback Loop**
@@ -113,4 +113,4 @@
     - [x] Remove pre-fetching and trust LLM agency.
 - [ ] **Implement Nutritionist as Consultant**
     - [ ] Add `get_nutrition_advice` tool to the Analyst's toolset.
-    - [ ] Implement a lightweight Nutritionist tool/agent to provide meal alternatives.
+    - [ ] Implement a lightweight Nutritionist tool/agent to provide meal alternatives.provide meal alternatives.
