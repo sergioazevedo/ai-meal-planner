@@ -19,19 +19,19 @@
 
 ## Phase 2: RAG Pipeline (Embeddings & Search)
 - [x] **Implement Embeddings Generation**
-  - Add functionality to generate vector embeddings for normalized recipes (using generic Embedding API or local model).
-- Update `NormalizedRecipe` or create a new structure to hold embeddings.
-- Implement Vector Storage & Retrieval
-- Choose and implement a vector store (e.g., SQLite with vector extension, or a simple in-memory store if scale permits, or `pgvector`).
-- Implement "Semantic Search" to find recipes matching user queries/preferences.
+  - [x] Add functionality to generate vector embeddings for normalized recipes (using generic Embedding API or local model).
+- [x] Update `NormalizedRecipe` or create a new structure to hold embeddings.
+- [x] Implement Vector Storage & Retrieval
+- [x] Choose and implement a vector store (e.g., SQLite with vector extension, or a simple in-memory store if scale permits, or `pgvector`).
+- [x] Implement "Semantic Search" to find recipes matching user queries/preferences.
 
 ## Phase 3: Meal Planning Logic
 - [x] **Implement Planner Logic** (`internal/planner`)
-- Create the logic to accept user constraints (e.g., "low carb", "vegetarian").
-- Retrieve relevant recipes using the vector search.
-- Construct the context-rich prompt for Groq.
+- [x] Create the logic to accept user constraints (e.g., "low carb", "vegetarian").
+- [x] Retrieve relevant recipes using the vector search.
+- [x] Construct the context-rich prompt for Groq.
 - [x] **Generate Meal Plan**
-- specific function to parse Groq's response into a structured Weekly Meal Plan.
+- [x] specific function to parse Groq's response into a structured Weekly Meal Plan.
 
 ## Phase 4: Application Polish & CLI
 - [x] **CLI Improvements**
