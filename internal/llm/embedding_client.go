@@ -12,11 +12,6 @@ import (
 	"ai-meal-planner/internal/config"
 )
 
-// HTTPDoer defines the interface for making HTTP requests to allow dependency inversion.
-type HTTPDoer interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
 // EmbeddingClient is a generic HTTP client for generating vector embeddings.
 // It is designed to work with APIs that follow the OpenAI-compatible /v1/embeddings format,
 // such as Mixedbread AI.
@@ -24,22 +19,12 @@ type EmbeddingClient struct {
 	apiKey     string
 	baseURL    string
 	model      string
-	httpClient HTTPDoer
-}
-
-// EmbeddingClientOption defines a functional option for configuring the EmbeddingClient.
-type EmbeddingClientOption func(*EmbeddingClient)
-
-// WithHTTPClient allows injecting a custom HTTP client (e.g., for testing).
-func WithHTTPClient(client HTTPDoer) EmbeddingClientOption {
-	return func(c *EmbeddingClient) {
-		c.httpClient = client
-	}
+	httpClient *http.Client
 }
 
 // NewEmbeddingClient creates a new Embedding API client.
-func NewEmbeddingClient(cfg *config.Config, opts ...EmbeddingClientOption) *EmbeddingClient {
-	c := &EmbeddingClient{
+func NewEmbeddingClient(cfg *config.Config) *EmbeddingClient {
+	return &EmbeddingClient{
 		apiKey:  cfg.EmbeddingAPIKey,
 		baseURL: "https://api.mixedbread.com/v1/embeddings",
 		// Default to Mixedbread's large model (1024 dimensions)
@@ -48,10 +33,6 @@ func NewEmbeddingClient(cfg *config.Config, opts ...EmbeddingClientOption) *Embe
 			Timeout: 30 * time.Second,
 		},
 	}
-	for _, opt := range opts {
-		opt(c)
-	}
-	return c
 }
 
 type embeddingRequest struct {
