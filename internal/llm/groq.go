@@ -105,6 +105,7 @@ func (c *GroqClient) GenerateContent(
 ) (ContentResponse, error) {
 	maxRetries := 3
 	var lastErr error
+	var contentResponse *ContentResponse
 
 	messages, err := mapToGroqMessages(conversation)
 	if err != nil {
@@ -142,72 +143,88 @@ func (c *GroqClient) GenerateContent(
 		if err != nil {
 			return ContentResponse{}, fmt.Errorf("failed to send request: %w", err)
 		}
-		defer resp.Body.Close()
 
-		if resp.StatusCode == http.StatusTooManyRequests {
-			bodyBytes, _ := io.ReadAll(resp.Body)
-			lastErr = fmt.Errorf("groq api rate limit: %s", string(bodyBytes))
+		// Use a closure to ensure the body is always closed and drained in the loop
+		err = func() error {
+			defer resp.Body.Close()
 
-			// Attempt to parse wait time from message: "Please try again in 9.24s"
-			waitTime := 5 * time.Second // default
-			bodyStr := string(bodyBytes)
-			if strings.Contains(bodyStr, "try again in ") {
-				var seconds float64
-				parts := strings.Split(bodyStr, "try again in ")
-				if len(parts) > 1 {
-					fmt.Sscanf(parts[1], "%fs", &seconds)
-					if seconds > 0 {
-						waitTime = time.Duration(seconds*1000+500) * time.Millisecond // Add 500ms buffer
+			if resp.StatusCode == http.StatusTooManyRequests {
+				bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+				lastErr = fmt.Errorf("groq api rate limit: %s", string(bodyBytes))
+
+				// Attempt to parse wait time from message: "Please try again in 9.24s"
+				waitTime := 5 * time.Second // default
+				bodyStr := string(bodyBytes)
+				if strings.Contains(bodyStr, "try again in ") {
+					var seconds float64
+					parts := strings.Split(bodyStr, "try again in ")
+					if len(parts) > 1 {
+						fmt.Sscanf(parts[1], "%fs", &seconds)
+						if seconds > 0 {
+							waitTime = time.Duration(seconds*1000+500) * time.Millisecond // Add 500ms buffer
+						}
 					}
+				}
+
+				fmt.Printf("Rate limit hit. Waiting %v before retry %d/%d...\n", waitTime, i+1, maxRetries)
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(waitTime):
+					return nil // Retry the loop
 				}
 			}
 
-			fmt.Printf("Rate limit hit. Waiting %v before retry %d/%d...\n", waitTime, i+1, maxRetries)
-			select {
-			case <-ctx.Done():
-				return ContentResponse{}, ctx.Err()
-			case <-time.After(waitTime):
-				continue
-			}
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			bodyBytes, _ := io.ReadAll(resp.Body)
-			return ContentResponse{}, fmt.Errorf("groq api error: status=%d body=%s", resp.StatusCode, string(bodyBytes))
-		}
-
-		var groqResp groqResponse
-		if err := json.NewDecoder(resp.Body).Decode(&groqResp); err != nil {
-			return ContentResponse{}, fmt.Errorf("failed to decode response: %w", err)
-		}
-
-		if len(groqResp.Choices) == 0 {
-			return ContentResponse{}, fmt.Errorf("no content generated")
-		}
-
-		var toolCalls []ToolCall
-		for _, call := range groqResp.Choices[0].Message.ToolCalls {
-			mapped, err := c.mapToTToolCall(call)
-			if err != nil {
-				return ContentResponse{}, err
+			if resp.StatusCode != http.StatusOK {
+				bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+				return fmt.Errorf("groq api error: status=%d body=%s", resp.StatusCode, string(bodyBytes))
 			}
 
-			toolCalls = append(toolCalls, mapped)
+			var groqResp groqResponse
+			if err := json.NewDecoder(resp.Body).Decode(&groqResp); err != nil {
+				return fmt.Errorf("failed to decode response: %w", err)
+			}
+
+			// Drain remaining body
+			_, _ = io.Copy(io.Discard, resp.Body)
+
+			if len(groqResp.Choices) == 0 {
+				return fmt.Errorf("no content generated")
+			}
+
+			var toolCalls []ToolCall
+			for _, call := range groqResp.Choices[0].Message.ToolCalls {
+				mapped, err := c.mapToTToolCall(call)
+				if err != nil {
+					return err
+				}
+
+				toolCalls = append(toolCalls, mapped)
+			}
+
+			contentResponse = &ContentResponse{
+				Message: Message{
+					Role:      groqResp.Choices[0].Message.Role,
+					Content:   groqResp.Choices[0].Message.Content,
+					ToolCalls: toolCalls,
+				},
+				Usage: shared.TokenUsage{
+					PromptTokens:     groqResp.Usage.PromptTokens,
+					CompletionTokens: groqResp.Usage.CompletionTokens,
+					TotalTokens:      groqResp.Usage.TotalTokens,
+					Model:            c.modelID,
+				},
+			}
+			return nil
+		}()
+
+		if err != nil {
+			return ContentResponse{}, err
 		}
 
-		return ContentResponse{
-			Message: Message{
-				Role:      groqResp.Choices[0].Message.Role,
-				Content:   groqResp.Choices[0].Message.Content,
-				ToolCalls: toolCalls,
-			},
-			Usage: shared.TokenUsage{
-				PromptTokens:     groqResp.Usage.PromptTokens,
-				CompletionTokens: groqResp.Usage.CompletionTokens,
-				TotalTokens:      groqResp.Usage.TotalTokens,
-				Model:            c.modelID,
-			},
-		}, nil
+		if contentResponse != nil {
+			return *contentResponse, nil
+		}
 	}
 
 	return ContentResponse{}, fmt.Errorf("exceeded max retries after rate limit: %w", lastErr)
