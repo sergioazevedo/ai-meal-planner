@@ -25,15 +25,15 @@ type Tool struct {
 }
 
 type ToolParameters struct {
-	Type       ParameterType
-	Properties map[string]Property
-	Required   []string
+	Type       ParameterType       `json:"type"`
+	Properties map[string]Property `json:"properties"`
+	Required   []string            `json:"required,omitempty"`
 }
 
 type Property struct {
-	Type        string
-	Description string
-	Items       *Property // Used when Type is PropertyTypeArray
+	Type        string    `json:"type"`
+	Description string    `json:"description,omitempty"`
+	Items       *Property `json:"items,omitempty"` // Used when Type is PropertyTypeArray
 }
 
 type ParameterType string
