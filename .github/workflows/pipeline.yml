@@ -1,0 +1,101 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  unit-tests:
+    name: Run Unit Tests (Fast)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Install Dependencies
+        run: go mod download
+
+      - name: Run Standard Unit Tests
+        run: go test -short -v ./...
+
+  ai-evals:
+    name: Run Live AI Evals (Slow)
+    needs: unit-tests # Only run evals if basic code logic passes
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Install Dependencies
+        run: go mod download
+
+      - name: Run Live AI Evals
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
+        run: go test -v ./internal/planner -run LiveEval
+
+  deploy-production:
+    name: Deploy to Production
+    needs: [unit-tests, ai-evals]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Install Dependencies
+        run: go mod download
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/deploy_key.pem
+          chmod 600 ~/.ssh/deploy_key.pem
+          # Add host to known_hosts to prevent interactive prompt
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Generate production .env
+        run: |
+          cat << EOF > .env
+          GHOST_API_URL="${{ secrets.GHOST_API_URL }}"
+          GHOST_CONTENT_API_KEY="${{ secrets.GHOST_CONTENT_API_KEY }}"
+          GHOST_ADMIN_API_KEY="${{ secrets.GHOST_ADMIN_API_KEY }}"
+          EMBEDDING_API_KEY="${{ secrets.EMBEDDING_API_KEY }}"
+          GROQ_API_KEY="${{ secrets.GROQ_API_KEY }}"
+          TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}"
+          TELEGRAM_ALLOWED_USER_IDS="${{ secrets.TELEGRAM_ALLOWED_USER_IDS }}"
+          TELEGRAM_WEBHOOK_URL="${{ secrets.TELEGRAM_WEBHOOK_URL }}"
+          DEFAULT_ADULTS="${{ secrets.DEFAULT_ADULTS || '2' }}"
+          DEFAULT_CHILDREN="${{ secrets.DEFAULT_CHILDREN || '1' }}"
+          DEFAULT_CHILDREN_AGES="${{ secrets.DEFAULT_CHILDREN_AGES || '3' }}"
+          DEFAULT_COOKING_FREQUENCY="${{ secrets.DEFAULT_COOKING_FREQUENCY || '5' }}"
+          RECIPE_STORAGE_PATH="${{ secrets.RECIPE_STORAGE_PATH || 'data/recipes' }}"
+          EOF
+
+      - name: Run Deployment Script
+        run: ./scripts/deploy.sh ${{ secrets.DEPLOY_HOST }} ~/.ssh/deploy_key.pem
+
+      - name: Cleanup SSH Key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key.pem
