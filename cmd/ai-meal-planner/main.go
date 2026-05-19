@@ -33,7 +33,7 @@ func main() {
 	defer embedClient.Close()
 
 	analystModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
-	normalizerModel := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.3)
+	normalizerModel := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.1)
 	reviewerModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
 
 	// Initialize the new SQLite database
