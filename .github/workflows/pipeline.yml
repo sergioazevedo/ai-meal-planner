@@ -96,6 +96,8 @@ jobs:
       - name: Run Deployment Script
         run: ./scripts/deploy.sh ${{ secrets.DEPLOY_HOST }} ~/.ssh/deploy_key.pem
 
-      - name: Cleanup SSH Key
+      - name: Cleanup Secrets
         if: always()
-        run: rm -f ~/.ssh/deploy_key.pem
+        run: |
+          rm -f ~/.ssh/deploy_key.pem
+          rm -f .env
