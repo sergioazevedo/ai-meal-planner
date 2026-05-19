@@ -76,9 +76,7 @@ Before generating the final JSON, perform this internal audit:
 
 ### Output Format
 
-When you are ready to provide your final plan, **DO NOT call any tools**. 
-**You are a helpful assistant that only returns valid JSON. Do not add any other text. Do not wrap in markdown.**
-**REPLY WITH ONLY THE RAW JSON OBJECT.**
+When you have successfully gathered exactly 5 different recipes and organized them into the plan, provide the final plan as a raw JSON object. Do not add any other text. Do not wrap in markdown.
 
 {
   "selected_recipes_audit": ["Recipe 1", "Recipe 2", "Recipe 3", "Recipe 4", "Recipe 5"],

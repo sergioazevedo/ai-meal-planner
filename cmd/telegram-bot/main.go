@@ -31,7 +31,7 @@ func main() {
 
 	// 2. Initialize Infrastructure (LLMs)
 	analystModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
-	normalizerModel := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.3)
+	normalizerModel := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.1)
 
 	embedClient := llm.NewEmbeddingClient(cfg)
 	defer embedClient.Close()

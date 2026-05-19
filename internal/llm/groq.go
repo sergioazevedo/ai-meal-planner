@@ -42,8 +42,8 @@ type groqFunction struct {
 }
 
 type groqMessage struct {
-	Role       string         `json:"role,omitempty"`
-	Content    string         `json:"content,omitempty"`
+	Role       string         `json:"role"`
+	Content    string         `json:"content"`
 	ToolCalls  []groqToolCall `json:"tool_calls,omitempty"`
 	ToolCallID string         `json:"tool_call_id,omitempty"`
 }
