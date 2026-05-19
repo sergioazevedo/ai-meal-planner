@@ -197,7 +197,7 @@ var searchRecipesRandomTool = llm.Tool{
 		Type: llm.ParameterTypeObject,
 		Properties: map[string]llm.Property{
 			"limit": {
-				Type:        llm.PropertyTypeInteger,
+				Type:        llm.PropertyTypeNumber,
 				Description: "The number of random recipes to retrieve. Default is 10.",
 			},
 			"exclude_tags": {
