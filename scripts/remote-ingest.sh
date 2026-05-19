@@ -1,32 +1,35 @@
 #!/bin/bash
-# Remote control for Ingesting recipes
-# Usage: ./scripts/remote-ingest.sh <TARGET_HOST>
-# Example: ./scripts/remote-ingest.sh personal-blog
+set -e
 
-TARGET="${1}"
+# Configuration
+CLI_BINARY="ai-meal-planner-linux"
+REMOTE_USER="ubuntu"
+REMOTE_HOST="${1}"
+PEM_KEY="${2}"
+FORCE_FLAG="${3}"
 
-FORCE="${2}"
-
-
-
-if [ -z "$TARGET" ]; then
-
-    echo "Usage: $0 <TARGET_HOST> [-force]"
-
+if [ -z "$REMOTE_HOST" ]; then
+    echo "Usage: ./scripts/remote-ingest.sh <REMOTE_IP_OR_ALIAS> [PATH_TO_PEM] [-force]"
     exit 1
-
 fi
-
-
 
 ARGS="ingest"
-
-if [ "$FORCE" == "-force" ]; then
-
+if [ "$FORCE_FLAG" == "-force" ] || [ "$PEM_KEY" == "-force" ]; then
     ARGS="ingest -force"
-
+    # If the second argument was -force, nullify the PEM key to avoid ssh errors
+    if [ "$PEM_KEY" == "-force" ]; then
+        PEM_KEY=""
+    fi
 fi
 
+echo "Running remote ingestion on $REMOTE_HOST (Args: $ARGS)..."
 
+CMD_INGEST="cd /home/$REMOTE_USER && set -a && . ./.env && set +a && ./$CLI_BINARY $ARGS"
 
-ssh "$TARGET" "export \$(grep -v '^#' /home/ubuntu/.env | xargs) && /home/ubuntu/ai-meal-planner-linux $ARGS"
+if [ -n "$PEM_KEY" ]; then
+    ssh -i "$PEM_KEY" "$REMOTE_USER@$REMOTE_HOST" "$CMD_INGEST"
+else
+    ssh "$REMOTE_USER@$REMOTE_HOST" "$CMD_INGEST"
+fi
+
+echo "Ingestion completed successfully."
