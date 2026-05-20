@@ -371,6 +371,10 @@ func formatPlanMarkdownParts(plan *planner.MealPlan) (string, string) {
 			pb.WriteString(fmt.Sprintf(" (%s)", dp.PrepTime))
 		}
 		pb.WriteString("\n")
+		if len(dp.SideDishes) > 0 {
+			sideDishesStr := strings.Join(dp.SideDishes, ", ")
+			pb.WriteString(fmt.Sprintf("   — %s\n", sideDishesStr))
+		}
 		if dp.Note != "" {
 			pb.WriteString(fmt.Sprintf("_%s_\n", dp.Note))
 		}
@@ -478,6 +482,10 @@ func formatDraftPlanMarkdown(plan *planner.MealPlan) string {
 					sb.WriteString(fmt.Sprintf(" (%s)", currentDay.PrepTime))
 				}
 				sb.WriteString("\n")
+				if len(currentDay.SideDishes) > 0 {
+					sideDishesStr := strings.Join(currentDay.SideDishes, ", ")
+					sb.WriteString(fmt.Sprintf("   — %s\n", sideDishesStr))
+				}
 				i++ // Skip the next day since we just grouped it
 			}
 		}
@@ -489,6 +497,10 @@ func formatDraftPlanMarkdown(plan *planner.MealPlan) string {
 				sb.WriteString(fmt.Sprintf(" (%s)", currentDay.PrepTime))
 			}
 			sb.WriteString("\n")
+			if len(currentDay.SideDishes) > 0 {
+				sideDishesStr := strings.Join(currentDay.SideDishes, ", ")
+				sb.WriteString(fmt.Sprintf("   — %s\n", sideDishesStr))
+			}
 		}
 	}
 
