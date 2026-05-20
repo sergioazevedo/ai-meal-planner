@@ -9,6 +9,7 @@ import (
 type Recipe struct {
 	ID          string   `json:"id,omitempty"`
 	Title       string   `json:"title,omitempty"`
+	SideDishes  []string `json:"side_dishes,omitempty"`
 	Ingredients []string `json:"ingredients,omitempty"`
 	Tags        []string `json:"tags,omitempty"`
 	PrepTime    string   `json:"prep_time,omitempty"`

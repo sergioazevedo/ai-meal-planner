@@ -15,6 +15,7 @@ import (
 	"ai-meal-planner/internal/metrics"
 	"ai-meal-planner/internal/planner"
 	"ai-meal-planner/internal/recipe"
+	"strings"
 )
 
 // App holds the application's dependencies.
@@ -186,6 +187,9 @@ func (a *App) GenerateMealPlan(ctx context.Context, userID string, request strin
 	fmt.Println("\n=== WEEKLY MEAL PLAN ===")
 	for _, dp := range plan.Plan {
 		fmt.Printf("% -10s: %s\n", dp.Day, dp.RecipeTitle)
+		if len(dp.SideDishes) > 0 {
+			fmt.Printf("            Side dishes: %s\n", strings.Join(dp.SideDishes, ", "))
+		}
 		if dp.Note != "" {
 			fmt.Printf("            Note: %s\n", dp.Note)
 		}

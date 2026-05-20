@@ -4,7 +4,7 @@ Household: {{ .Adults }} Adults, {{ .Children }} Children (Ages: {{ .ChildrenAge
 
 ### Draft Meal Plan
 {{ range .CurrentPlan }}
-- **{{ .Day }}**: {{ .RecipeTitle }} ({{ .PrepTime }}){{ if .Note }} - _{{ .Note }}_{{ end }}
+- **{{ .Day }}**: {{ .RecipeTitle }} ({{ .PrepTime }}){{ if .SideDishes }} — {{ range .SideDishes }}{{ . }}, {{ end }}{{ end }}{{ if .Note }} - _{{ .Note }}_{{ end }}
 {{ end }}
 
 ## User Feedback/Adjustment Request

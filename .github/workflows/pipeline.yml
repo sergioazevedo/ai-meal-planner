@@ -84,13 +84,12 @@ jobs:
           EMBEDDING_API_KEY="${{ secrets.EMBEDDING_API_KEY }}"
           GROQ_API_KEY="${{ secrets.GROQ_API_KEY }}"
           TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}"
-          TELEGRAM_ALLOWED_USER_IDS="${{ secrets.TELEGRAM_ALLOWED_USER_IDS }}"
+          TELEGRAM_ALLOWED_USER_ID="${{ secrets.TELEGRAM_ALLOWED_USER_ID }}"
           TELEGRAM_WEBHOOK_URL="${{ secrets.TELEGRAM_WEBHOOK_URL }}"
           DEFAULT_ADULTS="${{ secrets.DEFAULT_ADULTS || '2' }}"
           DEFAULT_CHILDREN="${{ secrets.DEFAULT_CHILDREN || '1' }}"
           DEFAULT_CHILDREN_AGES="${{ secrets.DEFAULT_CHILDREN_AGES || '3' }}"
           DEFAULT_COOKING_FREQUENCY="${{ secrets.DEFAULT_COOKING_FREQUENCY || '5' }}"
-          RECIPE_STORAGE_PATH="${{ secrets.RECIPE_STORAGE_PATH || 'data/recipes' }}"
           EOF
 
       - name: Run Deployment Script
