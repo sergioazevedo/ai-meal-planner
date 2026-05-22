@@ -31,7 +31,13 @@ Use these details to compile the shopping list and estimate prep times.
 1. **Format the Plan**: Convert the Analyst's schedule into the final JSON format.
     - For **Cook** days: Label the title as "Cook: [Recipe Name]". Use the recipe's `PrepTime`.
     - For **Reuse** days: Label the title as "Leftovers: [Recipe Name]". Set `prep_time` to "5-10 mins".
-    - **Side Dishes**: Copy the side dishes from the recipe details into the `side_dishes` field for each plan entry.
+    - **Recipe Title Cleanliness**: The `recipe_title` MUST contain ONLY the main dish name. 
+      - **FORBIDDEN**: "Cook: Sassami de Frango com Purê de batata".
+      - **REQUIRED**: `recipe_title`: "Cook: Sassami de Frango", `side_dishes`: ["Purê de batata"].
+      - If the Analyst's proposal or the recipe title includes side dishes (e.g. "com Arroz"), you MUST surgically strip them from the title and move them to the `side_dishes` field.
+    - **Side Dishes**: Populate the `side_dishes` field for each plan entry.
+      - First, copy any side dishes explicitly listed in the "Selected Recipe Details".
+      - Second, if the recipe instructions or title mention accompaniments (like "servir com arroz" or "acompanha salada"), add those to the `side_dishes` field as well.
     - **Notes**: Refine the Analyst's notes to be encouraging and helpful for the user.
 
 2. **Generate Shopping List**:
