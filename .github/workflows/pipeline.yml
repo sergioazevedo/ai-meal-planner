@@ -3,8 +3,22 @@ name: CI/CD Pipeline
 on:
   push:
     branches: ["main"]
+    paths:
+      - '**/*.go'
+      - '**/*.sql'
+      - 'go.mod'
+      - 'go.sum'
+      - 'sqlc.yaml'
+      - '.github/workflows/pipeline.yml'
   pull_request:
     branches: ["main"]
+    paths:
+      - '**/*.go'
+      - '**/*.sql'
+      - 'go.mod'
+      - 'go.sum'
+      - 'sqlc.yaml'
+      - '.github/workflows/pipeline.yml'
 
 jobs:
   unit-tests:
