@@ -751,6 +751,18 @@ func (b *Bot) handleAdjustmentFeedback(ctx context.Context, msg *tgbotapi.Messag
 		LatencyMS:        reviewerResult.Meta.Latency.Milliseconds(),
 	})
 
+	// Log the interaction for auditing
+	_ = b.auditRepo.LogInteraction(
+		ctx,
+		userID,
+		planID,
+		"RevisePlan",
+		userRequest,
+		adjustmentFeedback,
+		currentPlan,                // Previous State
+		reviewerResult.RevisedPlan, // New State
+	)
+
 	// Check for context bloat
 	if reviewerResult.Meta.Usage.PromptTokens > 8000 {
 		alert := fmt.Sprintf("⚠️ *Context Bloat Alert*\nAgent: PlanReviewer\nModel: %s\nPrompt Tokens: %d", reviewerResult.Meta.Usage.Model, reviewerResult.Meta.Usage.PromptTokens)

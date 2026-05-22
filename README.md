@@ -16,6 +16,7 @@ While originally built as a CLI tool, the project has evolved into an intelligen
 *   **Batch Cooking & Leftovers**: Smart 5-session cooking cadence that maximizes efficiency by bridging weekday dinners and weekend lunches.
 *   **Household Scaling**: Automatically adjusts ingredient quantities based on household composition (Adults vs. Children with age adjustments).
 *   **Recipe Memory**: Avoids repetition by tracking recently-used recipes at the database level to ensure long-term variety.
+*   **Audit Logging**: Automatically captures snapshots of plan adjustments (Original Request, User Feedback, and Before/After states) for quality monitoring and debugging.
 *   **Telegram Bot Interface**: Chat with your planner, request meals, check `/metrics`, and get instant markdown plans on your phone.
 *   **Centralized Storage**: Single SQLite database for recipes, embeddings, meal plans, and metrics with robust schema management via migrations.
 
