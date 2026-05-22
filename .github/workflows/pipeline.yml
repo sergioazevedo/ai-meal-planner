@@ -3,8 +3,22 @@ name: CI/CD Pipeline
 on:
   push:
     branches: ["main"]
+    paths:
+      - '**/*.go'
+      - '**/*.sql'
+      - 'go.mod'
+      - 'go.sum'
+      - 'sqlc.yaml'
+      - '.github/workflows/pipeline.yml'
   pull_request:
     branches: ["main"]
+    paths:
+      - '**/*.go'
+      - '**/*.sql'
+      - 'go.mod'
+      - 'go.sum'
+      - 'sqlc.yaml'
+      - '.github/workflows/pipeline.yml'
 
 jobs:
   unit-tests:
@@ -84,7 +98,7 @@ jobs:
           EMBEDDING_API_KEY="${{ secrets.EMBEDDING_API_KEY }}"
           GROQ_API_KEY="${{ secrets.GROQ_API_KEY }}"
           TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}"
-          TELEGRAM_ALLOWED_USER_ID="${{ secrets.TELEGRAM_ALLOWED_USER_ID }}"
+          TELEGRAM_ALLOW_USER_ID="${{ secrets.TELEGRAM_ALLOW_USER_ID }}"
           TELEGRAM_WEBHOOK_URL="${{ secrets.TELEGRAM_WEBHOOK_URL }}"
           DEFAULT_ADULTS="${{ secrets.DEFAULT_ADULTS || '2' }}"
           DEFAULT_CHILDREN="${{ secrets.DEFAULT_CHILDREN || '1' }}"
