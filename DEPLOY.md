@@ -158,11 +158,12 @@ To enable the automated deployment, add the following secrets to your GitHub rep
 **Optional Defaults (Overrides):**
 *   `DEFAULT_ADULTS`, `DEFAULT_CHILDREN`, `DEFAULT_COOKING_FREQUENCY`, etc.
 
-### 3. How it Works
-1.  **Trigger:** On every push to `main` (including PR merges).
+3. **How it Works**
+1.  **Trigger:** On every push to `main` (including PR merges). **Note:** The pipeline is optimized with *path filters* to only trigger when relevant files change (Go code, SQL, dependencies, or workflow config), ignoring documentation-only or script-only changes.
 2.  **Test:** Runs standard unit tests.
 3.  **Evaluate:** Runs the Live AI Evaluation suite (`go test -run LiveEval`).
 4.  **Deploy:** If all tests pass, it:
+
     *   Securely injects the `DEPLOY_KEY`.
     *   Runs `./scripts/deploy.sh` to build, upload, and restart the service.
     *   Runs database migrations automatically via the script.
