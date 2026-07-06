@@ -61,7 +61,7 @@ func main() {
 	reviewerModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
 
 	recipeSearchService := recipe.NewSearchService(recipeRepo, vectorRepo, embedClient)
-	mealPlanner := planner.NewPlanner(recipeSearchService, planRepo, analystModel, normalizerModel, reviewerModel)
+	mealPlanner := planner.NewPlanner(recipeSearchService, planRepo, analystModel, analystModel, reviewerModel)
 	recipeClipper := clipper.NewClipper(ghostClient, normalizerModel)
 
 	// 6. Initialize Session Repository for conversation state tracking

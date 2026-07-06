@@ -53,7 +53,7 @@ func main() {
 	defer metricsStore.Close()
 
 	recipeSearchService := recipe.NewSearchService(recipeRepo, vectorRepo, embedClient)
-	mealPlanner := planner.NewPlanner(recipeSearchService, planRepo, analystModel, normalizerModel, reviewerModel)
+	mealPlanner := planner.NewPlanner(recipeSearchService, planRepo, analystModel, analystModel, reviewerModel)
 	recipeClipper := clipper.NewClipper(ghostClient, normalizerModel)
 
 	application := app.NewApp(
