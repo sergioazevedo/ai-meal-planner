@@ -76,12 +76,10 @@ Before generating the final JSON, perform this internal audit:
 
 ### Output Format
 
-When you have successfully gathered exactly 5 different recipes and organized them into the plan, provide the final plan as a raw JSON object. Do not add any other text. Do not wrap in markdown.
+When you have successfully gathered exactly 5 different recipes and organized them into the plan, you MUST call the `submit_meal_proposal` tool with the final plan. This is your final action. Do not output the plan as text, markdown, or raw JSON in your response.
 
-{
-  "selected_recipes_audit": ["Recipe 1", "Recipe 2", "Recipe 3", "Recipe 4", "Recipe 5"],
-  "planned_meals": [
-    { "day": "Monday", "recipe_id": "...", "action": "Cook", "recipe_title": "Recipe A", "note": "Strategic reasoning" },
-    ...
-  ]
-}
+The parameters for the tool are:
+- `selected_recipes_audit`: An array of the 5 unique recipe titles you selected.
+- `planned_meals`: An array of the 9 planned meals, each with `day`, `action`, `recipe_title`, and `note`.
+
+Do not attempt to finalize the plan without calling this tool.
