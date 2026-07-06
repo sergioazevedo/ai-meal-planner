@@ -31,9 +31,11 @@ type ToolParameters struct {
 }
 
 type Property struct {
-	Type        string    `json:"type"`
-	Description string    `json:"description,omitempty"`
-	Items       *Property `json:"items,omitempty"` // Used when Type is PropertyTypeArray
+	Type        string              `json:"type"`
+	Description string              `json:"description,omitempty"`
+	Items       *Property           `json:"items,omitempty"`      // Used when Type is PropertyTypeArray
+	Properties  map[string]Property `json:"properties,omitempty"` // Used when Type is object
+	Required    []string            `json:"required,omitempty"`   // Used when Type is object
 }
 
 type ParameterType string
@@ -50,6 +52,7 @@ const (
 	PropertyTypeBoolean = "boolean"
 	PropertyTypeInteger = "integer"
 	PropertyTypeArray   = "array"
+	PropertyTypeObject  = "object"
 )
 
 // ContentResponse contains the generated text and metadata like token usage.

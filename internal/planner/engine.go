@@ -3,6 +3,7 @@ package planner
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -11,6 +12,9 @@ import (
 	"ai-meal-planner/internal/shared"
 	"ai-meal-planner/internal/value"
 )
+
+// ErrAgentFinished is returned by a ToolHandler to signal that the agent has finished its task.
+var ErrAgentFinished = errors.New("agent finished")
 
 // ToolHandler is a generic function that processes a tool call and returns a side effect of type T.
 type ToolHandler[T any] func(ctx context.Context, call llm.ToolCall) (llm.Message, T, error)
@@ -60,6 +64,15 @@ func ExecuteAgentLoop[T any](
 			start := time.Now()
 			msg, effect, err := handler(ctx, toolCall)
 			if err != nil {
+				if errors.Is(err, ErrAgentFinished) {
+					metas = append(metas, shared.ToolCallMeta{
+						ToolName: toolCall.Name,
+						Input:    toolCall.Args,
+						Latency:  time.Since(start),
+					})
+					sideEffects = append(sideEffects, effect)
+					return resp, sideEffects, metas, nil
+				}
 				return llm.ContentResponse{}, nil, nil, err
 			}
 

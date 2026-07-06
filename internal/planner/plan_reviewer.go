@@ -19,6 +19,36 @@ var planReviewerPrompt string
 //go:embed plan_reviewer_user_context_prompt.md
 var planReviewerUserContextPrompt string
 
+var submitRevisedPlanTool = llm.Tool{
+	Name:        "submit_revised_plan",
+	Description: "Submit the revised meal plan. Use this tool ONLY when you have successfully adjusted the meal plan according to the user feedback. This is your final action.",
+	Parameters: llm.ToolParameters{
+		Type: llm.ParameterTypeObject,
+		Properties: map[string]llm.Property{
+			"plan": {
+				Type:        llm.PropertyTypeArray,
+				Description: "The revised meal schedule.",
+				Items: &llm.Property{
+					Type: llm.PropertyTypeObject,
+					Properties: map[string]llm.Property{
+						"day": {
+							Type: llm.PropertyTypeString,
+						},
+						"recipe_title": {
+							Type: llm.PropertyTypeString,
+						},
+						"note": {
+							Type: llm.PropertyTypeString,
+						},
+					},
+					Required: []string{"day", "recipe_title", "note"},
+				},
+			},
+		},
+		Required: []string{"plan"},
+	},
+}
+
 type planReviewerUserContextData struct {
 	OriginalRequest    string
 	CurrentPlan        []DayPlan
@@ -81,6 +111,10 @@ func (r *PlanReviewer) Run(
 	// 1. Setup Tool Handlers
 	initialLookup := make(map[string]value.Recipe) // Used for mapping titles back to IDs
 
+	rawResponse := struct {
+		Plan []DayPlan `json:"plan"`
+	}{}
+
 	// 2. Setup Tool Handlers
 	handlers := map[string]ToolHandler[[]value.Recipe]{
 		searchRecipesSemanticTool.Name: func(ctx context.Context, toolCall llm.ToolCall) (llm.Message, []value.Recipe, error) {
@@ -88,6 +122,20 @@ func (r *PlanReviewer) Run(
 		},
 		searchRecipesRandomTool.Name: func(ctx context.Context, toolCall llm.ToolCall) (llm.Message, []value.Recipe, error) {
 			return HandleRecipeRandomSearch(ctx, r.searcher, toolCall, recipesRecentlyUsed)
+		},
+		submitRevisedPlanTool.Name: func(ctx context.Context, toolCall llm.ToolCall) (llm.Message, []value.Recipe, error) {
+			b, err := json.Marshal(toolCall.Args)
+			if err != nil {
+				return llm.Message{}, nil, fmt.Errorf("failed to marshal terminal tool args: %w", err)
+			}
+			if err := json.Unmarshal(b, &rawResponse); err != nil {
+				return llm.Message{}, nil, fmt.Errorf("failed to parse terminal tool args: %w", err)
+			}
+			return llm.Message{
+				Role:       "tool",
+				Content:    `{"status":"success"}`,
+				ToolCallID: toolCall.ID,
+			}, nil, ErrAgentFinished
 		},
 	}
 
@@ -99,6 +147,7 @@ func (r *PlanReviewer) Run(
 		[]llm.Tool{
 			searchRecipesSemanticTool,
 			searchRecipesRandomTool,
+			submitRevisedPlanTool,
 		},
 		handlers,
 	)
@@ -114,24 +163,22 @@ func (r *PlanReviewer) Run(
 		}
 	}
 
-	// 4. Parse JSON Response
-	rawResponse := struct {
-		Plan []DayPlan `json:"plan"`
-	}{}
-
-	cleanedJSON := llm.CleanJSON(resp.Message.Content)
-	if err = json.Unmarshal([]byte(cleanedJSON), &rawResponse); err != nil {
-		return PlanReviewerResult{
-				Meta: shared.AgentMeta{
-					AgentName: "PlanReviewer",
-					Usage:     resp.Usage,
-					ToolCalls: toolMetas,
-				},
-			}, fmt.Errorf(
-				"failed to parse plan reviewer response %w. Response: %s",
-				err,
-				resp.Message.Content,
-			)
+	// 4. Parse JSON Response (Fallback to message content if terminal tool wasn't called)
+	if len(rawResponse.Plan) == 0 {
+		cleanedJSON := llm.CleanJSON(resp.Message.Content)
+		if err = json.Unmarshal([]byte(cleanedJSON), &rawResponse); err != nil {
+			return PlanReviewerResult{
+					Meta: shared.AgentMeta{
+						AgentName: "PlanReviewer",
+						Usage:     resp.Usage,
+						ToolCalls: toolMetas,
+					},
+				}, fmt.Errorf(
+					"failed to parse plan reviewer response %w. Response: %s",
+					err,
+					resp.Message.Content,
+				)
+		}
 	}
 
 	// 5. Build final result and map IDs

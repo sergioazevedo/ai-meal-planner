@@ -91,3 +91,113 @@ func TestGeneratePlan(t *testing.T) {
 		t.Errorf("Expected 2 items in shopping list, got %d", len(plan.ShoppingList))
 	}
 }
+
+func TestAnalyst_TerminalTool(t *testing.T) {
+	ctx := context.Background()
+
+	mockSearcher := &mockSearcher{
+		recipes: []value.Recipe{
+			{ID: "1", Title: "Pasta", PrepTime: "15 mins"},
+		},
+	}
+
+	mockGen := &llmtest.MockTextGenerator{
+		ResponseChain: []llm.ContentResponse{
+			{
+				Message: llm.Message{
+					Role: "assistant",
+					ToolCalls: []llm.ToolCall{
+						{
+							ID:   "call_1",
+							Name: "submit_meal_proposal",
+							Args: map[string]any{
+								"selected_recipes_audit": []any{"Pasta"},
+								"planned_meals": []any{
+									map[string]any{
+										"day":          "Monday",
+										"action":       "Cook",
+										"recipe_title": "Pasta",
+										"note":         "Yum",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	analyst := NewAnalyst(mockGen, mockSearcher)
+	result, err := analyst.Run(ctx, "I want pasta", PlanningContext{}, nil)
+	if err != nil {
+		t.Fatalf("Analyst.Run failed: %v", err)
+	}
+
+	proposal := result.Proposal
+	if len(proposal.PlannedMeals) != 1 {
+		t.Errorf("Expected 1 planned meal, got %d", len(proposal.PlannedMeals))
+	}
+	if proposal.PlannedMeals[0].RecipeTitle != "Pasta" {
+		t.Errorf("Expected 'Pasta', got '%s'", proposal.PlannedMeals[0].RecipeTitle)
+	}
+}
+
+func TestPlanReviewer_TerminalTool(t *testing.T) {
+	ctx := context.Background()
+
+	mockSearcher := &mockSearcher{
+		recipes: []value.Recipe{
+			{ID: "r1", Title: "Chicken Roast"},
+		},
+	}
+
+	mockGen := &llmtest.MockTextGenerator{
+		ResponseChain: []llm.ContentResponse{
+			{
+				Message: llm.Message{
+					Role: "assistant",
+					ToolCalls: []llm.ToolCall{
+						{
+							ID:   "call_2",
+							Name: "submit_revised_plan",
+							Args: map[string]any{
+								"plan": []any{
+									map[string]any{
+										"day":          "Monday",
+										"recipe_title": "Chicken Roast",
+										"note":         "Revised",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	currentPlan := &MealPlan{
+		WeekStart: time.Now(),
+		Plan: []DayPlan{
+			{Day: "Monday", RecipeID: "r1", RecipeTitle: "Chicken Roast", Note: "Old Note"},
+		},
+	}
+
+	reviewer := NewPlanReviewer(mockGen, mockSearcher)
+	result, err := reviewer.Run(ctx, currentPlan, "I want pasta", "Please update", PlanningContext{}, nil)
+	if err != nil {
+		t.Fatalf("PlanReviewer.Run failed: %v", err)
+	}
+
+	revised := result.RevisedPlan
+	if len(revised.Plan) != 1 {
+		t.Errorf("Expected 1 planned meal, got %d", len(revised.Plan))
+	}
+	if revised.Plan[0].RecipeTitle != "Chicken Roast" {
+		t.Errorf("Expected 'Chicken Roast', got '%s'", revised.Plan[0].RecipeTitle)
+	}
+	if revised.Plan[0].Note != "Revised" {
+		t.Errorf("Expected 'Revised', got '%s'", revised.Plan[0].Note)
+	}
+}

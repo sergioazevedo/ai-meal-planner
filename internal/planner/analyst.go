@@ -19,6 +19,50 @@ var analystPrompt string
 //go:embed user_context_prompt.md
 var userContextPrompt string
 
+var submitMealProposalTool = llm.Tool{
+	Name:        "submit_meal_proposal",
+	Description: "Submit the final meal proposal. Use this tool ONLY when you have successfully gathered exactly 5 different recipes and organized them into the plan. This is your final action. Do not call this tool with empty or incomplete lists.",
+	Parameters: llm.ToolParameters{
+		Type: llm.ParameterTypeObject,
+		Properties: map[string]llm.Property{
+			"selected_recipes_audit": {
+				Type:        llm.PropertyTypeArray,
+				Description: "The titles of the 5 unique recipes selected.",
+				Items: &llm.Property{
+					Type: llm.PropertyTypeString,
+				},
+			},
+			"planned_meals": {
+				Type:        llm.PropertyTypeArray,
+				Description: "The 9 planned meals schedule.",
+				Items: &llm.Property{
+					Type: llm.PropertyTypeObject,
+					Properties: map[string]llm.Property{
+						"day": {
+							Type:        llm.PropertyTypeString,
+							Description: "The day of the week (e.g., 'Monday').",
+						},
+						"action": {
+							Type:        llm.PropertyTypeString,
+							Description: "The action, either 'Cook' or 'Reuse'.",
+						},
+						"recipe_title": {
+							Type:        llm.PropertyTypeString,
+							Description: "The exact title of the recipe.",
+						},
+						"note": {
+							Type:        llm.PropertyTypeString,
+							Description: "Strategic reasoning for this meal.",
+						},
+					},
+					Required: []string{"day", "action", "recipe_title", "note"},
+				},
+			},
+		},
+		Required: []string{"selected_recipes_audit", "planned_meals"},
+	},
+}
+
 type userContextData struct {
 	UserRequest  string
 	Recipes      []value.Recipe
@@ -104,6 +148,8 @@ func (a *Analyst) Run(
 
 	initialLookup := make(map[string]value.Recipe)
 
+	raw := &rawLlmResult{}
+
 	// 2. Setup Tool Handlers
 	handlers := map[string]ToolHandler[[]value.Recipe]{
 		searchRecipesSemanticTool.Name: func(ctx context.Context, toolCall llm.ToolCall) (llm.Message, []value.Recipe, error) {
@@ -111,6 +157,20 @@ func (a *Analyst) Run(
 		},
 		searchRecipesRandomTool.Name: func(ctx context.Context, toolCall llm.ToolCall) (llm.Message, []value.Recipe, error) {
 			return HandleRecipeRandomSearch(ctx, a.searcher, toolCall, recipesRecentlyUsed)
+		},
+		submitMealProposalTool.Name: func(ctx context.Context, toolCall llm.ToolCall) (llm.Message, []value.Recipe, error) {
+			b, err := json.Marshal(toolCall.Args)
+			if err != nil {
+				return llm.Message{}, nil, fmt.Errorf("failed to marshal terminal tool args: %w", err)
+			}
+			if err := json.Unmarshal(b, raw); err != nil {
+				return llm.Message{}, nil, fmt.Errorf("failed to parse terminal tool args: %w", err)
+			}
+			return llm.Message{
+				Role:       "tool",
+				Content:    `{"status":"success"}`,
+				ToolCallID: toolCall.ID,
+			}, nil, ErrAgentFinished
 		},
 	}
 
@@ -122,6 +182,7 @@ func (a *Analyst) Run(
 		[]llm.Tool{
 			searchRecipesSemanticTool,
 			searchRecipesRandomTool,
+			submitMealProposalTool,
 		},
 		handlers,
 	)
@@ -137,21 +198,22 @@ func (a *Analyst) Run(
 		}
 	}
 
-	// 5. Parse JSON
-	raw := &rawLlmResult{}
-	cleanedJSON := llm.CleanJSON(resp.Message.Content)
-	if err = json.Unmarshal([]byte(cleanedJSON), raw); err != nil {
-		return AnalystResult{
-				Meta: shared.AgentMeta{
-					AgentName: "Analyst",
-					Usage:     resp.Usage,
-					ToolCalls: toolMetas,
-				},
-			}, fmt.Errorf(
-				"failed to parse analyst prompt response %w. Response: %s",
-				err,
-				resp.Message.Content,
-			)
+	// 5. Parse JSON (Fallback to message content if terminal tool wasn't called)
+	if len(raw.PlannedMeals) == 0 {
+		cleanedJSON := llm.CleanJSON(resp.Message.Content)
+		if err = json.Unmarshal([]byte(cleanedJSON), raw); err != nil {
+			return AnalystResult{
+					Meta: shared.AgentMeta{
+						AgentName: "Analyst",
+						Usage:     resp.Usage,
+						ToolCalls: toolMetas,
+					},
+				}, fmt.Errorf(
+					"failed to parse analyst prompt response %w. Response: %s",
+					err,
+					resp.Message.Content,
+				)
+		}
 	}
 
 	// 6. Map back to Domain Models
