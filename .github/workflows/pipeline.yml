@@ -86,8 +86,8 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/deploy_key.pem
           chmod 600 ~/.ssh/deploy_key.pem
-          # Add host to known_hosts to prevent interactive prompt
-          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+          # Disable host key checking for the deploy host on this ephemeral runner
+          printf "Host %s\n\tStrictHostKeyChecking no\n\tUserKnownHostsFile /dev/null\n" "${{ secrets.DEPLOY_HOST }}" > ~/.ssh/config
 
       - name: Generate production .env
         run: |
@@ -112,5 +112,5 @@ jobs:
       - name: Cleanup Secrets
         if: always()
         run: |
-          rm -f ~/.ssh/deploy_key.pem
+          rm -f ~/.ssh/deploy_key.pem ~/.ssh/config
           rm -f .env
