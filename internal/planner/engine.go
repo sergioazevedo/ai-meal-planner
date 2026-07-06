@@ -121,7 +121,7 @@ var searchRecipesSemanticTool = llm.Tool{
 			},
 			"exclude_tags": {
 				Type:        llm.PropertyTypeArray,
-				Description: "A list of tags (in English) to completely exclude from the search (e.g., ['chicken', 'beef', 'dairy']). Use this to enforce negative constraints.",
+				Description: "A list of tags (in English) to completely exclude from the search (e.g., ['chicken', 'beef', 'dairy']). MUST be an array. If there are no tags to exclude, omit this parameter entirely (do not pass an empty string).",
 				Items: &llm.Property{
 					Type: llm.PropertyTypeString,
 				},
@@ -202,7 +202,7 @@ var searchRecipesRandomTool = llm.Tool{
 			},
 			"exclude_tags": {
 				Type:        llm.PropertyTypeArray,
-				Description: "A list of tags (in English) to completely exclude from the search (e.g., ['chicken', 'beef', 'dairy']). Use this to enforce negative constraints.",
+				Description: "A list of tags (in English) to completely exclude from the search (e.g., ['chicken', 'beef', 'dairy']). MUST be an array. If there are no tags to exclude, omit this parameter entirely (do not pass an empty string).",
 				Items: &llm.Property{
 					Type: llm.PropertyTypeString,
 				},
