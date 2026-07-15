@@ -80,7 +80,7 @@ type Message struct {
 }
 
 func (m *Message) IsAToolCall() bool {
-	return m.Content == "" && len(m.ToolCalls) > 0
+	return len(m.ToolCalls) > 0
 }
 
 func (m *Message) IsAToolResponse() bool {

@@ -46,3 +46,57 @@ func TestCleanJSON(t *testing.T) {
 		})
 	}
 }
+
+func TestIsAToolCall(t *testing.T) {
+	tests := []struct {
+		name     string
+		msg      Message
+		expected bool
+	}{
+		{
+			name: "tool call with empty content",
+			msg: Message{
+				Content: "",
+				ToolCalls: []ToolCall{
+					{Name: "search_recipes"},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "tool call with reasoning content",
+			msg: Message{
+				Content: "Let me search for some pasta recipes.",
+				ToolCalls: []ToolCall{
+					{Name: "search_recipes"},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "no tool call with content",
+			msg: Message{
+				Content:   "I found some recipes.",
+				ToolCalls: nil,
+			},
+			expected: false,
+		},
+		{
+			name: "empty message",
+			msg: Message{
+				Content:   "",
+				ToolCalls: nil,
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := tt.msg.IsAToolCall()
+			if actual != tt.expected {
+				t.Errorf("%s: IsAToolCall() = %v, want %v", tt.name, actual, tt.expected)
+			}
+		})
+	}
+}
