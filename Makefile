@@ -1,6 +1,6 @@
 # AI Meal Planner Makefile
 
-.PHONY: build test test-short eval eval-retrieval ingest plan help migrate-up migrate-down migrate-create
+.PHONY: build test test-short eval ingest plan help migrate-up migrate-down migrate-create
 
 # Default target
 help:
@@ -9,7 +9,6 @@ help:
 	@echo "  make build-linux       - Build all linux binaries"
 	@echo "  make test              - Run all unit tests (skipping live LLM evals)"
 	@echo "  make eval              - Run live LLM evaluation tests (costs money!)"
-	@echo "  make eval-retrieval    - Run the live embedding retrieval evaluation"
 	@echo "  make ingest            - Run local ingestion"
 	@echo "  make metrics-cleanup   - Clean up old metrics & audit data (60 days)"
 	@echo "  make migrate-up        - Apply all pending database migrations"
@@ -32,9 +31,6 @@ test:
 # Run only the live LLM evaluation tests
 eval:
 	go test -v ./internal/planner -run "_Eval"
-
-eval-retrieval:
-	go test -v ./internal/llm -run "TestVectorSearchQualityIntegration"
 
 # Database Migrations
 migrate-up:

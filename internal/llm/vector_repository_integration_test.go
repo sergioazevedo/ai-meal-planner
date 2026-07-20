@@ -29,6 +29,9 @@ func TestGoldenRetrievalDataset(t *testing.T) {
 	validateGoldenDataset(t, recipes, queries)
 }
 
+// The fixtures are deliberately curated and manually labelled. Keep ambiguous
+// alternatives in the recipe set, and never derive relevance labels from the
+// retrieval system being evaluated.
 // TestVectorSearchQualityIntegration evaluates real embeddings against a stable,
 // curated recipe dataset. It is intentionally a live, opt-in test.
 func TestVectorSearchQualityIntegration(t *testing.T) {
