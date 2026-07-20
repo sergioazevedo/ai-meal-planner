@@ -72,6 +72,10 @@ func (c *CachedEmbeddingGenerator) GenerateEmbedding(ctx context.Context, text s
 	return embedding, nil
 }
 
+func (c *CachedEmbeddingGenerator) EmbeddingMetadata() EmbeddingMetadata {
+	return c.realGen.EmbeddingMetadata()
+}
+
 // SaveCache persists the current in-memory cache to the file system.
 func (c *CachedEmbeddingGenerator) SaveCache() error {
 	c.mu.Lock()

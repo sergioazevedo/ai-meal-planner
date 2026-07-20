@@ -76,7 +76,10 @@ func TestIngestRecipes_Cleanup(t *testing.T) {
 	}
 
 	// Also add an embedding for it to check CASCADE
-	err = vectorRepo.Save(ctx, orphanedID, []float32{1.0}, "hash")
+	err = vectorRepo.Save(ctx, orphanedID, []float32{1.0}, "hash", llm.EmbeddingMetadata{
+		Model:      "test-embedding-model",
+		Dimensions: 1,
+	})
 	if err != nil {
 		t.Fatalf("failed to save orphaned embedding: %v", err)
 	}

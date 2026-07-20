@@ -160,4 +160,11 @@ var NoTools []Tool
 // EmbeddingGenerator is an interface for generating vector embeddings from text.
 type EmbeddingGenerator interface {
 	GenerateEmbedding(ctx context.Context, text string) ([]float32, error)
+	EmbeddingMetadata() EmbeddingMetadata
+}
+
+// EmbeddingMetadata identifies the vector space produced by an embedding generator.
+type EmbeddingMetadata struct {
+	Model      string
+	Dimensions int
 }

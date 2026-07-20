@@ -106,15 +106,26 @@ func (r *Repository) GetByIds(ctx context.Context, ids []string) ([]value.Recipe
 		return nil, fmt.Errorf("failed to get recipes by IDs: %w", err)
 	}
 
-	var recipes []value.Recipe
+	recipesByID := make(map[string]value.Recipe, len(dbRecipes))
 	for _, dbRec := range dbRecipes {
 		var rec value.Recipe
 		if err := json.Unmarshal([]byte(dbRec.Data), &rec); err != nil {
 			fmt.Printf("Warning: Failed to unmarshal recipe JSON for ID %s: %v\n", dbRec.ID, err)
 			continue
 		}
-		recipes = append(recipes, rec)
+		recipesByID[dbRec.ID] = rec
 	}
+
+	// SQL does not preserve the order of values in an IN clause. Rebuild the
+	// result in the caller-provided order so vector similarity ranking survives
+	// hydration of the full recipe records.
+	recipes := make([]value.Recipe, 0, len(recipesByID))
+	for _, id := range ids {
+		if rec, ok := recipesByID[id]; ok {
+			recipes = append(recipes, rec)
+		}
+	}
+
 	return recipes, nil
 }
 

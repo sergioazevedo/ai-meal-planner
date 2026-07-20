@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 )
 
 // ProcessAndSaveRecipe encapsulates the common logic for processing a recipe post,
@@ -27,7 +28,7 @@ func ProcessAndSaveRecipe(
 	}
 
 	// Generate and Save Embedding
-	_, meta, err := extractor.ProcessAndSaveEmbedding(ctx, rec)
+	_, meta, err := extractor.ProcessAndSaveEmbedding(ctx, rec, force)
 	if err != nil {
 		return fmt.Errorf("failed to process and save embedding: %w", err)
 	}
@@ -47,9 +48,10 @@ func ensureRecipe(
 	if !force {
 		rec, err := recipeRepo.Get(ctx, post.ID)
 		if err == nil {
-			return rec, nil
-		}
-		if !errors.Is(err, sql.ErrNoRows) {
+			if !sourceWasUpdated(rec.UpdatedAt, post.UpdatedAt) {
+				return rec, nil
+			}
+		} else if !errors.Is(err, sql.ErrNoRows) {
 			return value.Recipe{}, fmt.Errorf("failed to get recipe from repo: %w", err)
 		}
 	}
@@ -80,4 +82,20 @@ func ensureRecipe(
 	}
 
 	return res.Recipe, nil
+}
+
+func sourceWasUpdated(stored, incoming string) bool {
+	if stored == incoming {
+		return false
+	}
+
+	storedAt, storedErr := time.Parse(time.RFC3339, stored)
+	incomingAt, incomingErr := time.Parse(time.RFC3339, incoming)
+	if storedErr != nil || incomingErr != nil {
+		// If timestamps cannot be compared safely, prefer refreshing over serving
+		// potentially stale recipe data.
+		return true
+	}
+
+	return incomingAt.After(storedAt)
 }

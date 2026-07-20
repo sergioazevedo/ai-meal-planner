@@ -50,9 +50,12 @@ type MockEmbeddingGenerator struct {
 	ShouldError bool
 	// Values allows tests to provide custom embedding results.
 	Values []float32
+	Model  string
+	Calls  int
 }
 
 func (m *MockEmbeddingGenerator) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
+	m.Calls++
 	if m.ShouldError {
 		return nil, fmt.Errorf("mock ai error")
 	}
@@ -60,4 +63,16 @@ func (m *MockEmbeddingGenerator) GenerateEmbedding(ctx context.Context, text str
 		return m.Values, nil
 	}
 	return []float32{0.1, 0.2, 0.3}, nil
+}
+
+func (m *MockEmbeddingGenerator) EmbeddingMetadata() llm.EmbeddingMetadata {
+	model := m.Model
+	if model == "" {
+		model = "test-embedding-model"
+	}
+	dimensions := len(m.Values)
+	if dimensions == 0 {
+		dimensions = 3
+	}
+	return llm.EmbeddingMetadata{Model: model, Dimensions: dimensions}
 }
