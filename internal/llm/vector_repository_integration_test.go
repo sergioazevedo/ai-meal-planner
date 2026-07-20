@@ -1,221 +1,173 @@
 package llm_test
 
 import (
+	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/database"
 	"ai-meal-planner/internal/llm"
-	"ai-meal-planner/internal/llm/llmtest"
-	"ai-meal-planner/internal/recipe" // Import the recipe package
+	"ai-meal-planner/internal/recipe"
 	"ai-meal-planner/internal/value"
-	"context"
-	"log"
-	"os"
-	"path/filepath"
-	"slices"
-	"testing"
 
 	_ "modernc.org/sqlite"
 )
 
-// goldenTest defines a test case for vector search evaluation.
-type goldenTest struct {
-	name        string
-	query       string
-	expectedIDs []string
-	minRecall   float64 // Minimum acceptable recall score (0.0 to 1.0)
+const (
+	retrievalTopK    = 3
+	minimumHitAt1    = 0.60
+	minimumRecallAt3 = 0.70
+	minimumMRRAt3    = 0.70
+)
+
+func TestGoldenRetrievalDataset(t *testing.T) {
+	recipes := loadFixture[[]value.Recipe](t, "rag_eval_recipes.json")
+	queries := loadFixture[[]goldenQuery](t, "retrieval_queries.json")
+	validateGoldenDataset(t, recipes, queries)
 }
 
-// TestVectorSearchRecallIntegration performs an integration test for vector search
-// with a cached embedding generator to reduce API calls.
-func TestVectorSearchRecallIntegration(t *testing.T) {
-	// --- Test Setup ---
+// TestVectorSearchQualityIntegration evaluates real embeddings against a stable,
+// curated recipe dataset. It is intentionally a live, opt-in test.
+func TestVectorSearchQualityIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping live retrieval evaluation in short mode")
+	}
+
+	embeddingAPIKey := os.Getenv("EMBEDDING_API_KEY")
+	if embeddingAPIKey == "" {
+		t.Skip("skipping live retrieval evaluation: EMBEDDING_API_KEY is not set")
+	}
+
+	recipes := loadFixture[[]value.Recipe](t, "rag_eval_recipes.json")
+	queries := loadFixture[[]goldenQuery](t, "retrieval_queries.json")
+	validateGoldenDataset(t, recipes, queries)
+
+	dbPath := filepath.Join(t.TempDir(), "retrieval-eval.db")
+	db, err := database.NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("initialize database: %v", err)
+	}
+	defer db.Close()
+	if err := db.MigrateUp(dbPath); err != nil {
+		t.Fatalf("migrate database: %v", err)
+	}
+
+	embeddingClient := llm.NewEmbeddingClient(&config.Config{EmbeddingAPIKey: embeddingAPIKey})
+	defer embeddingClient.Close()
+	recipeRepo := recipe.NewRepository(db.SQL)
+	vectorRepo := llm.NewVectorRepository(db.SQL)
+	extractor := recipe.NewExtractor(nil, embeddingClient, vectorRepo)
 	ctx := context.Background()
 
-	// 1. Load configuration (permissively for integration test)
-	embedKey := os.Getenv("EMBEDDING_API_KEY")
-	groqKey := os.Getenv("GROQ_API_KEY")
-
-	if embedKey == "" && groqKey == "" {
-		t.Skip("Skipping integration test: No EMBEDDING_API_KEY or GROQ_API_KEY found in environment.")
-	}
-
-	cfg := &config.Config{
-		EmbeddingAPIKey: embedKey,
-		GroqAPIKey:      groqKey,
-	}
-
-	// Determine which LLM client to use based on config
-	var realEmbeddingGenerator llm.EmbeddingGenerator
-	var realTextGenerator llm.TextGenerator
-	if cfg.EmbeddingAPIKey != "" {
-		embedClient := llm.NewEmbeddingClient(cfg)
-		defer embedClient.Close()
-		realEmbeddingGenerator = embedClient
-		// Use a mock for text generation since the embedding client is embedding-only
-		realTextGenerator = &llmtest.MockTextGenerator{
-			GenerateFn: func(conversation llm.Conversation) llm.ContentResponse {
-				// Return a dummy valid JSON for the extractor
-				return llm.ContentResponse{
-					Message: llm.Message{
-						Role:    "assistant",
-						Content: `{"title": "Dummy", "ingredients": [], "tags": [], "prep_time": "10m", "servings": "1"}`,
-					},
-				}
-			},
+	for _, rec := range recipes {
+		if err := recipeRepo.Save(ctx, rec); err != nil {
+			t.Fatalf("save recipe %q: %v", rec.Title, err)
 		}
-		t.Log("Using Generic Embedding Client for embedding and Mock for text generation.\n")
-	} else if cfg.GroqAPIKey != "" {
-		groqClient := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.1)
-		realTextGenerator = groqClient
-		t.Log("Using Groq for text generation (no embedding model).\n")
-		t.Skip("Skipping integration test: Groq does not provide embedding models suitable for this test setup. Please configure EMBEDDING_API_KEY.\n")
-	} else {
-		t.Skip("Skipping integration test: No EMBEDDING_API_KEY or GROQ_API_KEY found in environment.\n")
-	}
-
-	// Set up cache for embeddings
-	cacheDir := t.TempDir() // Use a temporary directory for the cache
-	cacheFilePath := filepath.Join(cacheDir, "embeddings_cache.json")
-	cachedEmbGen, err := llm.NewCachedEmbeddingGenerator(realEmbeddingGenerator, cacheFilePath)
-	if err != nil {
-		t.Fatalf("Failed to create cached embedding generator: %v\n", err)
-	}
-	t.Cleanup(func() {
-		if err := cachedEmbGen.SaveCache(); err != nil {
-			log.Printf("Failed to save embedding cache: %v\n", err)
+		if _, _, err := extractor.ProcessAndSaveEmbedding(ctx, rec, false); err != nil {
+			t.Fatalf("embed recipe %q: %v", rec.Title, err)
 		}
-	})
-
-	// Setup in-memory SQLite database with migrations
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	dbInstance, err := database.NewDB(dbPath)
-	if err != nil {
-		t.Fatalf("Failed to initialize database: %v\n", err)
-	}
-	defer dbInstance.Close()
-
-	if err := dbInstance.MigrateUp(dbPath); err != nil {
-		t.Fatalf("Failed to migrate database: %v\n", err)
 	}
 
-	vectorRepo := llm.NewVectorRepository(dbInstance.SQL)
-	extractor := recipe.NewExtractor(realTextGenerator, cachedEmbGen, vectorRepo) // New Extractor instance
-
-	// --- Golden Set Definition ---
-	// IMPORTANT: You MUST replace this with your actual queries and expected RecipeIDs.
-	// Also, ensure the dummy recipes below reflect these expected IDs.
-	goldenTests := []goldenTest{
-		{
-			name:        "Spicy Pasta Dish",
-			query:       "quick pasta with spicy sauce",
-			expectedIDs: []string{"recipe-pasta-arrabbiata"},
-			minRecall:   1.0, // Expect to find all expected recipes
-		},
-		{
-			name:        "Healthy Chicken Salad",
-			query:       "light chicken salad for lunch",
-			expectedIDs: []string{"recipe-chicken-salad-mediterranean"},
-			minRecall:   1.0,
-		},
-		{
-			name:        "Vegetarian Chili",
-			query:       "hearty vegetarian meal with beans",
-			expectedIDs: []string{"recipe-vegetarian-chili"},
-			minRecall:   1.0,
-		},
+	titlesByID := make(map[string]string, len(recipes))
+	for _, rec := range recipes {
+		titlesByID[rec.ID] = rec.Title
 	}
 
-	// --- Populate Test Database with Dummy Recipes & Embeddings ---
-	// These are dummy recipes that should align with your goldenTests.
-	// The ToEmbeddingText() method from internal/recipe/recipe.go is used.
-	dummyRecipes := []value.Recipe{
-		{
-			ID:          "recipe-pasta-arrabbiata",
-			Title:       "Spicy Penne Arrabbiata",
-			Ingredients: []string{"penne", "tomatoes", "garlic", "chilli flakes", "parsley"},
-			Tags:        []string{"italian", "pasta", "spicy", "quick", "vegetarian"},
-			PrepTime:    "15 min",
-		},
-		{
-			ID:          "recipe-chicken-salad-mediterranean",
-			Title:       "Mediterranean Chicken Salad",
-			Ingredients: []string{"chicken breast", "cucumber", "tomato", "olives", "feta cheese", "lemon dressing"},
-			Tags:        []string{"healthy", "salad", "chicken", "mediterranean", "lunch"},
-			PrepTime:    "20 min",
-		},
-		{
-			ID:          "recipe-vegetarian-chili",
-			Title:       "Hearty Three-Bean Vegetarian Chili",
-			Ingredients: []string{"kidney beans", "black beans", "pinto beans", "tomatoes", "peppers", "onions", "chili powder"},
-			Tags:        []string{"vegetarian", "comfort food", "chili", "easy"},
-			PrepTime:    "45 min, cook time 25 min"},
-		// Add more dummy recipes here to test various scenarios
-	}
-
-	// Generate and save embeddings for dummy recipes using NormalizeHTML
-	for _, r := range dummyRecipes {
-		// NormalizeHTML now handles only extraction
-		extractorResult, err := extractor.ExtractRecipe( // Use extractor instance
-			ctx,
-			recipe.PostData{
-				ID:        r.ID,
-				Title:     r.Title,
-				UpdatedAt: r.UpdatedAt,
-				HTML:      "<html><body>Dummy HTML</body></html>", // Dummy HTML content
-			},
-		)
+	results := make([]rankedResult, 0, len(queries))
+	for _, query := range queries {
+		queryEmbedding, err := embeddingClient.GenerateEmbedding(ctx, query.Query)
 		if err != nil {
-			t.Fatalf("Failed to extract recipe %s: %v\n", r.ID, err)
+			t.Fatalf("embed query %q: %v", query.Name, err)
+		}
+		retrievedIDs, err := vectorRepo.FindSimilar(ctx, queryEmbedding, retrievalTopK, nil)
+		if err != nil {
+			t.Fatalf("retrieve query %q: %v", query.Name, err)
 		}
 
-		// Process and save embedding separately
-		_, _, err = extractor.ProcessAndSaveEmbedding(ctx, extractorResult.Recipe, false) // Use extractor instance
-		if err != nil {
-			t.Fatalf("Failed to process and save embedding for recipe %s: %v\n", r.ID, err)
-		}
+		results = append(results, rankedResult{Query: query, RetrievedIDs: retrievedIDs})
+		t.Logf("%s: %v", query.Name, rankedTitles(retrievedIDs, titlesByID))
 	}
 
-	// --- Run Evaluation ---
-	for _, gt := range goldenTests {
-		t.Run(gt.name, func(t *testing.T) {
-			queryEmbedding, err := cachedEmbGen.GenerateEmbedding(ctx, gt.query)
-			if err != nil {
-				t.Fatalf("Failed to generate embedding for query \"%s\": %v\n", gt.query, err)
-			}
+	metrics := calculateRetrievalMetrics(results, retrievalTopK)
+	t.Logf(
+		"retrieval quality across %d queries: Hit@1=%.3f Recall@3=%.3f MRR@3=%.3f",
+		len(queries),
+		metrics.HitAt1,
+		metrics.RecallAtK,
+		metrics.MRRAtK,
+	)
 
-			// Find similar recipes. We'll retrieve a larger number than expected
-			// to calculate recall@K, where K is the number of expected IDs.
-			retrievedIDs, err := vectorRepo.FindSimilar(ctx, queryEmbedding, 10, nil) // Retrieve top 10
-			if err != nil {
-				t.Fatalf("Failed to find similar recipes for query \"%s\": %v\n", gt.query, err)
-			}
-
-			// Calculate Recall@K
-			foundCount := 0
-			for _, expectedID := range gt.expectedIDs {
-				if slices.Contains(retrievedIDs, expectedID) {
-					foundCount++
-				}
-			}
-
-			recall := float64(foundCount) / float64(len(gt.expectedIDs))
-			t.Logf("Query: \"%s\", Expected: %v, Retrieved (Top %d): %v, Recall: %.2f\n",
-				gt.query, gt.expectedIDs, len(retrievedIDs), retrievedIDs, recall)
-
-			if recall < gt.minRecall {
-				t.Errorf("Recall (%.2f) for query \"%s\" is below minimum acceptable (%.2f)\n", recall, gt.query, gt.minRecall)
-			}
-		})
+	if metrics.HitAt1 < minimumHitAt1 {
+		t.Errorf("Hit@1 %.3f is below minimum %.2f", metrics.HitAt1, minimumHitAt1)
+	}
+	if metrics.RecallAtK < minimumRecallAt3 {
+		t.Errorf("Recall@3 %.3f is below minimum %.2f", metrics.RecallAtK, minimumRecallAt3)
+	}
+	if metrics.MRRAtK < minimumMRRAt3 {
+		t.Errorf("MRR@3 %.3f is below minimum %.2f", metrics.MRRAtK, minimumMRRAt3)
 	}
 }
 
-// Ensure vector_db.Schema is available. If it's embedded, it needs to be accessible.
-// If vector_db.Schema is not directly exposed, we might need to copy its content here or
-// adjust internal/llm/vector_db/db.go to export it.
-// Assuming for now it's either exported or we can read it.
-// From the folder structure, vector_db has a db.go, embedding_queries.sql.go, and models.go.
-// The schema is likely in db.go or embedding_queries.sql.
-// Let's assume vector_db.Schema is available. If not, I'll adapt.
+func loadFixture[T any](t *testing.T, name string) T {
+	t.Helper()
 
-// Note: To run this test, set either EMBEDDING_API_KEY or GROQ_API_KEY in your environment.
-// Example: export EMBEDDING_API_KEY="your_key" && go test -v ./internal/llm/...
+	path := filepath.Join("testdata", name)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read fixture %s: %v", path, err)
+	}
+
+	var fixture T
+	if err := json.Unmarshal(data, &fixture); err != nil {
+		t.Fatalf("decode fixture %s: %v", path, err)
+	}
+	return fixture
+}
+
+func validateGoldenDataset(t *testing.T, recipes []value.Recipe, queries []goldenQuery) {
+	t.Helper()
+
+	if len(recipes) < 30 {
+		t.Fatalf("golden dataset has %d recipes; want at least 30", len(recipes))
+	}
+	if len(queries) < 10 {
+		t.Fatalf("golden dataset has %d queries; want at least 10", len(queries))
+	}
+
+	recipeIDs := make(map[string]struct{}, len(recipes))
+	for _, rec := range recipes {
+		if rec.ID == "" || rec.Title == "" || len(rec.Ingredients) == 0 {
+			t.Fatalf("incomplete recipe fixture: ID=%q title=%q", rec.ID, rec.Title)
+		}
+		if _, exists := recipeIDs[rec.ID]; exists {
+			t.Fatalf("duplicate recipe ID %q", rec.ID)
+		}
+		recipeIDs[rec.ID] = struct{}{}
+	}
+
+	for _, query := range queries {
+		if query.Name == "" || query.Query == "" || len(query.RelevantIDs) == 0 {
+			t.Fatalf("incomplete golden query: %+v", query)
+		}
+		for _, id := range query.RelevantIDs {
+			if _, exists := recipeIDs[id]; !exists {
+				t.Fatalf("query %q references unknown recipe ID %q", query.Name, id)
+			}
+		}
+	}
+}
+
+func rankedTitles(ids []string, titlesByID map[string]string) []string {
+	titles := make([]string, 0, len(ids))
+	for _, id := range ids {
+		title := titlesByID[id]
+		if title == "" {
+			title = id
+		}
+		titles = append(titles, title)
+	}
+	return titles
+}

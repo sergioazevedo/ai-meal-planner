@@ -1,0 +1,88 @@
+[
+  {
+    "name": "simple creamy chicken curry",
+    "query": "quick creamy shredded chicken curry with rice",
+    "relevant_ids": ["69d18061d7b5911c968bf5b4"]
+  },
+  {
+    "name": "yogurt marinated curry chicken",
+    "query": "frango marinado em iogurte com curry",
+    "relevant_ids": ["6974ac60b2f8a831765a6fb3"]
+  },
+  {
+    "name": "orange butter salmon",
+    "query": "salmão rápido assado com manteiga, laranja e cebola roxa",
+    "relevant_ids": ["6974aee3b2f8a831765a6fe3"]
+  },
+  {
+    "name": "air fryer salmon",
+    "query": "air fryer fish dinner with salmon broccoli and sweet potato",
+    "relevant_ids": ["69d18253d7b5911c968bf5c8"]
+  },
+  {
+    "name": "salmon pasta",
+    "query": "baked salmon with penne pesto and vegetables",
+    "relevant_ids": ["698f98557c1fa76ce49db08d"]
+  },
+  {
+    "name": "pork loin with apples",
+    "query": "lombo de porco com maçã e cebola para o jantar",
+    "relevant_ids": [
+      "69d18438d7b5911c968bf5e8",
+      "69d18427d7b5911c968bf5e4"
+    ]
+  },
+  {
+    "name": "fish spinach and potatoes",
+    "query": "fish dinner with spinach and potatoes",
+    "relevant_ids": [
+      "69d18332d7b5911c968bf5d4",
+      "6974acc8b2f8a831765a6fb7"
+    ]
+  },
+  {
+    "name": "vegetarian eggplant lasagna",
+    "query": "vegetarian Italian eggplant lasagna with ricotta",
+    "relevant_ids": ["6974afd0b2f8a831765a6ffb"]
+  },
+  {
+    "name": "Italian chickpea salad",
+    "query": "salada vegetariana italiana de grão-de-bico",
+    "relevant_ids": ["69d182f8d7b5911c968bf5d0"]
+  },
+  {
+    "name": "Japanese mushroom risotto",
+    "query": "Japanese-style mushroom rice with shiitake shimeji mirin and soy sauce",
+    "relevant_ids": ["6974af8fb2f8a831765a6ff3"]
+  },
+  {
+    "name": "quick vegetable fried rice",
+    "query": "arroz frito rápido com cenoura e abobrinha",
+    "relevant_ids": ["6974afbdb2f8a831765a6ff7"]
+  },
+  {
+    "name": "Brazilian fish stew",
+    "query": "Brazilian moqueca fish stew",
+    "relevant_ids": ["6974afd8b2f8a831765a6fff"]
+  },
+  {
+    "name": "air fryer meatballs",
+    "query": "almôndegas com molho de tomate feitas na air fryer",
+    "relevant_ids": ["69d18447d7b5911c968bf5ec"]
+  },
+  {
+    "name": "pressure cooker feijoada",
+    "query": "feijoada na panela de pressão com arroz e couve",
+    "relevant_ids": ["69d1839cd7b5911c968bf5dc"]
+  },
+  {
+    "name": "quick beef and green beans",
+    "query": "quick ground beef with green beans under 30 minutes",
+    "relevant_ids": ["6974aebeb2f8a831765a6fdf"]
+  },
+  {
+    "name": "fried sardines",
+    "query": "sardinhas fritas empanadas com fubá",
+    "relevant_ids": ["6974ad2ab2f8a831765a6fc3"]
+  }
+]
