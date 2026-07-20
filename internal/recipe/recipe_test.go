@@ -131,6 +131,23 @@ func TestExtractor_ExtractRecipe(t *testing.T) {
 	})
 }
 
+func TestBuildExtractorPromptRequiresPortugueseAndEnglishTags(t *testing.T) {
+	prompt, err := buildExtractorPrompt(PostData{Title: "Test", HTML: "<p>Recipe</p>"})
+	if err != nil {
+		t.Fatalf("buildExtractorPrompt() error = %v", err)
+	}
+
+	for _, requirement := range []string{
+		"BOTH Portuguese and English",
+		"regardless of the source language",
+		"Portuguese/English pair",
+	} {
+		if !strings.Contains(prompt, requirement) {
+			t.Errorf("extractor prompt does not contain %q", requirement)
+		}
+	}
+}
+
 func TestExtractor_ProcessAndSaveEmbedding(t *testing.T) {
 	ctx := context.Background()
 	sampleRecipe := value.Recipe{
