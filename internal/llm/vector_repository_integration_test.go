@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 	"time"
 
@@ -63,15 +62,9 @@ func TestVectorSearchQualityIntegration(t *testing.T) {
 
 	embeddingClient := llm.NewEmbeddingClient(&config.Config{EmbeddingAPIKey: embeddingAPIKey})
 	defer embeddingClient.Close()
-	// The live evaluation makes 64 embedding requests. Pace them so the curated
-	// suite remains usable with the provider's free-tier request limit.
-	embeddingGenerator := &pacedEmbeddingGenerator{
-		generator: embeddingClient,
-		interval:  freeTierInterval,
-	}
 	recipeRepo := recipe.NewRepository(db.SQL)
 	vectorRepo := llm.NewVectorRepository(db.SQL)
-	extractor := recipe.NewExtractor(nil, embeddingGenerator, vectorRepo)
+	extractor := recipe.NewExtractor(nil, embeddingClient, vectorRepo)
 	ctx := context.Background()
 
 	for _, rec := range recipes {
@@ -81,6 +74,11 @@ func TestVectorSearchQualityIntegration(t *testing.T) {
 		if _, _, err := extractor.ProcessAndSaveEmbedding(ctx, rec, false); err != nil {
 			t.Fatalf("embed recipe %q: %v", rec.Title, err)
 		}
+		// The live evaluation makes 64 embedding requests. Leave a gap between
+		// them so the curated suite remains usable with the provider's free tier.
+		if err := waitForEmbeddingSlot(ctx, freeTierInterval); err != nil {
+			t.Fatalf("pace embedding requests: %v", err)
+		}
 	}
 
 	titlesByID := make(map[string]string, len(recipes))
@@ -89,8 +87,8 @@ func TestVectorSearchQualityIntegration(t *testing.T) {
 	}
 
 	results := make([]rankedResult, 0, len(queries))
-	for _, query := range queries {
-		queryEmbedding, err := embeddingGenerator.GenerateEmbedding(ctx, query.Query)
+	for i, query := range queries {
+		queryEmbedding, err := embeddingClient.GenerateEmbedding(ctx, query.Query)
 		if err != nil {
 			t.Fatalf("embed query %q: %v", query.Name, err)
 		}
@@ -101,6 +99,11 @@ func TestVectorSearchQualityIntegration(t *testing.T) {
 
 		results = append(results, rankedResult{Query: query, RetrievedIDs: retrievedIDs})
 		t.Logf("%s: %v", query.Name, rankedTitles(retrievedIDs, titlesByID))
+		if i < len(queries)-1 {
+			if err := waitForEmbeddingSlot(ctx, freeTierInterval); err != nil {
+				t.Fatalf("pace embedding requests: %v", err)
+			}
+		}
 	}
 
 	metrics := calculateRetrievalMetrics(results, retrievalTopK)
@@ -121,30 +124,6 @@ func TestVectorSearchQualityIntegration(t *testing.T) {
 	if metrics.MRRAtK < minimumMRRAt3 {
 		t.Errorf("MRR@3 %.3f is below minimum %.2f", metrics.MRRAtK, minimumMRRAt3)
 	}
-}
-
-type pacedEmbeddingGenerator struct {
-	generator   llm.EmbeddingGenerator
-	interval    time.Duration
-	mu          sync.Mutex
-	lastRequest time.Time
-}
-
-func (g *pacedEmbeddingGenerator) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	if wait := g.interval - time.Since(g.lastRequest); !g.lastRequest.IsZero() && wait > 0 {
-		if err := waitForEmbeddingSlot(ctx, wait); err != nil {
-			return nil, err
-		}
-	}
-	g.lastRequest = time.Now()
-	return g.generator.GenerateEmbedding(ctx, text)
-}
-
-func (g *pacedEmbeddingGenerator) EmbeddingMetadata() llm.EmbeddingMetadata {
-	return g.generator.EmbeddingMetadata()
 }
 
 func waitForEmbeddingSlot(ctx context.Context, delay time.Duration) error {
