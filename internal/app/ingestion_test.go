@@ -41,8 +41,15 @@ func TestProcessAndSaveRecipe(t *testing.T) {
 	vectorRepo := llm.NewVectorRepository(db.SQL)
 	metricsStore := metrics.NewStore(db.SQL)
 
-	recipeJSON := `{"title": "Test Recipe", "ingredients": ["A"]}`
-	textGen := &llmtest.MockTextGenerator{Response: recipeJSON}
+	recipeTitle := "Test Recipe"
+	extractionCalls := 0
+	textGen := &llmtest.MockTextGenerator{GenerateFn: func(llm.Conversation) llm.ContentResponse {
+		extractionCalls++
+		return llm.ContentResponse{Message: llm.Message{
+			Role:    "assistant",
+			Content: `{"title":"` + recipeTitle + `","ingredients":["A"]}`,
+		}}
+	}}
 	embGen := &llmtest.MockEmbeddingGenerator{Values: []float32{0.1, 0.2}}
 	extractor := recipe.NewExtractor(textGen, embGen, vectorRepo)
 
@@ -79,6 +86,44 @@ func TestProcessAndSaveRecipe(t *testing.T) {
 				count = len(embRecord.Embedding)
 			}
 			t.Errorf("Expected embedding length 2, got %d", count)
+		}
+		if embRecord != nil {
+			if embRecord.Model != "test-embedding-model" {
+				t.Errorf("embedding model = %q, want test-embedding-model", embRecord.Model)
+			}
+			if embRecord.Dimensions != 2 {
+				t.Errorf("embedding dimensions = %d, want 2", embRecord.Dimensions)
+			}
+		}
+	})
+
+	t.Run("Unchanged Recipe Uses Stored Version", func(t *testing.T) {
+		if err := ProcessAndSaveRecipe(ctx, extractor, recipeRepo, metricsStore, post, false); err != nil {
+			t.Fatalf("ProcessAndSaveRecipe failed: %v", err)
+		}
+		if extractionCalls != 1 {
+			t.Fatalf("extraction calls = %d, want 1", extractionCalls)
+		}
+	})
+
+	t.Run("Updated Recipe Is Refreshed", func(t *testing.T) {
+		recipeTitle = "Updated Recipe"
+		updatedPost := post
+		updatedPost.UpdatedAt = "2023-01-02T00:00:00Z"
+
+		if err := ProcessAndSaveRecipe(ctx, extractor, recipeRepo, metricsStore, updatedPost, false); err != nil {
+			t.Fatalf("ProcessAndSaveRecipe failed: %v", err)
+		}
+		if extractionCalls != 2 {
+			t.Fatalf("extraction calls = %d, want 2", extractionCalls)
+		}
+
+		rec, err := recipeRepo.Get(ctx, post.ID)
+		if err != nil {
+			t.Fatalf("get updated recipe: %v", err)
+		}
+		if rec.Title != recipeTitle {
+			t.Errorf("recipe title = %q, want %q", rec.Title, recipeTitle)
 		}
 	})
 }

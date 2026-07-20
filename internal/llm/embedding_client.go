@@ -93,6 +93,13 @@ func (c *EmbeddingClient) GenerateEmbedding(ctx context.Context, text string) ([
 	return result.Data[0].Embedding, nil
 }
 
+func (c *EmbeddingClient) EmbeddingMetadata() EmbeddingMetadata {
+	return EmbeddingMetadata{
+		Model:      c.model,
+		Dimensions: 1024,
+	}
+}
+
 // Close is a no-op for the HTTP client but satisfies the pattern used elsewhere.
 func (c *EmbeddingClient) Close() error {
 	return nil

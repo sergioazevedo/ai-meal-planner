@@ -30,4 +30,14 @@ func TestMigrateUp(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to find 'audit_logs' table: %v", err)
 	}
+
+	for _, column := range []string{"embedding_model", "embedding_dimensions"} {
+		err = db.SQL.QueryRow(
+			"SELECT name FROM pragma_table_info('recipe_embeddings') WHERE name = ?",
+			column,
+		).Scan(&columnName)
+		if err != nil {
+			t.Errorf("Failed to find %q column in recipe_embeddings: %v", column, err)
+		}
+	}
 }

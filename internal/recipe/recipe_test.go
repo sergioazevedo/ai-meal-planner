@@ -16,7 +16,7 @@ import (
 type MockVectorRepository struct {
 	// For testing specific scenarios if needed
 	mockGet     func(ctx context.Context, recipeID string) (*llm.EmbeddingRecord, error)
-	mockSave    func(ctx context.Context, recipeID string, embedding []float32, textHash string) error
+	mockSave    func(ctx context.Context, recipeID string, embedding []float32, textHash string, metadata llm.EmbeddingMetadata) error
 	shouldError bool
 }
 
@@ -31,12 +31,18 @@ func (m *MockVectorRepository) Get(ctx context.Context, recipeID string) (*llm.E
 	return nil, sql.ErrNoRows // Default: no existing record
 }
 
-func (m *MockVectorRepository) Save(ctx context.Context, recipeID string, embedding []float32, textHash string) error {
+func (m *MockVectorRepository) Save(
+	ctx context.Context,
+	recipeID string,
+	embedding []float32,
+	textHash string,
+	metadata llm.EmbeddingMetadata,
+) error {
 	if m.shouldError {
 		return errors.New("mock vector repo error")
 	}
 	if m.mockSave != nil {
-		return m.mockSave(ctx, recipeID, embedding, textHash)
+		return m.mockSave(ctx, recipeID, embedding, textHash, metadata)
 	}
 	return nil // Default: save successfully
 }
@@ -143,7 +149,7 @@ func TestExtractor_ProcessAndSaveEmbedding(t *testing.T) {
 		}
 		extractor := NewExtractor(nil, mockEmbGen, mockVectorRepo)
 
-		embedding, meta, err := extractor.ProcessAndSaveEmbedding(ctx, sampleRecipe)
+		embedding, meta, err := extractor.ProcessAndSaveEmbedding(ctx, sampleRecipe, false)
 		if err != nil {
 			t.Fatalf("Expected no error, got %v", err)
 		}
@@ -169,14 +175,16 @@ func TestExtractor_ProcessAndSaveEmbedding(t *testing.T) {
 		mockVectorRepo := &MockVectorRepository{
 			mockGet: func(ctx context.Context, recipeID string) (*llm.EmbeddingRecord, error) {
 				return &llm.EmbeddingRecord{
-					Embedding: []float32{0.1, 0.2, 0.3},
-					TextHash:  currentTextHash, // Simulate cache hit
+					Embedding:  []float32{0.1, 0.2, 0.3},
+					TextHash:   currentTextHash, // Simulate cache hit
+					Model:      "test-embedding-model",
+					Dimensions: 3,
 				}, nil
 			},
 		}
 		extractor := NewExtractor(nil, mockEmbGen, mockVectorRepo)
 
-		embedding, meta, err := extractor.ProcessAndSaveEmbedding(ctx, sampleRecipe)
+		embedding, meta, err := extractor.ProcessAndSaveEmbedding(ctx, sampleRecipe, false)
 		if err != nil {
 			t.Fatalf("Expected no error, got %v", err)
 		}
@@ -190,6 +198,63 @@ func TestExtractor_ProcessAndSaveEmbedding(t *testing.T) {
 		if meta.Usage.PromptTokens != 0 {
 			t.Error("Expected prompt tokens to be 0 for cache hit")
 		}
+		if mockEmbGen.Calls != 0 {
+			t.Errorf("embedding generation calls = %d, want 0", mockEmbGen.Calls)
+		}
+	})
+
+	t.Run("Force_BypassesCache", func(t *testing.T) {
+		sampleText := sampleRecipe.ToEmbeddingText()
+		hasher := md5.New()
+		hasher.Write([]byte(sampleText))
+		currentTextHash := hex.EncodeToString(hasher.Sum(nil))
+
+		mockEmbGen := &llmtest.MockEmbeddingGenerator{}
+		mockVectorRepo := &MockVectorRepository{
+			mockGet: func(ctx context.Context, recipeID string) (*llm.EmbeddingRecord, error) {
+				return &llm.EmbeddingRecord{
+					Embedding:  []float32{0.1, 0.2, 0.3},
+					TextHash:   currentTextHash,
+					Model:      "test-embedding-model",
+					Dimensions: 3,
+				}, nil
+			},
+		}
+		extractor := NewExtractor(nil, mockEmbGen, mockVectorRepo)
+
+		if _, _, err := extractor.ProcessAndSaveEmbedding(ctx, sampleRecipe, true); err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if mockEmbGen.Calls != 1 {
+			t.Errorf("embedding generation calls = %d, want 1", mockEmbGen.Calls)
+		}
+	})
+
+	t.Run("MetadataMismatch_RegeneratesEmbedding", func(t *testing.T) {
+		sampleText := sampleRecipe.ToEmbeddingText()
+		hasher := md5.New()
+		hasher.Write([]byte(sampleText))
+		currentTextHash := hex.EncodeToString(hasher.Sum(nil))
+
+		mockEmbGen := &llmtest.MockEmbeddingGenerator{Model: "new-model"}
+		mockVectorRepo := &MockVectorRepository{
+			mockGet: func(ctx context.Context, recipeID string) (*llm.EmbeddingRecord, error) {
+				return &llm.EmbeddingRecord{
+					Embedding:  []float32{0.1, 0.2, 0.3},
+					TextHash:   currentTextHash,
+					Model:      "old-model",
+					Dimensions: 3,
+				}, nil
+			},
+		}
+		extractor := NewExtractor(nil, mockEmbGen, mockVectorRepo)
+
+		if _, _, err := extractor.ProcessAndSaveEmbedding(ctx, sampleRecipe, false); err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if mockEmbGen.Calls != 1 {
+			t.Errorf("embedding generation calls = %d, want 1", mockEmbGen.Calls)
+		}
 	})
 
 	t.Run("EmbeddingGenerationError", func(t *testing.T) {
@@ -201,7 +266,7 @@ func TestExtractor_ProcessAndSaveEmbedding(t *testing.T) {
 		}
 		extractor := NewExtractor(nil, mockEmbGen, mockVectorRepo)
 
-		_, _, err := extractor.ProcessAndSaveEmbedding(ctx, sampleRecipe)
+		_, _, err := extractor.ProcessAndSaveEmbedding(ctx, sampleRecipe, false)
 		if err == nil {
 			t.Fatal("Expected an error during embedding generation, got nil")
 		}
@@ -214,13 +279,13 @@ func TestExtractor_ProcessAndSaveEmbedding(t *testing.T) {
 	t.Run("VectorRepoSaveError", func(t *testing.T) {
 		mockEmbGen := &llmtest.MockEmbeddingGenerator{}
 		mockVectorRepo := &MockVectorRepository{
-			mockSave: func(ctx context.Context, recipeID string, embedding []float32, textHash string) error {
+			mockSave: func(ctx context.Context, recipeID string, embedding []float32, textHash string, metadata llm.EmbeddingMetadata) error {
 				return errors.New("mock vector repo error")
 			},
 		} // Simulate save error
 		extractor := NewExtractor(nil, mockEmbGen, mockVectorRepo)
 
-		_, _, err := extractor.ProcessAndSaveEmbedding(ctx, sampleRecipe)
+		_, _, err := extractor.ProcessAndSaveEmbedding(ctx, sampleRecipe, false)
 		if err == nil {
 			t.Fatal("Expected an error during vector repository save, got nil")
 		}

@@ -169,7 +169,7 @@ func TestVectorSearchRecallIntegration(t *testing.T) {
 		}
 
 		// Process and save embedding separately
-		_, _, err = extractor.ProcessAndSaveEmbedding(ctx, extractorResult.Recipe) // Use extractor instance
+		_, _, err = extractor.ProcessAndSaveEmbedding(ctx, extractorResult.Recipe, false) // Use extractor instance
 		if err != nil {
 			t.Fatalf("Failed to process and save embedding for recipe %s: %v\n", r.ID, err)
 		}

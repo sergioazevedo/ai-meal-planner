@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS recipe_embeddings (
     recipe_id TEXT PRIMARY KEY NOT NULL,
     embedding BLOB NOT NULL,
     text_hash TEXT NOT NULL DEFAULT '',
+    embedding_model TEXT NOT NULL DEFAULT '',
+    embedding_dimensions INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_recipe_embeddings_text_hash ON recipe_embeddings(text_hash);

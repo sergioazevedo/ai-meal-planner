@@ -12,7 +12,7 @@ import (
 )
 
 type VectorRepositoryInterface interface {
-	Save(ctx context.Context, recipeID string, embedding []float32, textHash string) error
+	Save(ctx context.Context, recipeID string, embedding []float32, textHash string, metadata EmbeddingMetadata) error
 	Get(ctx context.Context, recipeID string) (*EmbeddingRecord, error)
 	FindSimilar(ctx context.Context, queryEmbedding []float32, limit int, excludeIDs []string) ([]string, error)
 	WithTx(tx *sql.Tx) *VectorRepository
@@ -38,23 +38,33 @@ func (r *VectorRepository) WithTx(tx *sql.Tx) *VectorRepository {
 	}
 }
 
-// EmbeddingRecord holds an embedding and the hash of its source text.
+// EmbeddingRecord holds an embedding, its source hash, and vector-space identity.
 type EmbeddingRecord struct {
-	Embedding []float32
-	TextHash  string
+	Embedding  []float32
+	TextHash   string
+	Model      string
+	Dimensions int
 }
 
 // Save stores an embedding and its corresponding text hash for a given recipe ID.
-func (r *VectorRepository) Save(ctx context.Context, recipeID string, embedding []float32, textHash string) error {
+func (r *VectorRepository) Save(
+	ctx context.Context,
+	recipeID string,
+	embedding []float32,
+	textHash string,
+	metadata EmbeddingMetadata,
+) error {
 	embeddingBytes, err := float32SliceToByteSlice(embedding)
 	if err != nil {
 		return fmt.Errorf("failed to convert float32 slice to byte slice: %w", err)
 	}
 
 	params := db.InsertEmbeddingParams{
-		RecipeID:  recipeID,
-		Embedding: embeddingBytes,
-		TextHash:  textHash,
+		RecipeID:            recipeID,
+		Embedding:           embeddingBytes,
+		TextHash:            textHash,
+		EmbeddingModel:      metadata.Model,
+		EmbeddingDimensions: int64(metadata.Dimensions),
 	}
 
 	return r.queries.InsertEmbedding(ctx, params)
@@ -75,8 +85,10 @@ func (r *VectorRepository) Get(ctx context.Context, recipeID string) (*Embedding
 		return nil, fmt.Errorf("failed to convert byte slice to float32 slice: %w", err)
 	}
 	return &EmbeddingRecord{
-		Embedding: embedding,
-		TextHash:  dbEmbedding.TextHash,
+		Embedding:  embedding,
+		TextHash:   dbEmbedding.TextHash,
+		Model:      dbEmbedding.EmbeddingModel,
+		Dimensions: int(dbEmbedding.EmbeddingDimensions),
 	}, nil
 }
 

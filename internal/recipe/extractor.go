@@ -108,6 +108,7 @@ func (e *Extractor) ExtractRecipe(
 func (e *Extractor) ProcessAndSaveEmbedding(
 	ctx context.Context,
 	rec value.Recipe, // Already extracted value.recipe
+	force bool,
 ) (embedding []float32, meta shared.AgentMeta, err error) {
 	embeddingSourceText := rec.ToEmbeddingText()
 	hasher := md5.New()
@@ -123,7 +124,13 @@ func (e *Extractor) ProcessAndSaveEmbedding(
 		return nil, embedMeta, fmt.Errorf("failed to get existing embedding record: %w", err)
 	}
 
-	if existingEmbeddingRecord != nil && existingEmbeddingRecord.TextHash == currentTextHash {
+	embeddingMetadata := e.embGen.EmbeddingMetadata()
+	cacheMatches := existingEmbeddingRecord != nil &&
+		existingEmbeddingRecord.TextHash == currentTextHash &&
+		existingEmbeddingRecord.Model == embeddingMetadata.Model &&
+		existingEmbeddingRecord.Dimensions == embeddingMetadata.Dimensions
+
+	if !force && cacheMatches {
 		// Cache HIT: use existing embedding
 		embedding = existingEmbeddingRecord.Embedding
 		embedMeta.Usage.PromptTokens = 0 // No tokens consumed
@@ -145,7 +152,15 @@ func (e *Extractor) ProcessAndSaveEmbedding(
 
 	// Save the embedding (will upsert in DB) with the new hash
 	// This ensures the hash is always up-to-date even if only value.recipe data changed.
-	if err := e.vectorRepo.Save(ctx, rec.ID, embedding, currentTextHash); err != nil {
+	if len(embedding) != embeddingMetadata.Dimensions {
+		return nil, embedMeta, fmt.Errorf(
+			"embedding dimensions mismatch: generator returned %d, metadata declares %d",
+			len(embedding),
+			embeddingMetadata.Dimensions,
+		)
+	}
+
+	if err := e.vectorRepo.Save(ctx, rec.ID, embedding, currentTextHash, embeddingMetadata); err != nil {
 		return nil, embedMeta, fmt.Errorf("failed to save embedding with hash: %w", err)
 	}
 
