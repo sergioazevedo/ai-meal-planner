@@ -7,10 +7,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"ai-meal-planner/internal/config"
 )
+
+const maxEmbeddingRetries = 4
 
 // EmbeddingClient is a generic HTTP client for generating vector embeddings.
 // It is designed to work with APIs that follow the OpenAI-compatible /v1/embeddings format,
@@ -62,9 +66,24 @@ func (c *EmbeddingClient) GenerateEmbedding(ctx context.Context, text string) ([
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", c.baseURL, bytes.NewBuffer(jsonData))
+	for attempt := 0; ; attempt++ {
+		embedding, retryAfter, err := c.sendEmbeddingRequest(ctx, jsonData)
+		if err == nil {
+			return embedding, nil
+		}
+		if retryAfter == nil || attempt >= maxEmbeddingRetries {
+			return nil, err
+		}
+		if err := waitForRetry(ctx, *retryAfter); err != nil {
+			return nil, fmt.Errorf("waiting to retry embedding request: %w", err)
+		}
+	}
+}
+
+func (c *EmbeddingClient) sendEmbeddingRequest(ctx context.Context, jsonData []byte) ([]float32, *time.Duration, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL, bytes.NewReader(jsonData))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -72,25 +91,54 @@ func (c *EmbeddingClient) GenerateEmbedding(ctx context.Context, text string) ([
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute request: %w", err)
+		return nil, nil, fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned error (status %d): %s", resp.StatusCode, string(body))
+		apiErr := fmt.Errorf("API returned error (status %d): %s", resp.StatusCode, string(body))
+		if resp.StatusCode != http.StatusTooManyRequests {
+			return nil, nil, apiErr
+		}
+		delay := retryDelay(resp.Header.Get("Retry-After"))
+		return nil, &delay, apiErr
 	}
 
 	var result embeddingResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+		return nil, nil, fmt.Errorf("failed to decode response: %w", err)
 	}
-
 	if len(result.Data) == 0 {
-		return nil, fmt.Errorf("no embedding returned in response")
+		return nil, nil, fmt.Errorf("no embedding returned in response")
 	}
 
-	return result.Data[0].Embedding, nil
+	return result.Data[0].Embedding, nil, nil
+}
+
+func retryDelay(retryAfter string) time.Duration {
+	retryAfter = strings.TrimSpace(retryAfter)
+	if seconds, err := strconv.Atoi(retryAfter); err == nil && seconds >= 0 {
+		return time.Duration(seconds) * time.Second
+	}
+	if retryAt, err := http.ParseTime(retryAfter); err == nil {
+		if delay := time.Until(retryAt); delay > 0 {
+			return delay
+		}
+	}
+	return time.Second
+}
+
+func waitForRetry(ctx context.Context, delay time.Duration) error {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }
 
 func (c *EmbeddingClient) EmbeddingMetadata() EmbeddingMetadata {

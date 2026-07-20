@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/database"
@@ -21,6 +23,7 @@ const (
 	minimumHitAt1    = 0.60
 	minimumRecallAt3 = 0.70
 	minimumMRRAt3    = 0.70
+	freeTierInterval = 1100 * time.Millisecond
 )
 
 func TestGoldenRetrievalDataset(t *testing.T) {
@@ -60,9 +63,15 @@ func TestVectorSearchQualityIntegration(t *testing.T) {
 
 	embeddingClient := llm.NewEmbeddingClient(&config.Config{EmbeddingAPIKey: embeddingAPIKey})
 	defer embeddingClient.Close()
+	// The live evaluation makes 64 embedding requests. Pace them so the curated
+	// suite remains usable with the provider's free-tier request limit.
+	embeddingGenerator := &pacedEmbeddingGenerator{
+		generator: embeddingClient,
+		interval:  freeTierInterval,
+	}
 	recipeRepo := recipe.NewRepository(db.SQL)
 	vectorRepo := llm.NewVectorRepository(db.SQL)
-	extractor := recipe.NewExtractor(nil, embeddingClient, vectorRepo)
+	extractor := recipe.NewExtractor(nil, embeddingGenerator, vectorRepo)
 	ctx := context.Background()
 
 	for _, rec := range recipes {
@@ -81,7 +90,7 @@ func TestVectorSearchQualityIntegration(t *testing.T) {
 
 	results := make([]rankedResult, 0, len(queries))
 	for _, query := range queries {
-		queryEmbedding, err := embeddingClient.GenerateEmbedding(ctx, query.Query)
+		queryEmbedding, err := embeddingGenerator.GenerateEmbedding(ctx, query.Query)
 		if err != nil {
 			t.Fatalf("embed query %q: %v", query.Name, err)
 		}
@@ -111,6 +120,42 @@ func TestVectorSearchQualityIntegration(t *testing.T) {
 	}
 	if metrics.MRRAtK < minimumMRRAt3 {
 		t.Errorf("MRR@3 %.3f is below minimum %.2f", metrics.MRRAtK, minimumMRRAt3)
+	}
+}
+
+type pacedEmbeddingGenerator struct {
+	generator   llm.EmbeddingGenerator
+	interval    time.Duration
+	mu          sync.Mutex
+	lastRequest time.Time
+}
+
+func (g *pacedEmbeddingGenerator) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if wait := g.interval - time.Since(g.lastRequest); !g.lastRequest.IsZero() && wait > 0 {
+		if err := waitForEmbeddingSlot(ctx, wait); err != nil {
+			return nil, err
+		}
+	}
+	g.lastRequest = time.Now()
+	return g.generator.GenerateEmbedding(ctx, text)
+}
+
+func (g *pacedEmbeddingGenerator) EmbeddingMetadata() llm.EmbeddingMetadata {
+	return g.generator.EmbeddingMetadata()
+}
+
+func waitForEmbeddingSlot(ctx context.Context, delay time.Duration) error {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
 	}
 }
 
