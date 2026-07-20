@@ -25,7 +25,7 @@ Please extract the following information from the HTML above:
  - **Ingredients** (include quantities):
      - Include all ingredients for the main dish.
      - **IMPORTANT**: If side dishes were listed above, you MUST also include their ingredients here.
- - **Relevant tags**: Extract key ingredients and dietary categories. You MUST provide tags in BOTH the original recipe language and English to ensure robust search coverage (e.g., `["frango", "chicken", "carne", "beef", "vegetariano", "vegetarian"]`).
+ - **Relevant tags**: Extract key ingredients and dietary categories. You MUST provide every tag in BOTH Portuguese and English, regardless of the source language. Include each concept as a Portuguese/English pair (e.g., `["frango", "chicken", "carne", "beef", "vegetariano", "vegetarian"]`).
  - Preparation time (e.g., "30 mins") - **MANDATORY: If missing from source, YOU MUST ESTIMATE based on ingredients. Do NOT return "Unknown".**
  - Number of servings (e.g., "4 people") - **estimate if missing**.
 
