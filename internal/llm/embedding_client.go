@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -20,10 +22,11 @@ const maxEmbeddingRetries = 4
 // It is designed to work with APIs that follow the OpenAI-compatible /v1/embeddings format,
 // such as Mixedbread AI.
 type EmbeddingClient struct {
-	apiKey     string
-	baseURL    string
-	model      string
-	httpClient *http.Client
+	apiKey          string
+	baseURL         string
+	model           string
+	httpClient      *http.Client
+	waitBeforeRetry func(context.Context, time.Duration) error
 }
 
 // NewEmbeddingClient creates a new Embedding API client.
@@ -74,7 +77,11 @@ func (c *EmbeddingClient) GenerateEmbedding(ctx context.Context, text string) ([
 		if retryAfter == nil || attempt >= maxEmbeddingRetries {
 			return nil, err
 		}
-		if err := waitForRetry(ctx, *retryAfter); err != nil {
+		wait := c.waitBeforeRetry
+		if wait == nil {
+			wait = waitForRetry
+		}
+		if err := wait(ctx, *retryAfter); err != nil {
 			return nil, fmt.Errorf("waiting to retry embedding request: %w", err)
 		}
 	}
@@ -91,7 +98,17 @@ func (c *EmbeddingClient) sendEmbeddingRequest(ctx context.Context, jsonData []b
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to execute request: %w", err)
+		requestErr := fmt.Errorf("failed to execute request: %w", err)
+		if ctx.Err() != nil {
+			return nil, nil, requestErr
+		}
+
+		var networkErr net.Error
+		if errors.As(err, &networkErr) && networkErr.Timeout() {
+			delay := retryDelay("")
+			return nil, &delay, requestErr
+		}
+		return nil, nil, requestErr
 	}
 	defer resp.Body.Close()
 

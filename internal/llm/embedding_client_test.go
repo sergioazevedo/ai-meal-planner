@@ -3,10 +3,25 @@ package llm
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+type timeoutError struct{}
+
+func (timeoutError) Error() string   { return "request timed out" }
+func (timeoutError) Timeout() bool   { return true }
+func (timeoutError) Temporary() bool { return true }
 
 func TestEmbeddingClientRetriesRateLimit(t *testing.T) {
 	requests := 0
@@ -60,5 +75,47 @@ func TestEmbeddingClientDoesNotRetryOtherErrors(t *testing.T) {
 	}
 	if requests != 1 {
 		t.Fatalf("request count = %d, want 1", requests)
+	}
+}
+
+func TestEmbeddingClientRetriesNetworkTimeout(t *testing.T) {
+	requests := 0
+	waits := 0
+	client := &EmbeddingClient{
+		apiKey:  "test-key",
+		baseURL: "https://example.com/embeddings",
+		model:   "test-model",
+		httpClient: &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+			requests++
+			if requests == 1 {
+				return nil, timeoutError{}
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(`{"data":[{"embedding":[0.1,0.2]}]}`)),
+			}, nil
+		})},
+		waitBeforeRetry: func(_ context.Context, delay time.Duration) error {
+			waits++
+			if delay != time.Second {
+				t.Errorf("retry delay = %v, want %v", delay, time.Second)
+			}
+			return nil
+		},
+	}
+
+	embedding, err := client.GenerateEmbedding(context.Background(), "test")
+	if err != nil {
+		t.Fatalf("GenerateEmbedding() error = %v", err)
+	}
+	if requests != 2 {
+		t.Fatalf("request count = %d, want 2", requests)
+	}
+	if waits != 1 {
+		t.Fatalf("retry wait count = %d, want 1", waits)
+	}
+	if len(embedding) != 2 || embedding[0] != 0.1 || embedding[1] != 0.2 {
+		t.Fatalf("embedding = %v, want [0.1 0.2]", embedding)
 	}
 }
