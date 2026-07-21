@@ -140,7 +140,8 @@ func TestBuildExtractorPromptRequiresPortugueseAndEnglishTags(t *testing.T) {
 	for _, requirement := range []string{
 		"BOTH Portuguese and English",
 		"regardless of the source language",
-		"Portuguese/English pair",
+		"FLAT array of strings",
+		"NEVER return nested arrays or objects",
 	} {
 		if !strings.Contains(prompt, requirement) {
 			t.Errorf("extractor prompt does not contain %q", requirement)
