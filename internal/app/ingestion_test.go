@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"os"
+	"slices"
 	"testing"
 
 	"ai-meal-planner/internal/database"
@@ -52,6 +53,7 @@ func TestProcessAndSaveRecipe(t *testing.T) {
 	}}
 	embGen := &llmtest.MockEmbeddingGenerator{Values: []float32{0.1, 0.2}}
 	extractor := recipe.NewExtractor(textGen, embGen, vectorRepo)
+	tagger := recipe.NewTagger(&llmtest.MockTextGenerator{Response: `{"tags":[{"pt-BR":"teste","en":"test"}]}`})
 
 	post := ghost.Post{
 		ID:        "1",
@@ -61,7 +63,7 @@ func TestProcessAndSaveRecipe(t *testing.T) {
 	}
 
 	t.Run("New Recipe", func(t *testing.T) {
-		err := ProcessAndSaveRecipe(ctx, extractor, recipeRepo, metricsStore, post, false)
+		err := ProcessAndSaveRecipe(ctx, extractor, tagger, recipeRepo, metricsStore, post, false)
 		if err != nil {
 			t.Fatalf("ProcessAndSaveRecipe failed: %v", err)
 		}
@@ -73,6 +75,9 @@ func TestProcessAndSaveRecipe(t *testing.T) {
 		}
 		if rec.Title != "Test Recipe" {
 			t.Errorf("Expected title 'Test Recipe', got '%s'", rec.Title)
+		}
+		if !slices.Equal(rec.Tags, []string{"teste", "test"}) {
+			t.Errorf("tags = %#v", rec.Tags)
 		}
 
 		// Verify embedding saved
@@ -98,7 +103,7 @@ func TestProcessAndSaveRecipe(t *testing.T) {
 	})
 
 	t.Run("Unchanged Recipe Uses Stored Version", func(t *testing.T) {
-		if err := ProcessAndSaveRecipe(ctx, extractor, recipeRepo, metricsStore, post, false); err != nil {
+		if err := ProcessAndSaveRecipe(ctx, extractor, tagger, recipeRepo, metricsStore, post, false); err != nil {
 			t.Fatalf("ProcessAndSaveRecipe failed: %v", err)
 		}
 		if extractionCalls != 1 {
@@ -111,7 +116,7 @@ func TestProcessAndSaveRecipe(t *testing.T) {
 		updatedPost := post
 		updatedPost.UpdatedAt = "2023-01-02T00:00:00Z"
 
-		if err := ProcessAndSaveRecipe(ctx, extractor, recipeRepo, metricsStore, updatedPost, false); err != nil {
+		if err := ProcessAndSaveRecipe(ctx, extractor, tagger, recipeRepo, metricsStore, updatedPost, false); err != nil {
 			t.Fatalf("ProcessAndSaveRecipe failed: %v", err)
 		}
 		if extractionCalls != 2 {

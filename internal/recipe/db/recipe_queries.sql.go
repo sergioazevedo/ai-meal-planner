@@ -267,3 +267,19 @@ func (q *Queries) ListRecipes(ctx context.Context, excludeIds []string) ([]Recip
 	}
 	return items, nil
 }
+
+const updateRecipeData = `-- name: UpdateRecipeData :exec
+UPDATE recipes
+SET data = ?
+WHERE id = ?
+`
+
+type UpdateRecipeDataParams struct {
+	Data string
+	ID   string
+}
+
+func (q *Queries) UpdateRecipeData(ctx context.Context, arg UpdateRecipeDataParams) error {
+	_, err := q.db.ExecContext(ctx, updateRecipeData, arg.Data, arg.ID)
+	return err
+}

@@ -10,6 +10,11 @@ WHERE EXCLUDED.updated_at > recipes.updated_at;
 SELECT id, data, updated_at FROM recipes
 WHERE id = ?;
 
+-- name: UpdateRecipeData :exec
+UPDATE recipes
+SET data = ?
+WHERE id = ?;
+
 -- name: GetRecipesByIDs :many
 SELECT id, data, updated_at FROM recipes
 WHERE id IN (sqlc.slice('ids'));

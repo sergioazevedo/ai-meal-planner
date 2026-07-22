@@ -12,7 +12,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"text/template"
 	"time"
 )
@@ -23,6 +22,14 @@ var extractorPrompt string
 type ExtractorResult struct {
 	Recipe value.Recipe
 	Meta   shared.AgentMeta
+}
+
+type extractionResponse struct {
+	Title       string   `json:"title"`
+	SideDishes  []string `json:"side_dishes"`
+	Ingredients []string `json:"ingredients"`
+	PrepTime    string   `json:"prep_time"`
+	Servings    string   `json:"servings"`
 }
 
 // Extractor encapsulates dependencies for value.recipe extraction and embedding processes.
@@ -58,11 +65,10 @@ func (e *Extractor) ExtractRecipe(
 		return ExtractorResult{}, fmt.Errorf("failed to get LLM response: %w", err)
 	}
 
-	rec := value.Recipe{}
+	var extracted extractionResponse
 	cleanedJSON := llm.CleanJSON(llmResp.Message.Content)
-	if err := json.Unmarshal([]byte(cleanedJSON), &rec); err != nil {
+	if err := json.Unmarshal([]byte(cleanedJSON), &extracted); err != nil {
 		return ExtractorResult{
-				Recipe: rec,
 				Meta: shared.AgentMeta{
 					AgentName: "Extractor",
 					Usage:     llmResp.Usage,
@@ -73,24 +79,14 @@ func (e *Extractor) ExtractRecipe(
 			)
 	}
 
-	rec.ID = data.ID
-	rec.UpdatedAt = data.UpdatedAt
-
-	// Merge manual tags from Ghost if they exist
-	if len(data.Tags) > 0 {
-		tagMap := make(map[string]struct{})
-		for _, t := range rec.Tags {
-			tagMap[strings.ToLower(strings.TrimSpace(t))] = struct{}{}
-		}
-		for _, t := range data.Tags {
-			tagMap[strings.ToLower(strings.TrimSpace(t))] = struct{}{}
-		}
-
-		finalTags := make([]string, 0, len(tagMap))
-		for t := range tagMap {
-			finalTags = append(finalTags, t)
-		}
-		rec.Tags = finalTags
+	rec := value.Recipe{
+		ID:          data.ID,
+		Title:       extracted.Title,
+		SideDishes:  extracted.SideDishes,
+		Ingredients: extracted.Ingredients,
+		PrepTime:    extracted.PrepTime,
+		Servings:    extracted.Servings,
+		UpdatedAt:   data.UpdatedAt,
 	}
 
 	return ExtractorResult{

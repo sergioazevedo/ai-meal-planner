@@ -44,6 +44,7 @@ type Bot struct {
 	sessionRepo  *SessionRepository
 	auditRepo    *audit.AuditRepository
 	extractor    *recipe.Extractor // Added extractor
+	tagger       *recipe.Tagger
 }
 
 // NewBot initializes the Telegram Bot and sets the Webhook.
@@ -53,6 +54,7 @@ func NewBot(
 	clipper *clipper.Clipper,
 	metricsStore *metrics.Store,
 	textGen llm.TextGenerator,
+	tagGen llm.TextGenerator,
 	embedGen llm.EmbeddingGenerator,
 	planRepo *planner.PlanRepository, // New parameter
 	recipeRepo *recipe.Repository, // New parameter
@@ -77,6 +79,7 @@ func NewBot(
 	log.Printf("Webhook set response: %s", resp.Description)
 
 	extractor := recipe.NewExtractor(textGen, embedGen, vectorRepo)
+	tagger := recipe.NewTagger(tagGen)
 
 	return &Bot{
 		api:          bot,
@@ -93,6 +96,7 @@ func NewBot(
 		sessionRepo:  sessionRepo,
 		auditRepo:    auditRepo,
 		extractor:    extractor,
+		tagger:       tagger,
 	}, nil
 }
 
@@ -399,6 +403,7 @@ func (b *Bot) ingestClippedPost(post ghost.Post) {
 	if err := app.ProcessAndSaveRecipe(
 		ctx,
 		b.extractor,
+		b.tagger,
 		b.recipeRepo,
 		b.metricsStore,
 		post,

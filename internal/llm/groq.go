@@ -7,12 +7,15 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
+	"regexp"
+	"strconv"
 	"time"
 
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/shared"
 )
+
+var groqRetryHintPattern = regexp.MustCompile(`(?i)try again in\s+([0-9]+(?:\.[0-9]+)?(?:ms|s|m))`)
 
 const (
 	groqAPIURL = "https://api.groq.com/openai/v1/chat/completions"
@@ -20,6 +23,7 @@ const (
 	// Model identifiers
 	ModelAnalyst    = "meta-llama/llama-4-scout-17b-16e-instruct"
 	ModelNormalizer = "llama-3.1-8b-instant"
+	ModelTagger     = "llama-3.3-70b-versatile"
 )
 
 // GroqClient is a client for the Groq API.
@@ -27,6 +31,7 @@ type GroqClient struct {
 	apiKey      string
 	modelID     string
 	temperature float64
+	apiURL      string
 	httpClient  *http.Client
 }
 
@@ -91,6 +96,7 @@ func NewGroqClient(cfg *config.Config, modelID string, temperature float64) *Gro
 		apiKey:      cfg.GroqAPIKey,
 		modelID:     modelID,
 		temperature: temperature,
+		apiURL:      groqAPIURL,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -131,7 +137,11 @@ func (c *GroqClient) GenerateContent(
 	}
 
 	for i := 0; i < maxRetries; i++ {
-		req, err := http.NewRequestWithContext(ctx, "POST", groqAPIURL, bytes.NewBuffer(jsonBody))
+		apiURL := c.apiURL
+		if apiURL == "" {
+			apiURL = groqAPIURL
+		}
+		req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewBuffer(jsonBody))
 		if err != nil {
 			return ContentResponse{}, fmt.Errorf("failed to create request: %w", err)
 		}
@@ -152,19 +162,7 @@ func (c *GroqClient) GenerateContent(
 				bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 				lastErr = fmt.Errorf("groq api rate limit: %s", string(bodyBytes))
 
-				// Attempt to parse wait time from message: "Please try again in 9.24s"
-				waitTime := 5 * time.Second // default
-				bodyStr := string(bodyBytes)
-				if strings.Contains(bodyStr, "try again in ") {
-					var seconds float64
-					parts := strings.Split(bodyStr, "try again in ")
-					if len(parts) > 1 {
-						fmt.Sscanf(parts[1], "%fs", &seconds)
-						if seconds > 0 {
-							waitTime = time.Duration(seconds*1000+500) * time.Millisecond // Add 500ms buffer
-						}
-					}
-				}
+				waitTime := groqRetryDelay(resp.Header, string(bodyBytes))
 
 				fmt.Printf("Rate limit hit. Waiting %v before retry %d/%d...\n", waitTime, i+1, maxRetries)
 				select {
@@ -228,6 +226,30 @@ func (c *GroqClient) GenerateContent(
 	}
 
 	return ContentResponse{}, fmt.Errorf("exceeded max retries after rate limit: %w", lastErr)
+}
+
+func groqRetryDelay(headers http.Header, body string) time.Duration {
+	const (
+		fallback = 5 * time.Second
+		buffer   = 100 * time.Millisecond
+	)
+
+	if value := headers.Get("Retry-After"); value != "" {
+		if seconds, err := strconv.ParseFloat(value, 64); err == nil && seconds >= 0 {
+			return time.Duration(seconds*float64(time.Second)) + buffer
+		}
+	}
+	if value := headers.Get("x-ratelimit-reset-tokens"); value != "" {
+		if delay, err := time.ParseDuration(value); err == nil && delay >= 0 {
+			return delay + buffer
+		}
+	}
+	if match := groqRetryHintPattern.FindStringSubmatch(body); len(match) == 2 {
+		if delay, err := time.ParseDuration(match[1]); err == nil && delay >= 0 {
+			return delay + buffer
+		}
+	}
+	return fallback
 }
 
 func (c *GroqClient) mapToTToolCall(call groqToolCall) (ToolCall, error) {

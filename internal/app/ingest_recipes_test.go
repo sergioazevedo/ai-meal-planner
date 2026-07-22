@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 	"os"
+	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -18,8 +20,9 @@ import (
 )
 
 type mockGhostClientForIngest struct {
-	posts []ghost.Post
-	err   error
+	posts      []ghost.Post
+	recipeByID *ghost.Post
+	err        error
 }
 
 func (m *mockGhostClientForIngest) FetchRecipes() ([]ghost.Post, error) {
@@ -27,7 +30,126 @@ func (m *mockGhostClientForIngest) FetchRecipes() ([]ghost.Post, error) {
 }
 
 func (m *mockGhostClientForIngest) FetchRecipeByID(id string) (*ghost.Post, error) {
-	return nil, nil
+	return m.recipeByID, m.err
+}
+
+func TestRetagRecipeByIDOnlyRegeneratesTagsAndEmbedding(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "retag.db")
+	db, err := database.NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("NewDB() error = %v", err)
+	}
+	defer db.Close()
+	if err := db.MigrateUp(dbPath); err != nil {
+		t.Fatalf("MigrateUp() error = %v", err)
+	}
+
+	recipeRepo := recipe.NewRepository(db.SQL)
+	vectorRepo := llm.NewVectorRepository(db.SQL)
+	metricsStore := metrics.NewStore(db.SQL)
+	original := value.Recipe{
+		ID:          "salmon-1",
+		Title:       "Salmão com brócolis",
+		Ingredients: []string{"200 g salmão", "5 ramos de brócolis"},
+		Tags:        []string{"salmão", "fish", "vegetariano"},
+		UpdatedAt:   "2026-07-22T18:00:00Z",
+	}
+	if err := recipeRepo.Save(ctx, original); err != nil {
+		t.Fatalf("save original recipe: %v", err)
+	}
+
+	embGen := &llmtest.MockEmbeddingGenerator{Values: []float32{0.1, 0.2}}
+	application := &App{
+		ghostClient: &mockGhostClientForIngest{recipeByID: &ghost.Post{
+			ID:   original.ID,
+			Tags: []ghost.Tag{{Name: "Air Fryer"}},
+		}},
+		recipeRepo:   recipeRepo,
+		metricsStore: metricsStore,
+		extractor:    recipe.NewExtractor(nil, embGen, vectorRepo),
+		tagger: recipe.NewTagger(&llmtest.MockTextGenerator{Response: `{
+			"tags":[
+				{"pt-BR":"salmão","en":"salmon"},
+				{"pt-BR":"brócolis","en":"broccoli"},
+				{"pt-BR":"fritadeira sem óleo","en":"air fryer"}
+			]
+		}`}),
+	}
+
+	if err := application.RetagRecipeByID(ctx, original.ID); err != nil {
+		t.Fatalf("RetagRecipeByID() error = %v", err)
+	}
+
+	got, err := recipeRepo.Get(ctx, original.ID)
+	if err != nil {
+		t.Fatalf("get retagged recipe: %v", err)
+	}
+	wantTags := []string{"salmão", "salmon", "brócolis", "broccoli", "fritadeira sem óleo", "air fryer"}
+	if !slices.Equal(got.Tags, wantTags) {
+		t.Fatalf("tags = %#v, want %#v", got.Tags, wantTags)
+	}
+	if got.Title != original.Title || !slices.Equal(got.Ingredients, original.Ingredients) {
+		t.Fatalf("retag changed normalized recipe fields: %#v", got)
+	}
+	if embGen.Calls != 1 {
+		t.Fatalf("embedding calls = %d, want 1", embGen.Calls)
+	}
+}
+
+func TestRetagAllRecipesUpdatesOnlyNormalizedRecipes(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "retag-all.db")
+	db, err := database.NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("NewDB() error = %v", err)
+	}
+	defer db.Close()
+	if err := db.MigrateUp(dbPath); err != nil {
+		t.Fatalf("MigrateUp() error = %v", err)
+	}
+
+	recipeRepo := recipe.NewRepository(db.SQL)
+	vectorRepo := llm.NewVectorRepository(db.SQL)
+	for _, rec := range []value.Recipe{
+		{ID: "one", Title: "Recipe One", Ingredients: []string{"ingredient one"}},
+		{ID: "two", Title: "Recipe Two", Ingredients: []string{"ingredient two"}},
+	} {
+		if err := recipeRepo.Save(ctx, rec); err != nil {
+			t.Fatalf("save recipe %q: %v", rec.ID, err)
+		}
+	}
+
+	embGen := &llmtest.MockEmbeddingGenerator{Values: []float32{0.1, 0.2}}
+	application := &App{
+		ghostClient: &mockGhostClientForIngest{posts: []ghost.Post{
+			{ID: "one", Title: "Recipe One"},
+			{ID: "two", Title: "Recipe Two"},
+			{ID: "not-normalized", Title: "Not Normalized"},
+		}},
+		recipeRepo:   recipeRepo,
+		metricsStore: metrics.NewStore(db.SQL),
+		extractor:    recipe.NewExtractor(nil, embGen, vectorRepo),
+		tagger: recipe.NewTagger(&llmtest.MockTextGenerator{Response: `{
+			"tags":[{"pt-BR":"receita","en":"recipe"}]
+		}`}),
+	}
+
+	if err := application.RetagAllRecipes(ctx); err != nil {
+		t.Fatalf("RetagAllRecipes() error = %v", err)
+	}
+	for _, id := range []string{"one", "two"} {
+		rec, err := recipeRepo.Get(ctx, id)
+		if err != nil {
+			t.Fatalf("get recipe %q: %v", id, err)
+		}
+		if !slices.Equal(rec.Tags, []string{"receita", "recipe"}) {
+			t.Fatalf("recipe %q tags = %#v", id, rec.Tags)
+		}
+	}
+	if embGen.Calls != 2 {
+		t.Fatalf("embedding calls = %d, want 2", embGen.Calls)
+	}
 }
 
 func (m *mockGhostClientForIngest) CreatePost(title, html string, tags []string, publish bool) (*ghost.Post, error) {
@@ -107,6 +229,7 @@ func TestIngestRecipes_Cleanup(t *testing.T) {
 		vectorRepo:   vectorRepo,
 		metricsStore: metricsStore,
 		extractor:    recipe.NewExtractor(textGen, embGen, vectorRepo),
+		tagger:       recipe.NewTagger(&llmtest.MockTextGenerator{Response: `{"tags":[{"pt-BR":"receita","en":"recipe"}]}`}),
 	}
 
 	// 4. Run IngestRecipes

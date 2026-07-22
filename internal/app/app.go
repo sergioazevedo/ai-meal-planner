@@ -2,8 +2,11 @@ package app
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"ai-meal-planner/internal/audit"
@@ -15,8 +18,10 @@ import (
 	"ai-meal-planner/internal/metrics"
 	"ai-meal-planner/internal/planner"
 	"ai-meal-planner/internal/recipe"
-	"strings"
+	"ai-meal-planner/internal/value"
 )
+
+const defaultBulkRetagDelay = 5 * time.Second
 
 // App holds the application's dependencies.
 type App struct {
@@ -35,13 +40,16 @@ type App struct {
 	planRepo   *planner.PlanRepository
 	auditRepo  *audit.AuditRepository
 
-	extractor *recipe.Extractor // New Extractor instance
+	extractor  *recipe.Extractor // New Extractor instance
+	tagger     *recipe.Tagger
+	retagDelay time.Duration
 }
 
 // NewApp creates and initializes a new App instance.
 func NewApp(
 	ghostClient ghost.Client,
 	textGen llm.TextGenerator,
+	tagGen llm.TextGenerator,
 	embedGen llm.EmbeddingGenerator,
 	metricsStore *metrics.Store,
 	mealPlanner *planner.Planner,
@@ -67,6 +75,8 @@ func NewApp(
 		planRepo:      planRepo,
 		auditRepo:     auditRepo,
 		extractor:     recipe.NewExtractor(textGen, embedGen, vectorRepo), // Initialize Extractor
+		tagger:        recipe.NewTagger(tagGen),
+		retagDelay:    defaultBulkRetagDelay,
 	}
 }
 
@@ -97,6 +107,7 @@ func (a *App) IngestRecipes(ctx context.Context, force bool) error {
 		if err := ProcessAndSaveRecipe(
 			ctx,
 			a.extractor, // Pass the extractor
+			a.tagger,
 			a.recipeRepo,
 			a.metricsStore,
 			post,
@@ -142,6 +153,7 @@ func (a *App) IngestRecipeByID(ctx context.Context, id string) error {
 	if err := ProcessAndSaveRecipe(
 		ctx,
 		a.extractor,
+		a.tagger,
 		a.recipeRepo,
 		a.metricsStore,
 		*post,
@@ -152,6 +164,103 @@ func (a *App) IngestRecipeByID(ctx context.Context, id string) error {
 
 	fmt.Printf("Successfully re-ingested '%s'.\n", post.Title)
 	return nil
+}
+
+// RetagRecipeByID regenerates only a recipe's bilingual tags and its dependent embedding.
+func (a *App) RetagRecipeByID(ctx context.Context, id string) error {
+	post, err := a.ghostClient.FetchRecipeByID(id)
+	if err != nil {
+		return fmt.Errorf("failed to fetch recipe %s from ghost: %w", id, err)
+	}
+	if post == nil {
+		return fmt.Errorf("ghost returned no recipe for %s", id)
+	}
+
+	rec, err := a.recipeRepo.Get(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to load recipe %s: %w", id, err)
+	}
+	return a.retagRecipe(ctx, rec, *post)
+}
+
+// RetagAllRecipes regenerates tags for every normalized recipe still present in Ghost.
+func (a *App) RetagAllRecipes(ctx context.Context) error {
+	posts, err := a.ghostClient.FetchRecipes()
+	if err != nil {
+		return fmt.Errorf("failed to fetch recipes from ghost: %w", err)
+	}
+
+	processed := 0
+	failed := 0
+	for i, post := range posts {
+		rec, err := a.recipeRepo.Get(ctx, post.ID)
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Printf("Skipping tag regeneration for %q: recipe is not normalized locally", post.Title)
+			continue
+		}
+		if err != nil {
+			failed++
+			log.Printf("Failed to load recipe %q for retagging: %v", post.Title, err)
+			continue
+		}
+
+		if err := a.retagRecipe(ctx, rec, post); err != nil {
+			failed++
+			log.Printf("Failed to retag recipe %q: %v", post.Title, err)
+		} else {
+			processed++
+		}
+
+		if a.retagDelay > 0 && i < len(posts)-1 {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(a.retagDelay):
+			}
+		}
+	}
+
+	fmt.Printf("Retagged %d recipes.\n", processed)
+	if failed > 0 {
+		return fmt.Errorf("failed to retag %d recipes", failed)
+	}
+	return nil
+}
+
+func (a *App) retagRecipe(ctx context.Context, rec value.Recipe, post ghost.Post) error {
+	result, err := a.tagger.Run(ctx, rec, ghostTagNames(post.Tags))
+	if err != nil {
+		return fmt.Errorf("failed to retag recipe %q: %w", rec.Title, err)
+	}
+	rec.Tags = result.Tags
+
+	if err := a.recipeRepo.UpdateTags(ctx, rec); err != nil {
+		return fmt.Errorf("failed to save retagged recipe %q: %w", rec.Title, err)
+	}
+	if err := a.metricsStore.RecordMeta(result.Meta); err != nil {
+		return fmt.Errorf("failed to record tagger metrics: %w", err)
+	}
+
+	_, embeddingMeta, err := a.extractor.ProcessAndSaveEmbedding(ctx, rec, true)
+	if err != nil {
+		return fmt.Errorf("failed to refresh embedding for %q: %w", rec.Title, err)
+	}
+	if err := a.metricsStore.RecordMeta(embeddingMeta); err != nil {
+		return fmt.Errorf("failed to record embedding metrics: %w", err)
+	}
+
+	fmt.Printf("Successfully retagged '%s'.\n", rec.Title)
+	return nil
+}
+
+func ghostTagNames(tags []ghost.Tag) []string {
+	names := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		if name := strings.TrimSpace(tag.Name); name != "" {
+			names = append(names, name)
+		}
+	}
+	return names
 }
 
 // GenerateMealPlan creates a meal plan based on user request and prints it.
