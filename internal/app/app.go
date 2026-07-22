@@ -2,8 +2,11 @@ package app
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"ai-meal-planner/internal/audit"
@@ -15,8 +18,10 @@ import (
 	"ai-meal-planner/internal/metrics"
 	"ai-meal-planner/internal/planner"
 	"ai-meal-planner/internal/recipe"
-	"strings"
+	"ai-meal-planner/internal/value"
 )
+
+const defaultBulkRetagDelay = 5 * time.Second
 
 // App holds the application's dependencies.
 type App struct {
@@ -35,8 +40,9 @@ type App struct {
 	planRepo   *planner.PlanRepository
 	auditRepo  *audit.AuditRepository
 
-	extractor *recipe.Extractor // New Extractor instance
-	tagger    *recipe.Tagger
+	extractor  *recipe.Extractor // New Extractor instance
+	tagger     *recipe.Tagger
+	retagDelay time.Duration
 }
 
 // NewApp creates and initializes a new App instance.
@@ -70,6 +76,7 @@ func NewApp(
 		auditRepo:     auditRepo,
 		extractor:     recipe.NewExtractor(textGen, embedGen, vectorRepo), // Initialize Extractor
 		tagger:        recipe.NewTagger(tagGen),
+		retagDelay:    defaultBulkRetagDelay,
 	}
 }
 
@@ -161,16 +168,66 @@ func (a *App) IngestRecipeByID(ctx context.Context, id string) error {
 
 // RetagRecipeByID regenerates only a recipe's bilingual tags and its dependent embedding.
 func (a *App) RetagRecipeByID(ctx context.Context, id string) error {
-	rec, err := a.recipeRepo.Get(ctx, id)
-	if err != nil {
-		return fmt.Errorf("failed to load recipe %s: %w", id, err)
-	}
-
 	post, err := a.ghostClient.FetchRecipeByID(id)
 	if err != nil {
 		return fmt.Errorf("failed to fetch recipe %s from ghost: %w", id, err)
 	}
+	if post == nil {
+		return fmt.Errorf("ghost returned no recipe for %s", id)
+	}
 
+	rec, err := a.recipeRepo.Get(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to load recipe %s: %w", id, err)
+	}
+	return a.retagRecipe(ctx, rec, *post)
+}
+
+// RetagAllRecipes regenerates tags for every normalized recipe still present in Ghost.
+func (a *App) RetagAllRecipes(ctx context.Context) error {
+	posts, err := a.ghostClient.FetchRecipes()
+	if err != nil {
+		return fmt.Errorf("failed to fetch recipes from ghost: %w", err)
+	}
+
+	processed := 0
+	failed := 0
+	for i, post := range posts {
+		rec, err := a.recipeRepo.Get(ctx, post.ID)
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Printf("Skipping tag regeneration for %q: recipe is not normalized locally", post.Title)
+			continue
+		}
+		if err != nil {
+			failed++
+			log.Printf("Failed to load recipe %q for retagging: %v", post.Title, err)
+			continue
+		}
+
+		if err := a.retagRecipe(ctx, rec, post); err != nil {
+			failed++
+			log.Printf("Failed to retag recipe %q: %v", post.Title, err)
+		} else {
+			processed++
+		}
+
+		if a.retagDelay > 0 && i < len(posts)-1 {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(a.retagDelay):
+			}
+		}
+	}
+
+	fmt.Printf("Retagged %d recipes.\n", processed)
+	if failed > 0 {
+		return fmt.Errorf("failed to retag %d recipes", failed)
+	}
+	return nil
+}
+
+func (a *App) retagRecipe(ctx context.Context, rec value.Recipe, post ghost.Post) error {
 	result, err := a.tagger.Run(ctx, rec, ghostTagNames(post.Tags))
 	if err != nil {
 		return fmt.Errorf("failed to retag recipe %q: %w", rec.Title, err)

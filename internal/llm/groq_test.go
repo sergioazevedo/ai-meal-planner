@@ -1,8 +1,13 @@
 package llm
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestMapToGroqMessages(t *testing.T) {
@@ -92,5 +97,78 @@ func TestMapToTToolCall(t *testing.T) {
 	}
 	if mapped.Name != "test_tool" {
 		t.Errorf("expected name test_tool, got %s", mapped.Name)
+	}
+}
+
+func TestGroqRetryDelay(t *testing.T) {
+	tests := []struct {
+		name    string
+		headers http.Header
+		body    string
+		want    time.Duration
+	}{
+		{
+			name:    "retry-after header takes priority",
+			headers: http.Header{"Retry-After": []string{"2"}, "X-Ratelimit-Reset-Tokens": []string{"500ms"}},
+			want:    2100 * time.Millisecond,
+		},
+		{
+			name:    "token reset header",
+			headers: http.Header{"X-Ratelimit-Reset-Tokens": []string{"750ms"}},
+			want:    850 * time.Millisecond,
+		},
+		{
+			name: "millisecond response hint",
+			body: `{"error":{"message":"Please try again in 600ms."}}`,
+			want: 700 * time.Millisecond,
+		},
+		{name: "fallback", want: 5 * time.Second},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := groqRetryDelay(tt.headers, tt.body); got != tt.want {
+				t.Fatalf("groqRetryDelay() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGroqClientRetriesUsingRateLimitHeaders(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if calls.Add(1) == 1 {
+			w.Header().Set("Retry-After", "0")
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = w.Write([]byte(`{"error":{"message":"rate limited"}}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"choices":[{"message":{"role":"assistant","content":"{}"}}],
+			"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}
+		}`))
+	}))
+	defer server.Close()
+
+	client := &GroqClient{
+		apiKey:     "test",
+		modelID:    ModelNormalizer,
+		apiURL:     server.URL,
+		httpClient: server.Client(),
+	}
+	response, err := client.GenerateContent(
+		context.Background(),
+		Conversation{{Role: "user", Content: "test"}},
+		NoTools,
+	)
+	if err != nil {
+		t.Fatalf("GenerateContent() error = %v", err)
+	}
+	if calls.Load() != 2 {
+		t.Fatalf("calls = %d, want 2", calls.Load())
+	}
+	if response.Usage.TotalTokens != 2 {
+		t.Fatalf("total tokens = %d, want 2", response.Usage.TotalTokens)
 	}
 }

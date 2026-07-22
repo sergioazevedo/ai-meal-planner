@@ -104,15 +104,22 @@ func main() {
 	case "retag":
 		retagCmd := flag.NewFlagSet("retag", flag.ExitOnError)
 		id := retagCmd.String("id", "", "The Ghost ID of the recipe to retag")
+		all := retagCmd.Bool("all", false, "Retag every normalized Ghost recipe")
 		retagCmd.Parse(os.Args[2:])
 
-		if *id == "" {
-			fmt.Println("Error: -id is required")
+		if (*id == "") == !*all {
+			fmt.Println("Error: provide exactly one of -id or -all")
 			retagCmd.Usage()
 			os.Exit(1)
 		}
 
-		if err := application.RetagRecipeByID(ctx, *id); err != nil {
+		var err error
+		if *all {
+			err = application.RetagAllRecipes(ctx)
+		} else {
+			err = application.RetagRecipeByID(ctx, *id)
+		}
+		if err != nil {
 			log.Fatalf("Retagging failed: %v", err)
 		}
 	case "plan":
@@ -178,7 +185,7 @@ func printUsage() {
 	fmt.Println("\nCommands:")
 	fmt.Println("  ingest             Fetch and normalize recipes from Ghost")
 	fmt.Println("  reingest           Re-normalize one recipe by Ghost ID")
-	fmt.Println("  retag              Regenerate tags for one recipe by Ghost ID")
+	fmt.Println("  retag              Regenerate tags for one recipe or all recipes")
 	fmt.Println("  migrate            Run database migrations")
 	fmt.Println("  metrics-cleanup    Remove old metric records")
 }

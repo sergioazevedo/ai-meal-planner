@@ -1,13 +1,13 @@
 #!/bin/bash
 set -e
 
-# Regenerate only the bilingual tags and embedding for one local recipe.
-# Usage: ./scripts/retag.sh <GHOST_ID>
+# Regenerate only the bilingual tags and embeddings locally.
+# Usage: ./scripts/retag.sh <GHOST_ID|--all>
 
-ID="${1}"
+SELECTION="${1}"
 
-if [ -z "$ID" ]; then
-    echo "Usage: $0 <GHOST_ID>"
+if [ -z "$SELECTION" ]; then
+    echo "Usage: $0 <GHOST_ID|--all>"
     exit 1
 fi
 
@@ -22,4 +22,8 @@ set -a
 . ./.env
 set +a
 
-./bin/ai-meal-planner retag -id "$ID"
+if [ "$SELECTION" = "--all" ]; then
+    ./bin/ai-meal-planner retag -all
+else
+    ./bin/ai-meal-planner retag -id "$SELECTION"
+fi
