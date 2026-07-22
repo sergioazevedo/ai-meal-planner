@@ -1,58 +1,63 @@
-# Groq API Integration Guide
+# Groq integration and model configuration
 
-This document provides technical details on how our Go application interacts with the Groq API.
+The application uses Groq through the `llm.TextGenerator` interface. Each workload has its own model setting so a model can be replaced without changing the other roles.
 
----
+## Authentication
 
-## Configuration
-
-To use the Groq API, you must set the following environment variable:
+Set the API key before running the application or live LLM evaluations:
 
 ```bash
-export GROQ_API_KEY="your_api_key_here"
+export GROQ_API_KEY="your_api_key"
 ```
 
-The application will fail to start if this key is not provided.
+`config.NewFromEnv` requires this key for the application. Local live evals skip without it, while CI fails so missing credentials cannot produce a false green result.
 
----
+## Models by role
 
-## Go Client Usage
+| Role | Environment variable | Default |
+| --- | --- | --- |
+| Analyst | `GROQ_ANALYST_MODEL` | `openai/gpt-oss-120b` |
+| PlanReviewer | `GROQ_REVIEWER_MODEL` | `openai/gpt-oss-120b` |
+| Chef | `GROQ_CHEF_MODEL` | `openai/gpt-oss-20b` |
+| Normalizer | `GROQ_NORMALIZER_MODEL` | `openai/gpt-oss-20b` |
+| Tagger | `GROQ_TAGGER_MODEL` | `qwen/qwen3.6-27b` |
 
-Interaction with the Groq API is handled by the `TextGenerator` interface defined in `internal/llm/llm.go`. The `groqClient` in `internal/llm/groq.go` implements this interface.
+The defaults were selected against the repository's live scenarios. They remain configurable because provider availability, free-tier limits, and model behavior can change.
 
-### Initialization
-To get a new client, use the `llm.NewGroqClient` function.
+For example, to evaluate another Analyst without changing production code:
+
+```bash
+GROQ_ANALYST_MODEL="provider/model-id" \
+go test -v ./internal/planner -run TestAnalyst_LiveEval -count=1
+```
+
+Run the matching live eval before changing a role's production default. The Tagger in particular must preserve ordered Portuguese/English pairs, which is not guaranteed by general model quality alone.
+
+## Client usage
+
+Create a client with an explicit model and temperature:
 
 ```go
-package main
-
-import (
-    "context"
-    "log"
-    "ai-meal-planner/internal/config"
-    "ai-meal-planner/internal/llm"
+client := llm.NewGroqClient(
+    cfg,
+    cfg.AnalystModel, // Model selected for this role.
+    0.1,
 )
 
-func main() {
-    ctx := context.Background()
-    cfg, err := config.NewFromEnv()
-    // ... handle error
-
-    groqClient := llm.NewGroqClient(cfg)
-    
-    // ... use client
-}
+response, err := client.GenerateContent(
+    ctx,
+    llm.Conversation{{Role: "user", Content: "Plan a week of dinners."}},
+    llm.NoTools,
+)
 ```
 
-### Generating Content (Text)
-To generate content using **Llama 3 70b**, use the `GenerateContent` method.
+The client applies bounded retries to rate-limit responses. It also lowers or disables reasoning effort for supported model families to keep requests within the available token budget. Callers must still use context deadlines.
 
-```go
-prompt := "Tell me a joke about a programmer."
-response, err := groqClient.GenerateContent(ctx, prompt, llm.NoTools)
-if err != nil {
-    log.Printf("Failed to generate content: %v", err)
-} else {
-    fmt.Println(response)
-}
-```
+## Replacing a deprecated model
+
+1. Override only the affected role through its environment variable.
+2. Run that role's live eval several times if quota permits.
+3. Run `make eval` to detect effects across the full pipeline.
+4. Change the default only after the candidate passes the relevant behavior checks.
+
+Model replacement is an operational change and an evaluation exercise. A model returning valid JSON is not enough if it loses plan identity, ignores constraints, or produces incomplete bilingual tags.
