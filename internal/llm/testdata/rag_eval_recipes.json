@@ -1,5 +1,32 @@
 [
   {
+    "id": "69d18253d7b5911c968bf5c8",
+    "title": "Salmão com brócolis",
+    "ingredients": [
+      "1 tranche de salmão com pele (cerca de 200 g)",
+      "5 ramos de brócolis (floretes com talo)",
+      "2 colheres (sopa) de shoyu (molho de soja)",
+      "1 colher (sopa) de mel",
+      "1 colher (chá) de vinagre de arroz",
+      "azeite a gosto",
+      "sal e pimenta-do-reino moída na hora a gosto"
+    ],
+    "tags": [
+      "salmão",
+      "salmon",
+      "brócolis",
+      "broccoli",
+      "molho de soja",
+      "soy sauce",
+      "peixe",
+      "fish",
+      "prato principal",
+      "main course"
+    ],
+    "prep_time": "20 minutos",
+    "servings": "1 porção"
+  },
+  {
     "id": "69d18988d7b5911c968bf5fc",
     "title": "Bolo de carne e abobrinha com cebolas assadas com Arroz e Salada de Tomate",
     "ingredients": [
@@ -16,9 +43,22 @@
       "1 xícara de queijo ralado"
     ],
     "tags": [
-      "Massa",
-      "Carne",
-      "Jantar"
+      "carne moída",
+      "ground beef",
+      "abobrinha",
+      "zucchini",
+      "cebola",
+      "onion",
+      "arroz",
+      "rice",
+      "salada de tomate",
+      "tomato salad",
+      "queijo",
+      "cheese",
+      "alface",
+      "lettuce",
+      "tomate",
+      "tomato"
     ],
     "prep_time": "45 mins",
     "servings": "6 people"
@@ -41,8 +81,31 @@
       "2 cups mixed greens (salad)"
     ],
     "tags": [
-      "Rápido",
-      "Jantar"
+      "kafta",
+      "carne",
+      "meat",
+      "cebola",
+      "onion",
+      "alho",
+      "garlic",
+      "cominho",
+      "cumin",
+      "pimenta",
+      "paprika",
+      "tomate",
+      "tomato",
+      "pepino",
+      "cucumber",
+      "pimentão",
+      "bell pepper",
+      "azeite",
+      "olive oil",
+      "arroz",
+      "rice",
+      "salada",
+      "salad",
+      "vegetais grelhados",
+      "grilled vegetables"
     ],
     "prep_time": "Estimated 20-25 minutes",
     "servings": "4-6 people"
@@ -64,9 +127,26 @@
       "Queijo ralado (opcional)"
     ],
     "tags": [
-      "Sanduíche",
-      "Pernil",
-      "Rápido"
+      "pernil desfiado",
+      "shredded pork",
+      "pão francês",
+      "french bread",
+      "arroz branco",
+      "white rice",
+      "salada de tomate",
+      "tomato salad",
+      "alface",
+      "lettuce",
+      "queijo",
+      "cheese",
+      "azeite",
+      "olive oil",
+      "alho",
+      "garlic",
+      "cebola",
+      "onion",
+      "sanduíche",
+      "sandwich"
     ],
     "prep_time": "Estimated 20-25 minutes",
     "servings": "4-6 pessoas"
@@ -90,9 +170,28 @@
       "1 xícara de tomate cereja"
     ],
     "tags": [
-      "Massa",
-      "Italiano",
-      "Rápido"
+      "macarrão",
+      "pasta",
+      "bolonhesa",
+      "bolognese",
+      "arroz",
+      "rice",
+      "salada de alface",
+      "lettuce salad",
+      "cebola",
+      "onion",
+      "alho",
+      "garlic",
+      "molho de tomate",
+      "tomato sauce",
+      "queijo",
+      "cheese",
+      "presunto",
+      "ham",
+      "alface",
+      "lettuce",
+      "tomate cereja",
+      "cherry tomato"
     ],
     "prep_time": "Estimated 30 mins",
     "servings": "Estimated 4 people"
@@ -115,9 +214,32 @@
       "1 xícara de tomate cereja fatiado"
     ],
     "tags": [
-      "Almôndega",
-      "Molho de Tomate",
-      "Air Fryer"
+      "almôndega",
+      "meatball",
+      "molho de tomate",
+      "tomato sauce",
+      "fritadeira sem óleo",
+      "air fryer",
+      "carne moída",
+      "ground meat",
+      "cebola",
+      "onion",
+      "alho",
+      "garlic",
+      "ovo",
+      "egg",
+      "farinha de trigo",
+      "wheat flour",
+      "azeite",
+      "olive oil",
+      "batata",
+      "potato",
+      "arroz branco",
+      "white rice",
+      "alface",
+      "lettuce",
+      "tomate cereja",
+      "cherry tomato"
     ],
     "prep_time": "Estimated 30-40 minutes",
     "servings": "4-6 people"
@@ -142,9 +264,24 @@
       "Pimenta (for Salada de Espinafre)"
     ],
     "tags": [
-      "Lombo",
-      "Jantar",
-      "Carnes"
+      "lombo de porco",
+      "pork loin",
+      "maçã",
+      "apple",
+      "cebola",
+      "onion",
+      "arroz",
+      "rice",
+      "espinafre",
+      "spinach",
+      "azeite",
+      "olive oil",
+      "manteiga",
+      "butter",
+      "carne de porco",
+      "pork",
+      "refeição com acompanhamentos",
+      "meal with sides"
     ],
     "prep_time": "Estimated 45 mins",
     "servings": "Estimated 4 people"
@@ -166,9 +303,22 @@
       "Sal e pimenta a gosto"
     ],
     "tags": [
-      "Lombo",
-      "Rápido",
-      "Jantar"
+      "lombo de porco",
+      "pork loin",
+      "maçã",
+      "apple",
+      "cebola",
+      "onion",
+      "arroz",
+      "rice",
+      "alface",
+      "lettuce",
+      "tomate",
+      "tomato",
+      "manteiga",
+      "butter",
+      "azeite",
+      "olive oil"
     ],
     "prep_time": "Estimated 30-40 mins",
     "servings": "4 people"
@@ -197,10 +347,30 @@
       "Sal e pimenta a gosto (para a salada)"
     ],
     "tags": [
-      "Risoto",
-      "Queijo",
-      "Medalhão",
-      "Grelhado"
+      "queijo",
+      "cheese",
+      "arroz",
+      "rice",
+      "caldo de galinha",
+      "chicken broth",
+      "medalhão grelhado",
+      "grilled medallion",
+      "alho",
+      "garlic",
+      "cebola",
+      "onion",
+      "feijão preto",
+      "black beans",
+      "alface",
+      "lettuce",
+      "tomate",
+      "tomato",
+      "pepino",
+      "cucumber",
+      "risoto",
+      "risotto",
+      "cozido na pressão",
+      "pressure cooked"
     ],
     "prep_time": "Estimated 30-40 minutes",
     "servings": "Estimated 4-6 people"
@@ -222,9 +392,20 @@
       "vinagre"
     ],
     "tags": [
-      "Feijoada",
-      "Carne",
-      "Pressão"
+      "feijão preto",
+      "black bean",
+      "carne de porco",
+      "pork",
+      "carne de boi",
+      "beef",
+      "arroz",
+      "rice",
+      "salada de couve",
+      "kale salad",
+      "cozido na pressão",
+      "pressure cooked",
+      "comida brasileira",
+      "brazilian food"
     ],
     "prep_time": "Estimated 45 mins",
     "servings": "Estimated 6 people"
@@ -244,9 +425,24 @@
       "rúcula para salada"
     ],
     "tags": [
-      "Carne",
-      "Rápido",
-      "Jantar"
+      "carne de boi",
+      "beef",
+      "batata",
+      "potato",
+      "cenoura",
+      "carrot",
+      "arroz",
+      "rice",
+      "rúcula",
+      "arugula",
+      "panela de pressão elétrica",
+      "electric pressure cooker",
+      "azeite",
+      "olive oil",
+      "cebola",
+      "onion",
+      "alho",
+      "garlic"
     ],
     "prep_time": "Estimated time: 45 mins",
     "servings": "Estimated servings: 4 people"
@@ -266,11 +462,18 @@
       "salada de alface com vinagre e óleo"
     ],
     "tags": [
-      "Peixe",
-      "Batata",
-      "Espinafre",
-      "Rápido",
-      "Jantar"
+      "peixe",
+      "fish",
+      "batata",
+      "potato",
+      "espinafre",
+      "spinach",
+      "arroz",
+      "rice",
+      "salada de alface",
+      "lettuce salad",
+      "alface",
+      "lettuce"
     ],
     "prep_time": "Estimated 30-40 mins",
     "servings": "Estimated 4 people"
@@ -291,9 +494,20 @@
       "Alface (sugestão: 1 xícara)"
     ],
     "tags": [
-      "Salada",
-      "Italiana",
-      "Vegetariano"
+      "grão-de-bico",
+      "chickpea",
+      "arroz",
+      "rice",
+      "salada de tomate",
+      "tomato salad",
+      "alface",
+      "lettuce",
+      "azeite",
+      "olive oil",
+      "vinagre balsâmico",
+      "balsamic vinegar",
+      "salada italiana",
+      "italian salad"
     ],
     "prep_time": "Estimated 30-40 mins",
     "servings": "Estimated 4-6 people"
@@ -318,34 +532,28 @@
       "Sal a gosto"
     ],
     "tags": [
-      "Massa",
-      "Rápido",
-      "Jantar"
+      "polenta",
+      "tomate",
+      "tomato",
+      "cebola",
+      "onion",
+      "alho",
+      "garlic",
+      "pimentão",
+      "bell pepper",
+      "azeite",
+      "olive oil",
+      "vinho branco",
+      "white wine",
+      "caldo de carne",
+      "beef broth",
+      "farinha de trigo",
+      "wheat flour",
+      "arroz branco",
+      "white rice"
     ],
     "prep_time": "Estimated time: 45 mins",
     "servings": "Estimated servings: 4 people"
-  },
-  {
-    "id": "69d18253d7b5911c968bf5c8",
-    "title": "Salmão com brócolis na Air Fryer da Rita Lobo com Batata Doce e Salada de Tomate",
-    "ingredients": [
-      "400g Salmão",
-      "2 Batatas Doce",
-      "2 Batatas",
-      "2 xícaras de Brócolis",
-      "2 colheres de sopa de Azeite",
-      "1 colher de sopa de Vinagre",
-      "Sal e Pimenta",
-      "2 Tomates",
-      "Alface"
-    ],
-    "tags": [
-      "Peixe",
-      "Rápido",
-      "Jantar"
-    ],
-    "prep_time": "Estimated 30 mins",
-    "servings": "Estimated 4 people"
   },
   {
     "id": "69d181fed7b5911c968bf5c4",
@@ -362,9 +570,26 @@
       "Salada de Tomate (tomates, alface, cebola, azeite, vinagre, sal)"
     ],
     "tags": [
-      "Carne",
-      "Jantar",
-      "Rápido"
+      "bife acebolado",
+      "ribeye steak",
+      "arroz",
+      "rice",
+      "salada de tomate",
+      "tomato salad",
+      "cebola",
+      "onion",
+      "alho",
+      "garlic",
+      "tomate",
+      "tomato",
+      "azeite",
+      "olive oil",
+      "sal e pimenta",
+      "salt and pepper",
+      "alface",
+      "lettuce",
+      "vinagre",
+      "vinegar"
     ],
     "prep_time": "30 mins",
     "servings": "4 people"
@@ -386,9 +611,22 @@
       "1 xícara de alface picada"
     ],
     "tags": [
-      "Ensopado",
-      "Carne",
-      "Vegetariano"
+      "carne de boi",
+      "beef",
+      "abóbora",
+      "pumpkin",
+      "couve",
+      "cabbage",
+      "cebolas",
+      "onions",
+      "alho",
+      "garlic",
+      "arroz",
+      "rice",
+      "alface",
+      "lettuce",
+      "azeite",
+      "olive oil"
     ],
     "prep_time": "Estimated 45 mins",
     "servings": "Estimated 4 people"
@@ -406,8 +644,20 @@
       "1 xícara de alface picada (sugestão)"
     ],
     "tags": [
-      "Carne",
-      "Jantar"
+      "bife de contrafilé",
+      "ribeye steak",
+      "cenoura",
+      "carrot",
+      "azeite",
+      "olive oil",
+      "alho",
+      "garlic",
+      "arroz branco",
+      "white rice",
+      "alface",
+      "lettuce",
+      "assado",
+      "roasted"
     ],
     "prep_time": "Estimated 45 mins",
     "servings": "Estimated 4 people"
@@ -427,10 +677,17 @@
       "Alface picada para salada"
     ],
     "tags": [
-      "Massa",
-      "Peixe",
-      "Rápido",
-      "Jantar"
+      "salmão",
+      "salmon",
+      "massa fria",
+      "cold pasta",
+      "pesto",
+      "ervilhas",
+      "peas",
+      "arroz",
+      "rice",
+      "alface",
+      "lettuce"
     ],
     "prep_time": "Estimated 30-40 mins",
     "servings": "4 people"
@@ -453,10 +710,19 @@
       "Salada de alface: 4 folhas de alface, 1 xícara de tomate picado, 1/4 xícara de cebola picada, 1 colher de sopa de azeite, sal e pimenta a gosto"
     ],
     "tags": [
-      "Receita de frango",
-      "Curry",
-      "Rápido",
-      "Jantar"
+      "frango",
+      "chicken",
+      "curry",
+      "arroz",
+      "rice",
+      "alface",
+      "lettuce",
+      "alho",
+      "garlic",
+      "cebola",
+      "onion",
+      "tomate",
+      "tomato"
     ],
     "prep_time": "30 mins",
     "servings": "4 people"
@@ -483,11 +749,16 @@
       "quiche",
       "frango",
       "chicken",
-      "carne",
-      "beef",
-      "lactose",
+      "queijo emmental",
+      "emmental cheese",
+      "bacon",
+      "creme de leite",
+      "heavy cream",
       "ovo",
-      "egg"
+      "egg",
+      "farinha de trigo",
+      "wheat flour",
+      "quiche lorraine"
     ],
     "prep_time": "Mais de 2h",
     "servings": "Até 6 porções"
@@ -513,11 +784,32 @@
       "Sal e pimenta a gosto"
     ],
     "tags": [
-      "tortilha",
       "batata",
+      "potato",
+      "ovo",
+      "egg",
+      "queijo",
+      "cheese",
+      "presunto",
+      "ham",
+      "brocolis",
+      "broccoli",
+      "aspargos",
+      "asparagus",
+      "alface",
+      "lettuce",
+      "rúcula",
+      "arugula",
+      "tomate cereja",
+      "cherry tomato",
+      "azeite",
+      "olive oil",
       "salada",
-      "folhas",
-      "legumes"
+      "salad",
+      "tortilha",
+      "omelette",
+      "fim de semana",
+      "weekend"
     ],
     "prep_time": "Até 1h",
     "servings": "Até 6 porções"
@@ -543,9 +835,17 @@
     ],
     "tags": [
       "frango",
-      "parmesão",
+      "chicken",
+      "parmegeana",
+      "parmesan",
       "arroz",
-      "salada"
+      "rice",
+      "salada",
+      "salad",
+      "folhas",
+      "greens",
+      "finais de semana",
+      "weekend"
     ],
     "prep_time": "1h 30m",
     "servings": "5 pessoas"
@@ -569,8 +869,19 @@
     ],
     "tags": [
       "bacalhau",
-      "natás",
-      "prato principal"
+      "cod",
+      "natasa",
+      "cream",
+      "cebola",
+      "onion",
+      "alho",
+      "garlic",
+      "arroz",
+      "rice",
+      "salada de alface",
+      "lettuce salad",
+      "fin de semana",
+      "weekend"
     ],
     "prep_time": "Estimated 45 mins",
     "servings": "4 people"
@@ -593,9 +904,31 @@
       "1 head lettuce (suggested salad)"
     ],
     "tags": [
-      "salmao",
-      "macarrao",
-      "legumes"
+      "salmão",
+      "salmon",
+      "macarrão",
+      "pasta",
+      "mussarela",
+      "mozzarella",
+      "tomate cereja",
+      "cherry tomato",
+      "pesto",
+      "queijo parmesão",
+      "parmesan cheese",
+      "brócolis",
+      "broccoli",
+      "couve de bruxelas",
+      "brussels sprouts",
+      "arroz",
+      "rice",
+      "alface",
+      "lettuce",
+      "fácil",
+      "easy",
+      "rápido",
+      "fast",
+      "prático",
+      "practical"
     ],
     "prep_time": "Estimated 50 mins",
     "servings": "5 people"
@@ -621,14 +954,36 @@
       "1 xícara de folhas de alface (suggested salad)"
     ],
     "tags": [
+      "purê de batata",
+      "mashed potato",
       "frango",
       "chicken",
+      "legumes",
+      "vegetables",
       "batata",
       "potato",
-      "vegetariano",
-      "vegetarian",
-      "comida brasileira",
-      "Brazilian food"
+      "alho",
+      "garlic",
+      "cebola",
+      "onion",
+      "páprica",
+      "paprika",
+      "ervas frescas",
+      "fresh herbs",
+      "queijo parmesão",
+      "parmesan cheese",
+      "manteiga",
+      "butter",
+      "leite",
+      "milk",
+      "brocolis",
+      "broccoli",
+      "cenoura",
+      "carrot",
+      "arroz",
+      "rice",
+      "alface",
+      "lettuce"
     ],
     "prep_time": "30 mins",
     "servings": "4 people"
@@ -650,11 +1005,20 @@
       "1 xícara de repolho picado"
     ],
     "tags": [
-      "sassami",
-      "chicken",
-      "carne",
       "frango",
-      "vegetariano"
+      "chicken",
+      "batata",
+      "potato",
+      "repolho",
+      "cabbage",
+      "sassami",
+      "cutlet",
+      "frito",
+      "fried",
+      "purê",
+      "mash",
+      "salada",
+      "salad"
     ],
     "prep_time": "20 min",
     "servings": "4"
@@ -681,10 +1045,34 @@
     ],
     "tags": [
       "arroz",
-      "piamontese",
+      "rice",
       "gorgonzola",
+      "queijo parmesão",
+      "parmesan cheese",
+      "cogumelos",
+      "mushrooms",
+      "creme de leite",
+      "heavy cream",
+      "leite integral",
+      "whole milk",
+      "azeite de oliva",
+      "olive oil",
+      "alho",
+      "garlic",
+      "cebola",
+      "onion",
+      "salsinha",
+      "parsley",
+      "noz-moscada",
+      "nutmeg",
+      "pimenta-do-reino",
+      "black pepper",
+      "sal",
+      "salt",
       "italiano",
-      "queijo"
+      "italian",
+      "piamontese",
+      "piemontese"
     ],
     "prep_time": "40min",
     "servings": "6 porções"
@@ -710,9 +1098,26 @@
     ],
     "tags": [
       "peixe",
+      "fish",
+      "robalo",
+      "snook",
       "moqueca",
-      "brasileira",
-      "cozido"
+      "leite de coco",
+      "coconut milk",
+      "azeite de dendê",
+      "palm oil",
+      "coentro",
+      "cilantro",
+      "pimentão",
+      "bell pepper",
+      "tomate",
+      "tomato",
+      "cebola",
+      "onion",
+      "alho",
+      "garlic",
+      "pimenta",
+      "pepper"
     ],
     "prep_time": "45 mins",
     "servings": "6 porções"
@@ -738,11 +1143,24 @@
       "½ xícara (chá) de queijo parmesão ralado fino"
     ],
     "tags": [
-      "lasanha",
       "berinjela",
+      "eggplant",
       "ricota",
-      "italiano",
-      "vegetariano"
+      "ricotta",
+      "queijo parmesão",
+      "parmesan cheese",
+      "tomate",
+      "tomato",
+      "lasanha",
+      "lasagna",
+      "azeite",
+      "olive oil",
+      "cebola",
+      "onion",
+      "alho",
+      "garlic",
+      "manjericão",
+      "basil"
     ],
     "prep_time": "2 hours",
     "servings": "6 people"
@@ -761,13 +1179,21 @@
     ],
     "tags": [
       "arroz",
+      "rice",
       "cenoura",
+      "carrot",
       "abobrinha",
+      "zucchini",
       "alho",
+      "garlic",
       "azeite",
+      "olive oil",
       "sal",
+      "salt",
       "pimenta-do-reino",
-      "cebolinha"
+      "black pepper",
+      "cebolinha",
+      "scallion"
     ],
     "prep_time": "15-20 mins",
     "servings": "1 porção"
@@ -788,12 +1214,21 @@
       "gergelim preto torrado a gosto para servir"
     ],
     "tags": [
-      "japonês",
-      "risoto",
-      "cogumelos",
       "arroz para sushi",
+      "sushi rice",
+      "cogumelo shiitake",
+      "shiitake mushroom",
+      "cogumelo shimeji",
+      "shimeji mushroom",
       "mirin",
-      "shoyu"
+      "shoyu",
+      "soy sauce",
+      "risoto",
+      "risotto",
+      "cozinha japonesa",
+      "japanese cuisine",
+      "manteiga",
+      "butter"
     ],
     "prep_time": "45-60 mins",
     "servings": "4-6 people"
@@ -818,11 +1253,32 @@
       "sal e pimenta-do-reino moída na hora a gosto"
     ],
     "tags": [
-      "Frango",
-      "Assado",
-      "Laranja",
-      "Coxa",
-      "Sobrecoxa"
+      "frango",
+      "chicken",
+      "laranja",
+      "orange",
+      "coxas de frango",
+      "chicken thighs",
+      "sobrecoxa de frango",
+      "chicken drumsticks",
+      "manteiga",
+      "butter",
+      "cebola",
+      "onion",
+      "alho",
+      "garlic",
+      "cominho",
+      "cumin",
+      "canela",
+      "cinnamon",
+      "cravo",
+      "cloves",
+      "alecrim",
+      "rosemary",
+      "louro",
+      "bay leaves",
+      "pimenta",
+      "pepper"
     ],
     "prep_time": "1h 45 mins",
     "servings": "4 people"
@@ -844,10 +1300,21 @@
     ],
     "tags": [
       "acelga",
-      "carne",
+      "chard",
+      "carne de alcatra",
+      "rump beef",
+      "cenoura",
+      "carrot",
+      "pepino japonês",
+      "japanese cucumber",
+      "hortelã",
+      "mint",
+      "amendoim",
+      "peanut",
       "molho de amendoim",
-      "rolinho",
-      "salada"
+      "peanut sauce",
+      "shoyu",
+      "soy sauce"
     ],
     "prep_time": "30-40 mins",
     "servings": "1-2 people"
@@ -868,10 +1335,21 @@
     ],
     "tags": [
       "salmão",
+      "salmon",
       "manteiga de laranja",
+      "orange butter",
       "cebola-roxa",
+      "red onion",
+      "salsinha",
+      "parsley",
+      "endro",
+      "dill",
+      "laranja",
+      "orange",
+      "assado",
+      "roasted",
       "peixe",
-      "assado"
+      "fish"
     ],
     "prep_time": "25-30 mins",
     "servings": "4 people"
@@ -893,7 +1371,19 @@
     ],
     "tags": [
       "carne moída",
-      "vagem"
+      "ground beef",
+      "vagem",
+      "green beans",
+      "cebola",
+      "onion",
+      "alho",
+      "garlic",
+      "trigo",
+      "wheat",
+      "páprica doce",
+      "sweet paprika",
+      "cominho",
+      "cumin"
     ],
     "prep_time": "20-25 mins",
     "servings": "6 people"
@@ -926,10 +1416,27 @@
     ],
     "tags": [
       "frango",
+      "chicken",
       "milanesa",
-      "geleia",
+      "cutlet",
+      "geleia de tomate",
+      "tomato jam",
+      "pimenta",
+      "pepper",
       "tomate",
-      "pimenta"
+      "tomato",
+      "alho",
+      "garlic",
+      "batata",
+      "potato",
+      "cebola",
+      "onion",
+      "alface",
+      "lettuce",
+      "frito",
+      "fried",
+      "brasileiro",
+      "brazilian"
     ],
     "prep_time": "Mais de 2h",
     "servings": "Até 2 porções"
@@ -962,11 +1469,36 @@
       "sal e pimenta a gosto"
     ],
     "tags": [
-      "frango",
-      "legumes",
-      "grelhado",
+      "frango grelhado",
+      "grilled chicken",
+      "legumes assados",
+      "roasted vegetables",
       "purê de batata",
-      "salada de repolho"
+      "mashed potatoes",
+      "salada de repolho",
+      "cabbage salad",
+      "abobrinha",
+      "zucchini",
+      "pimentão amarelo",
+      "yellow bell pepper",
+      "chuchu",
+      "chayote",
+      "rabanete",
+      "radish",
+      "tomilho",
+      "thyme",
+      "cominho",
+      "cumin",
+      "pimenta calabresa",
+      "calabrian pepper",
+      "leite",
+      "milk",
+      "manteiga",
+      "butter",
+      "repolho verde",
+      "green cabbage",
+      "tomate cereja",
+      "cherry tomato"
     ],
     "prep_time": "Estimated 2h",
     "servings": "Estimated 4 people"
@@ -992,10 +1524,34 @@
       "1 xícara de alface picada"
     ],
     "tags": [
-      "Bife",
-      "Parmegiana",
-      "Arroz",
-      "Salada"
+      "bife",
+      "steak",
+      "filé mignon",
+      "filet mignon",
+      "molho de tomate",
+      "tomato sauce",
+      "muçarela",
+      "mozzarella",
+      "farinha de trigo",
+      "wheat flour",
+      "farinha de rosca",
+      "breadcrumb",
+      "ovo",
+      "egg",
+      "arroz branco",
+      "white rice",
+      "salada de tomate",
+      "tomato salad",
+      "queijo parmesão",
+      "parmesan cheese",
+      "frito",
+      "fried",
+      "alface",
+      "lettuce",
+      "azeite",
+      "olive oil",
+      "cebola",
+      "onion"
     ],
     "prep_time": "Estimated 1h 30m",
     "servings": "Estimated 2 people"
@@ -1020,11 +1576,24 @@
       "Salsinha picada para decorar"
     ],
     "tags": [
-      "Frango",
-      "Passarinho",
-      "Forno",
-      "Arroz",
-      "Salsinha"
+      "frango",
+      "chicken",
+      "arroz",
+      "rice",
+      "salsinha",
+      "parsley",
+      "alho",
+      "garlic",
+      "páprica doce",
+      "sweet paprika",
+      "cominho",
+      "cumin",
+      "azeite",
+      "olive oil",
+      "farinha de trigo",
+      "wheat flour",
+      "limão",
+      "lemon"
     ],
     "prep_time": "45 mins",
     "servings": "4 people"
@@ -1055,11 +1624,38 @@
       "1 xícara de gergelim torrado (para a salada de couve-flor)"
     ],
     "tags": [
-      "picadinho",
-      "oriental",
+      "carne",
+      "beef",
       "couve-flor",
+      "cauliflower",
       "arroz",
-      "salada"
+      "rice",
+      "cenoura",
+      "carrot",
+      "cebola",
+      "onion",
+      "ervilha",
+      "peas",
+      "alho",
+      "garlic",
+      "gengibre",
+      "ginger",
+      "shoyu",
+      "soy sauce",
+      "vinagre de arroz",
+      "rice vinegar",
+      "amido de milho",
+      "cornstarch",
+      "óleo de gergelim",
+      "sesame oil",
+      "salada",
+      "salad",
+      "vinagrete",
+      "vinaigrette",
+      "gergem",
+      "sesame",
+      "cebolinha",
+      "scallion"
     ],
     "prep_time": "Estimated 45-60 minutes",
     "servings": "4-6 people"
@@ -1092,9 +1688,42 @@
       "salada de rúcula (opcional)"
     ],
     "tags": [
-      "Brazilian",
-      "Beef",
-      "Salad"
+      "bife",
+      "beef cutlet",
+      "milanesa",
+      "breaded cutlet",
+      "batata",
+      "potato",
+      "repolho",
+      "cabbage",
+      "salada",
+      "salad",
+      "agridoce",
+      "bittersweet",
+      "maionese",
+      "mayonnaise",
+      "limão-siciliano",
+      "lemon",
+      "salsinha",
+      "parsley",
+      "azeite",
+      "olive oil",
+      "mel",
+      "honey",
+      "vinagre de vinho tinto",
+      "red wine vinegar",
+      "pimenta-do-reino",
+      "black pepper",
+      "farinha de rosca",
+      "breadcrumb",
+      "ovos",
+      "eggs",
+      "pimenta calabresa",
+      "calabrian pepper",
+      "alecrim",
+      "rosemary",
+      "mostarda de dijon",
+      "dijon mustard"
     ],
     "prep_time": "Até 1h",
     "servings": "Até 4 porções"
@@ -1113,9 +1742,18 @@
       "1 xícara de alface picada (salad)"
     ],
     "tags": [
-      "fish",
-      "fritters",
-      "Brazilian cuisine"
+      "sardinha",
+      "sardine",
+      "fubá",
+      "cornmeal",
+      "frutos do mar",
+      "seafood",
+      "frito",
+      "fried",
+      "alface",
+      "lettuce",
+      "arroz branco",
+      "white rice"
     ],
     "prep_time": "Estimated 20-25 minutes",
     "servings": "2 people"
@@ -1142,8 +1780,29 @@
       "1 colher de sopa de sal para cozinhar o arroz"
     ],
     "tags": [
-      "Picadinho",
-      "Receita Brasileira"
+      "coxão mole",
+      "beef rump",
+      "arroz",
+      "rice",
+      "salada",
+      "salad",
+      "salsinha",
+      "parsley",
+      "bacon",
+      "cebola",
+      "onion",
+      "alho",
+      "garlic",
+      "tomate",
+      "tomato",
+      "molho inglês",
+      "worcestershire sauce",
+      "farinha de trigo",
+      "wheat flour",
+      "azeite",
+      "olive oil",
+      "limão",
+      "lemon"
     ],
     "prep_time": "Estimated 2h",
     "servings": "Estimated 6 people"
@@ -1166,10 +1825,22 @@
       "1 xícara de folhas de alface (suggested salad)"
     ],
     "tags": [
-      "Brazilian",
-      "Beef",
-      "Vegetarian side dish",
-      "Salad"
+      "bife",
+      "steak",
+      "abobrinha",
+      "zucchini",
+      "cebola",
+      "onion",
+      "alecrim",
+      "rosemary",
+      "arroz branco",
+      "white rice",
+      "alface",
+      "lettuce",
+      "carne",
+      "meat",
+      "assado",
+      "roasted"
     ],
     "prep_time": "45-60 minutes",
     "servings": "4 people"
@@ -1195,10 +1866,20 @@
       "1 xícara de água para cozinhar lentilha"
     ],
     "tags": [
-      "fish",
+      "pescada",
+      "haddock",
+      "espinafre",
       "spinach",
+      "batata",
+      "potato",
+      "lentilha",
       "lentil",
-      "potato"
+      "vinho branco",
+      "white wine",
+      "azeite",
+      "olive oil",
+      "alho",
+      "garlic"
     ],
     "prep_time": "Estimated 30-40 mins",
     "servings": "2-3 people"
@@ -1222,12 +1903,17 @@
       "Sal e Pimenta a gosto"
     ],
     "tags": [
-      "Frango",
-      "Marinada",
-      "Iogurte",
-      "Curry",
-      "Arroz Branco",
-      "Salada de Alface"
+      "frango",
+      "chicken",
+      "iogurte",
+      "yogurt",
+      "curry",
+      "arroz branco",
+      "white rice",
+      "alface",
+      "lettuce",
+      "tomate",
+      "tomato"
     ],
     "prep_time": "Estimated 45 mins",
     "servings": "4 people"
@@ -1263,10 +1949,30 @@
       "sal e pimenta-do-reino moída na hora a gosto"
     ],
     "tags": [
-      "Lasanha",
-      "Bolonhesa",
-      "Massa",
-      "Queijo"
+      "lasanha",
+      "lasagna",
+      "purê de batata",
+      "mashed potatoes",
+      "salada de repolho",
+      "cabbage salad",
+      "carne moída",
+      "ground meat",
+      "cebola",
+      "onion",
+      "cenoura",
+      "carrot",
+      "salsão",
+      "celery",
+      "queijo parmesão",
+      "parmesan cheese",
+      "repolho",
+      "cabbage",
+      "azeite",
+      "olive oil",
+      "vinagre",
+      "vinegar",
+      "final de semana",
+      "weekend"
     ],
     "prep_time": "Mais de 2h",
     "servings": "Até 6 porções"
@@ -1296,10 +2002,26 @@
       "1 limão"
     ],
     "tags": [
+      "bife",
       "beef",
-      "grain",
+      "grão-de-bico",
+      "chickpea",
+      "arroz",
+      "rice",
+      "limão",
       "lemon",
-      "herb"
+      "agrião",
+      "peppercress",
+      "carne",
+      "meat",
+      "cebola",
+      "onion",
+      "azeite",
+      "olive oil",
+      "páprica doce",
+      "sweet paprika",
+      "cominho",
+      "cumin"
     ],
     "prep_time": "Estimated 30-40 mins",
     "servings": "1 porção"
