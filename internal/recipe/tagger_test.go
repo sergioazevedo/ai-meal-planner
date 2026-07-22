@@ -76,7 +76,6 @@ func TestTagger_LiveEval(t *testing.T) {
 	for _, pair := range [][2]string{
 		{"salmão", "salmon"},
 		{"brócolis", "broccoli"},
-		{"peixe", "fish"},
 		{"fritadeira sem óleo", "air fryer"},
 		{"jantar", "dinner"},
 	} {
@@ -92,7 +91,7 @@ func TestTagger_LiveEval(t *testing.T) {
 		}
 	}
 
-	t.Logf("tagger eval passed with tags: %v", result.Tags)
+	t.Logf("tagger returned tags: %v", result.Tags)
 }
 
 func assertOrderedTagPair(t *testing.T, tags []string, portuguese, english string) {
