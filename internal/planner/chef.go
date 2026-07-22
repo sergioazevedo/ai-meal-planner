@@ -15,6 +15,8 @@ import (
 //go:embed chef_prompt.md
 var chefPrompt string
 
+const maxChefAttempts = 2
+
 type ChefResult struct {
 	Plan *MealPlan
 	Meta shared.AgentMeta
@@ -44,24 +46,35 @@ func (c *Chef) Run(
 		return ChefResult{}, err
 	}
 
-	resp, err := c.llm.GenerateContent(ctx, llm.Conversation{{Role: "user", Content: prompt}}, llm.NoTools)
-	if err != nil {
-		return ChefResult{}, err
-	}
+	conversation := llm.Conversation{{Role: "user", Content: prompt}}
+	var usage shared.TokenUsage
+	var result *MealPlan
+	var lastErr error
+	var lastContent string
+	for attempt := 0; attempt < maxChefAttempts; attempt++ {
+		resp, err := c.llm.GenerateContent(ctx, conversation, llm.NoTools)
+		if err != nil {
+			return ChefResult{}, err
+		}
+		usage.PromptTokens += resp.Usage.PromptTokens
+		usage.CompletionTokens += resp.Usage.CompletionTokens
+		usage.TotalTokens += resp.Usage.TotalTokens
+		usage.Model = resp.Usage.Model
 
-	result := &MealPlan{}
-	cleanedJSON := llm.CleanJSON(resp.Message.Content)
-	if err = json.Unmarshal([]byte(cleanedJSON), result); err != nil {
-		return ChefResult{
-				Meta: shared.AgentMeta{
-					Usage:     resp.Usage,
-					AgentName: "Chef",
-				}},
-			fmt.Errorf(
-				"failed to parse MealPlan %w, :%s",
-				err,
-				resp.Message.Content,
-			)
+		result = &MealPlan{}
+		lastContent = resp.Message.Content
+		lastErr = json.Unmarshal([]byte(llm.CleanJSON(lastContent)), result)
+		if lastErr == nil {
+			break
+		}
+		conversation = conversation.Add(resp.Message).Add(llm.Message{
+			Role:    "user",
+			Content: "The response was invalid JSON. Return the corrected raw JSON object only.",
+		})
+	}
+	if lastErr != nil {
+		return ChefResult{Meta: shared.AgentMeta{Usage: usage, AgentName: "Chef"}},
+			fmt.Errorf("failed to parse MealPlan %w, :%s", lastErr, lastContent)
 	}
 
 	result.WeekStart = weekStart
@@ -79,7 +92,7 @@ func (c *Chef) Run(
 		Plan: result,
 		Meta: shared.AgentMeta{
 			AgentName: "Chef",
-			Usage:     resp.Usage,
+			Usage:     usage,
 			Latency:   time.Since(start),
 		},
 	}, nil

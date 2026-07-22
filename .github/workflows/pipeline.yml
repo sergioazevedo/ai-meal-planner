@@ -61,11 +61,13 @@ jobs:
             analyst: openai/gpt-oss-120b
             reviewer: openai/gpt-oss-120b
             chef: openai/gpt-oss-20b
+            normalizer: openai/gpt-oss-20b
             tagger: openai/gpt-oss-20b
           - candidate: qwen
             analyst: qwen/qwen3.6-27b
             reviewer: qwen/qwen3.6-27b
             chef: openai/gpt-oss-20b
+            normalizer: openai/gpt-oss-20b
             tagger: qwen/qwen3.6-27b
 
     steps:
@@ -89,12 +91,13 @@ jobs:
           GROQ_CHEF_MODEL: ${{ matrix.chef }}
         run: go test -v ./internal/planner -run LiveEval -count=1 -timeout=10m
 
-      - name: Run Live Tag Extraction Eval
+      - name: Run Live Recipe Evals
         if: always()
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GROQ_TAGGER_MODEL: ${{ matrix.tagger }}
-        run: go test -v ./internal/recipe -run TestTagger_LiveEval -count=1 -timeout=2m
+          GROQ_NORMALIZER_MODEL: ${{ matrix.normalizer }}
+        run: go test -v ./internal/recipe -run LiveEval -count=1 -timeout=3m
 
       - name: Run Live Retrieval Eval
         if: always() && matrix.candidate == 'gpt-oss'
