@@ -1,29 +1,24 @@
 package planner
 
 import (
-	"context"
 	"testing"
 	"time"
 
-	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/value"
 )
 
-// Run with: go test -v ./internal/planner -run TestPlanReviewer_BugReproduction_Eval
-func TestPlanReviewer_BugReproduction_Eval(t *testing.T) {
+// Run with: go test -v ./internal/planner -run TestPlanReviewer_BugReproduction_LiveEval
+func TestPlanReviewer_BugReproduction_LiveEval(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping live eval in short mode")
 	}
 
-	ctx := context.Background()
-	cfg, err := config.NewFromEnv()
-	if err != nil {
-		t.Skip("Skipping: No API keys found in environment")
-	}
+	ctx := liveEvalContext(t)
+	cfg := liveEvalConfig(t)
 
 	// 1. Setup the Agent and dependencies
-	groqClient := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
+	groqClient := llm.NewGroqClient(cfg, liveEvalModel("GROQ_REVIEWER_MODEL", llm.ModelReviewer), 0.1)
 
 	// Mock searcher with specific candidates to test Context and History
 	mockSearcher := &mockSearcher{
@@ -63,6 +58,9 @@ func TestPlanReviewer_BugReproduction_Eval(t *testing.T) {
 	revised := result.RevisedPlan
 
 	// 5. Quality Assertions (The "Evals")
+	if len(revised.Plan) != len(currentPlan.Plan) {
+		t.Fatalf("STRUCTURE FAIL: revised plan has %d days, want %d", len(revised.Plan), len(currentPlan.Plan))
+	}
 
 	// EVAL A: History Awareness
 	// If the agent picked 'v_curry', it failed to respect the 'recipesRecentlyUsed' exclusion list.

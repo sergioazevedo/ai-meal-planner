@@ -26,22 +26,29 @@ GHOST_ADMIN_API_KEY="your_admin_key"
 EMBEDDING_API_KEY="your_key"
 GROQ_API_KEY="your_key"
 
+# Optional model overrides. Omit these to use the application defaults.
+# GROQ_ANALYST_MODEL="openai/gpt-oss-120b"
+# GROQ_REVIEWER_MODEL="openai/gpt-oss-120b"
+# GROQ_CHEF_MODEL="openai/gpt-oss-20b"
+# GROQ_NORMALIZER_MODEL="openai/gpt-oss-20b"
+# GROQ_TAGGER_MODEL="qwen/qwen3.6-27b"
+
 # Household Settings
 DEFAULT_ADULTS=2
 DEFAULT_CHILDREN=1
-DEFAULT_COOKING_FREQUENCY=4
+DEFAULT_COOKING_FREQUENCY=5
 
 # Access
 TELEGRAM_ALLOWED_USER_IDS="12345678,87654321"
 EOF
 chmod 600 .env
+```
 
 ### 💡 Migration Tip (v1.1)
 If you are upgrading from an older version that used `recipes_data/`, move your files to the new unified path:
 ```bash
 mkdir -p data/recipes
 mv recipes_data/*.json data/recipes/ 2>/dev/null || true
-```
 ```
 
 ### 2. Build and Deploy
@@ -152,16 +159,24 @@ To enable the automated deployment, add the following secrets to your GitHub rep
 *   `GHOST_CONTENT_API_KEY`: Your Ghost Content API key.
 *   `GHOST_ADMIN_API_KEY`: Your Ghost Admin API key.
 *   `TELEGRAM_BOT_TOKEN`: Your Telegram Bot token.
-*   `TELEGRAM_ALLOWED_USER_IDS`: Comma-separated list of allowed Telegram IDs.
+*   `TELEGRAM_ALLOW_USER_ID`: Telegram ID used by the current deployment workflow. The application also accepts the preferred `TELEGRAM_ALLOWED_USER_IDS` variable directly.
 *   `TELEGRAM_WEBHOOK_URL`: The full URL to your bot's webhook.
 
 **Optional Defaults (Overrides):**
 *   `DEFAULT_ADULTS`, `DEFAULT_CHILDREN`, `DEFAULT_COOKING_FREQUENCY`, etc.
 
+Add role-specific model overrides as GitHub Actions **variables**, not secrets, only when production should differ from the defaults in [GROQ.md](GROQ.md):
+
+*   `GROQ_ANALYST_MODEL`
+*   `GROQ_REVIEWER_MODEL`
+*   `GROQ_CHEF_MODEL`
+*   `GROQ_NORMALIZER_MODEL`
+*   `GROQ_TAGGER_MODEL`
+
 3. **How it Works**
 1.  **Trigger:** On every push to `main` (including PR merges). **Note:** The pipeline is optimized with *path filters* to only trigger when relevant files change (Go code, SQL, dependencies, or workflow config), ignoring documentation-only or script-only changes.
 2.  **Test:** Runs standard unit tests.
-3.  **Evaluate:** Runs the Live AI Evaluation suite (`go test -run LiveEval`).
+3.  **Evaluate:** Runs all planner and recipe live evals, followed by the retrieval quality eval.
 4.  **Deploy:** If all tests pass, it:
 
     *   Securely injects the `DEPLOY_KEY`.
@@ -182,7 +197,7 @@ nano .env
 
 # Add these lines:
 TELEGRAM_BOT_TOKEN="your_token"
-TELEGRAM_ALLOW_USER_ID="12345678"
+TELEGRAM_ALLOWED_USER_IDS="12345678"
 # This must match your domain and the path in Nginx below
 TELEGRAM_WEBHOOK_URL="https://your-blog.com/webhook"
 ```

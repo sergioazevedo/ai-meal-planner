@@ -32,10 +32,11 @@ build-linux:
 test:
 	go test -short -v ./internal/...
 
-# Run only the live LLM evaluation tests
+# Run all live AI evaluation tests
 eval:
-	go test -v ./internal/planner -run "_Eval"
-	go test -v ./internal/recipe -run "_LiveEval" -count=1
+	go test -v ./internal/planner -run "LiveEval" -count=1 -timeout=10m
+	go test -v ./internal/recipe -run "_LiveEval" -count=1 -timeout=2m
+	go test -v ./internal/llm -run "TestVectorSearchQualityIntegration" -count=1 -timeout=4m
 
 # Database Migrations
 migrate-up:

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"ai-meal-planner/internal/config"
@@ -21,9 +22,11 @@ const (
 	groqAPIURL = "https://api.groq.com/openai/v1/chat/completions"
 
 	// Model identifiers
-	ModelAnalyst    = "meta-llama/llama-4-scout-17b-16e-instruct"
-	ModelNormalizer = "llama-3.1-8b-instant"
-	ModelTagger     = "llama-3.3-70b-versatile"
+	ModelAnalyst    = config.DefaultAnalystModel
+	ModelReviewer   = config.DefaultReviewerModel
+	ModelChef       = config.DefaultChefModel
+	ModelNormalizer = config.DefaultNormalizerModel
+	ModelTagger     = config.DefaultTaggerModel
 )
 
 // GroqClient is a client for the Groq API.
@@ -58,12 +61,13 @@ type groqResponseFormat struct {
 }
 
 type groqRequest struct {
-	Model          string              `json:"model,omitempty"`
-	Messages       []groqMessage       `json:"messages,omitempty"`
-	Tools          []groqTool          `json:"tools,omitempty"`
-	ToolChoice     string              `json:"tool_choice,omitempty"`
-	Temperature    float64             `json:"temperature,omitempty"`
-	ResponseFormat *groqResponseFormat `json:"response_format,omitempty"`
+	Model           string              `json:"model,omitempty"`
+	Messages        []groqMessage       `json:"messages,omitempty"`
+	Tools           []groqTool          `json:"tools,omitempty"`
+	ToolChoice      string              `json:"tool_choice,omitempty"`
+	Temperature     float64             `json:"temperature,omitempty"`
+	ResponseFormat  *groqResponseFormat `json:"response_format,omitempty"`
+	ReasoningEffort string              `json:"reasoning_effort,omitempty"`
 }
 
 type groqToolCall struct {
@@ -109,7 +113,7 @@ func (c *GroqClient) GenerateContent(
 	conversation Conversation,
 	tools []Tool,
 ) (ContentResponse, error) {
-	maxRetries := 3
+	maxRetries := 6
 	var lastErr error
 	var contentResponse *ContentResponse
 
@@ -119,9 +123,10 @@ func (c *GroqClient) GenerateContent(
 	}
 
 	reqBody := groqRequest{
-		Model:       c.modelID,
-		Messages:    messages,
-		Temperature: c.temperature,
+		Model:           c.modelID,
+		Messages:        messages,
+		Temperature:     c.temperature,
+		ReasoningEffort: reasoningEffortForModel(c.modelID),
 	}
 
 	if len(tools) > 0 {
@@ -226,6 +231,17 @@ func (c *GroqClient) GenerateContent(
 	}
 
 	return ContentResponse{}, fmt.Errorf("exceeded max retries after rate limit: %w", lastErr)
+}
+
+func reasoningEffortForModel(modelID string) string {
+	switch {
+	case strings.HasPrefix(modelID, "openai/gpt-oss-"):
+		return "low"
+	case strings.HasPrefix(modelID, "qwen/"):
+		return "none"
+	default:
+		return ""
+	}
 }
 
 func groqRetryDelay(headers http.Header, body string) time.Duration {

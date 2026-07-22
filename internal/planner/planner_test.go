@@ -174,6 +174,11 @@ func TestPlanReviewer_TerminalTool(t *testing.T) {
 										"recipe_title": "Chicken Roast",
 										"note":         "Revised",
 									},
+									map[string]any{
+										"day":          "Invented Day",
+										"recipe_title": "Chicken Roast",
+										"note":         "Must be ignored",
+									},
 								},
 							},
 						},
@@ -205,5 +210,25 @@ func TestPlanReviewer_TerminalTool(t *testing.T) {
 	}
 	if revised.Plan[0].Note != "Revised" {
 		t.Errorf("Expected 'Revised', got '%s'", revised.Plan[0].Note)
+	}
+	if revised.Plan[0].RecipeID != "r1" {
+		t.Errorf("Expected recipe ID 'r1', got %q", revised.Plan[0].RecipeID)
+	}
+}
+
+func TestChefRepairsInvalidJSON(t *testing.T) {
+	mockGen := &llmtest.MockTextGenerator{ResponseChain: []llm.ContentResponse{
+		{Message: llm.Message{Role: "assistant", Content: `{"plan":[""],"shopping_list":[]}`}},
+		{Message: llm.Message{Role: "assistant", Content: `{"plan":[{"day":"Monday","recipe_title":"Cook: Pasta","prep_time":"15 mins","note":"Cook"}],"shopping_list":["200g Pasta"]}`}},
+	}}
+
+	result, err := NewChef(mockGen).Run(context.Background(), &MealProposal{
+		PlannedMeals: []PlannedMeal{{Day: "Monday", RecipeID: "pasta", RecipeTitle: "Pasta", Action: MealActionCook}},
+	}, time.Now())
+	if err != nil {
+		t.Fatalf("Chef.Run() error = %v", err)
+	}
+	if len(result.Plan.Plan) != 1 || result.Plan.Plan[0].RecipeID != "pasta" {
+		t.Fatalf("repaired plan = %#v", result.Plan.Plan)
 	}
 }

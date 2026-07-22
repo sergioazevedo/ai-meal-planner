@@ -11,6 +11,8 @@ on:
       - 'sqlc.yaml'
       - 'internal/llm/testdata/**'
       - 'internal/recipe/*.md'
+      - 'internal/planner/*.md'
+      - 'Makefile'
       - '.github/workflows/pipeline.yml'
   pull_request:
     branches: ["main"]
@@ -22,6 +24,8 @@ on:
       - 'sqlc.yaml'
       - 'internal/llm/testdata/**'
       - 'internal/recipe/*.md'
+      - 'internal/planner/*.md'
+      - 'Makefile'
       - '.github/workflows/pipeline.yml'
 
 jobs:
@@ -65,17 +69,19 @@ jobs:
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
-        run: go test -v ./internal/planner -run LiveEval
+        run: go test -v ./internal/planner -run LiveEval -count=1 -timeout=10m
 
-      - name: Run Live Tag Extraction Eval
+      - name: Run Live Recipe Evals
+        if: always()
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: go test -v ./internal/recipe -run TestTagger_LiveEval -count=1
+        run: go test -v ./internal/recipe -run LiveEval -count=1 -timeout=3m
 
       - name: Run Live Retrieval Eval
+        if: always()
         env:
           EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
-        run: go test -v ./internal/llm -run TestVectorSearchQualityIntegration -count=1
+        run: go test -v ./internal/llm -run TestVectorSearchQualityIntegration -count=1 -timeout=4m
 
   deploy-production:
     name: Deploy to Production
@@ -111,6 +117,11 @@ jobs:
           GHOST_ADMIN_API_KEY="${{ secrets.GHOST_ADMIN_API_KEY }}"
           EMBEDDING_API_KEY="${{ secrets.EMBEDDING_API_KEY }}"
           GROQ_API_KEY="${{ secrets.GROQ_API_KEY }}"
+          GROQ_ANALYST_MODEL="${{ vars.GROQ_ANALYST_MODEL }}"
+          GROQ_REVIEWER_MODEL="${{ vars.GROQ_REVIEWER_MODEL }}"
+          GROQ_CHEF_MODEL="${{ vars.GROQ_CHEF_MODEL }}"
+          GROQ_NORMALIZER_MODEL="${{ vars.GROQ_NORMALIZER_MODEL }}"
+          GROQ_TAGGER_MODEL="${{ vars.GROQ_TAGGER_MODEL }}"
           TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}"
           TELEGRAM_ALLOW_USER_ID="${{ secrets.TELEGRAM_ALLOW_USER_ID }}"
           TELEGRAM_WEBHOOK_URL="${{ secrets.TELEGRAM_WEBHOOK_URL }}"

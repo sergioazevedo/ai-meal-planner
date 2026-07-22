@@ -5,6 +5,7 @@ import (
 	"os"
 	"slices"
 	"testing"
+	"time"
 
 	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/llm"
@@ -66,9 +67,15 @@ func TestTagger_LiveEval(t *testing.T) {
 		t.Skip("skipping live tagger eval: GROQ_API_KEY is not configured")
 	}
 	cfg := &config.Config{GroqAPIKey: apiKey}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
 
-	client := llm.NewGroqClient(cfg, llm.ModelTagger, 0.0)
-	result, err := NewTagger(client).Run(context.Background(), salmonRecipe(), []string{"air fryer", "jantar"})
+	model := os.Getenv("GROQ_TAGGER_MODEL")
+	if model == "" {
+		model = llm.ModelTagger
+	}
+	client := llm.NewGroqClient(cfg, model, 0.0)
+	result, err := NewTagger(client).Run(ctx, salmonRecipe(), []string{"air fryer", "jantar"})
 	if err != nil {
 		t.Fatalf("live tagger failed: %v", err)
 	}

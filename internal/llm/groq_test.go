@@ -134,6 +134,20 @@ func TestGroqRetryDelay(t *testing.T) {
 	}
 }
 
+func TestReasoningEffortForModel(t *testing.T) {
+	tests := map[string]string{
+		"openai/gpt-oss-120b":  "low",
+		"openai/gpt-oss-20b":   "low",
+		"qwen/qwen3.6-27b":     "none",
+		"llama-3.1-8b-instant": "",
+	}
+	for model, want := range tests {
+		if got := reasoningEffortForModel(model); got != want {
+			t.Errorf("reasoningEffortForModel(%q) = %q, want %q", model, got, want)
+		}
+	}
+}
+
 func TestGroqClientRetriesUsingRateLimitHeaders(t *testing.T) {
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

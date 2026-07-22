@@ -6,6 +6,14 @@ import (
 	"strings"
 )
 
+const (
+	DefaultAnalystModel    = "openai/gpt-oss-120b"
+	DefaultReviewerModel   = DefaultAnalystModel
+	DefaultChefModel       = "openai/gpt-oss-20b"
+	DefaultNormalizerModel = DefaultChefModel
+	DefaultTaggerModel     = "qwen/qwen3.6-27b"
+)
+
 // Config holds the configuration for the application.
 type Config struct {
 	GhostURL        string
@@ -13,6 +21,11 @@ type Config struct {
 	GhostAdminKey   string
 	EmbeddingAPIKey string
 	GroqAPIKey      string
+	AnalystModel    string
+	ReviewerModel   string
+	ChefModel       string
+	NormalizerModel string
+	TaggerModel     string
 
 	// Telegram Config
 	TelegramBotToken       string
@@ -129,6 +142,11 @@ func NewFromEnv() (*Config, error) {
 		GhostAdminKey:           ghostAdminKey,
 		EmbeddingAPIKey:         embeddingAPIKey,
 		GroqAPIKey:              groqAPIKey,
+		AnalystModel:            envOrDefault("GROQ_ANALYST_MODEL", DefaultAnalystModel),
+		ReviewerModel:           envOrDefault("GROQ_REVIEWER_MODEL", DefaultReviewerModel),
+		ChefModel:               envOrDefault("GROQ_CHEF_MODEL", DefaultChefModel),
+		NormalizerModel:         envOrDefault("GROQ_NORMALIZER_MODEL", DefaultNormalizerModel),
+		TaggerModel:             envOrDefault("GROQ_TAGGER_MODEL", DefaultTaggerModel),
 		TelegramBotToken:        telegramBotToken,
 		TelegramWebhookURL:      telegramWebhookURL,
 		TelegramAllowedUserIDs:  allowedIDs,
@@ -139,4 +157,11 @@ func NewFromEnv() (*Config, error) {
 		DefaultChildrenAges:     defaultAges,
 		DefaultCookingFrequency: defaultFreq,
 	}, nil
+}
+
+func envOrDefault(key, fallback string) string {
+	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+		return value
+	}
+	return fallback
 }

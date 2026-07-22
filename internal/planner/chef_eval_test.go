@@ -1,12 +1,10 @@
 package planner
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
 
-	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/value"
 )
@@ -19,13 +17,10 @@ func TestChef_LiveEval(t *testing.T) {
 		t.Skip("Skipping live eval in short mode")
 	}
 
-	ctx := context.Background()
-	cfg, err := config.NewFromEnv()
-	if err != nil {
-		t.Skip("Skipping: No API keys found in environment")
-	}
+	ctx := liveEvalContext(t)
+	cfg := liveEvalConfig(t)
 
-	groqClient := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.1)
+	groqClient := llm.NewGroqClient(cfg, liveEvalModel("GROQ_CHEF_MODEL", llm.ModelChef), 0.1)
 	p := &Planner{
 		chefGenerator: groqClient,
 	}
@@ -58,6 +53,9 @@ func TestChef_LiveEval(t *testing.T) {
 	plan := result.Plan
 
 	// 3. Quality Assertions (The "Evals")
+	if len(plan.Plan) != len(proposal.PlannedMeals) {
+		t.Fatalf("STRUCTURE FAIL: generated plan has %d days, want %d", len(plan.Plan), len(proposal.PlannedMeals))
+	}
 
 	// EVAL A: Formatting Rule
 	// Monday was "Cook", so it should be prefixed

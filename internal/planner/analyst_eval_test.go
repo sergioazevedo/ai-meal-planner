@@ -1,10 +1,8 @@
 package planner
 
 import (
-	"context"
 	"testing"
 
-	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/value"
 )
@@ -18,14 +16,11 @@ func TestAnalyst_LiveEval(t *testing.T) {
 	}
 
 	// 1. Setup real environment
-	ctx := context.Background()
-	cfg, err := config.NewFromEnv()
-	if err != nil {
-		t.Skip("Skipping: No API keys found in environment")
-	}
+	ctx := liveEvalContext(t)
+	cfg := liveEvalConfig(t)
 
 	// Use Groq for fast, cheap evals
-	groqClient := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
+	groqClient := llm.NewGroqClient(cfg, liveEvalModel("GROQ_ANALYST_MODEL", llm.ModelAnalyst), 0.1)
 
 	// Provide a mix of spicy and non-spicy recipes
 	mockRecipes := []value.Recipe{
@@ -39,9 +34,9 @@ func TestAnalyst_LiveEval(t *testing.T) {
 		{Title: "Greek Salad", Tags: []string{"Fresh", "Vegetarian", "Light"}},
 		{Title: "Pasta Bolognese", Tags: []string{"Pasta", "Beef", "Family"}},
 	}
-	
+
 	mockSearcher := &mockSearcher{recipes: mockRecipes}
-	
+
 	p := &Planner{
 		analystGenerator: groqClient,
 		RecipeSearcher:   mockSearcher,
@@ -65,6 +60,16 @@ func TestAnalyst_LiveEval(t *testing.T) {
 	proposal := result.Proposal
 
 	// 4. Quality Assertions (The "Evals")
+	cadence := []MealAction{
+		MealActionCook, MealActionLeftOvers,
+		MealActionCook, MealActionLeftOvers,
+		MealActionCook, MealActionLeftOvers,
+		MealActionCook, MealActionLeftOvers,
+		MealActionCook,
+	}
+	if len(proposal.PlannedMeals) != len(cadence) {
+		t.Fatalf("STRUCTURE FAIL: got %d planned meals, want %d", len(proposal.PlannedMeals), len(cadence))
+	}
 
 	// EVAL A: Did it respect the "No Spicy" constraint?
 	for _, meal := range proposal.PlannedMeals {
@@ -79,14 +84,6 @@ func TestAnalyst_LiveEval(t *testing.T) {
 	// Friday (4) Cook, Saturday Lunch (5) Reuse
 	// Saturday Dinner (6) Cook, Sunday Lunch (7) Reuse
 	// Sunday Dinner (8) Cook
-	cadence := []MealAction{
-		MealActionCook, MealActionLeftOvers,
-		MealActionCook, MealActionLeftOvers,
-		MealActionCook, MealActionLeftOvers,
-		MealActionCook, MealActionLeftOvers,
-		MealActionCook,
-	}
-
 	for i, action := range cadence {
 		if proposal.PlannedMeals[i].Action != action {
 			t.Errorf("STRATEGY FAIL: Slot %d (%s) should be %s, got %s",

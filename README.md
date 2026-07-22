@@ -1,276 +1,150 @@
 # AI-Assisted Recipe Meal Planner
 
-An **AI Agent project** that connects to your **Ghost CMS** blog, learns your recipes using **generic Embedding APIs**, and generates personalized weekly meal plans using a **multi-agent role-based architecture**.
+A Go application that turns recipes from a Ghost blog into personalized weekly meal plans. It normalizes and tags recipes with LLMs, indexes them for semantic search, and serves the planning workflow through Telegram or a CLI.
 
-While originally built as a CLI tool, the project has evolved into an intelligent system where most functionality is handled by a **Telegram Bot**.
+The project aims to remain practical on free API tiers. Models are selected by role and can be replaced through environment variables when availability or rate limits change.
 
-## 🚀 Features
+## Features
 
-*   **Multi-Agent Architecture**: Specialized agents (Analyst for strategy, Chef for execution) collaborate with a handover pattern to refine meal plans.
-*   **Ghost CMS Integration**: Automatically fetches and updates recipes from your blog. *Efficiently handles recipe updates, only processing and saving newer versions.*
-*   **AI Normalization**: Uses Groq Llama3 to extract structured data (ingredients, quantities, steps, prep time, servings) from raw HTML posts.
-*   **Agentic RAG Pipeline**: Generates vector embeddings for every recipe and provides the agent with specialized tools for both **Semantic Search** (conceptual matching) and **Random Discovery** (variety/serendipity).
-*   **Database Migrations**: Seamless schema evolution for your SQLite database, preserving data across updates.
-*   **Observability & Metrics**: Built-in SQLite-backed tracking for token usage, latency, and system health with proactive Telegram alerts for "context bloat".
-*   **Recipe Clipper**: Send any recipe URL to the Telegram bot; it extracts the details, publishes to your Ghost blog, and immediately indexes them.
-*   **Batch Cooking & Leftovers**: Smart 5-session cooking cadence that maximizes efficiency by bridging weekday dinners and weekend lunches.
-*   **Household Scaling**: Automatically adjusts ingredient quantities based on household composition (Adults vs. Children with age adjustments).
-*   **Recipe Memory**: Avoids repetition by tracking recently-used recipes at the database level to ensure long-term variety.
-*   **Audit Logging**: Automatically captures snapshots of plan adjustments (Original Request, User Feedback, and Before/After states) for quality monitoring and debugging.
-*   **Telegram Bot Interface**: Chat with your planner, request meals, check `/metrics`, and get instant markdown plans on your phone.
-*   **Centralized Storage**: Single SQLite database for recipes, embeddings, meal plans, and metrics with robust schema management via migrations.
+- Role-based planning with Analyst, PlanReviewer, and Chef agents
+- Recipe ingestion and publishing through Ghost CMS
+- Structured recipe extraction and bilingual Portuguese/English tagging
+- Semantic recipe retrieval with cached embeddings
+- Batch cooking, leftovers, household scaling, and recipe-history awareness
+- Telegram planning, recipe clipping, metrics, and alerts
+- SQLite storage with migrations and audit logging
+- Live evaluations for planning, extraction, tagging, and retrieval quality
 
-## 🔄 How It Works
+## How it works
 
-1. **One-time Setup**: Ghost blog recipes are ingested, normalized, and embedded into SQLite
-2. **Chat Request**: You message the Telegram bot with meal preferences
-3. **Agent-Led Discovery**: Multi-agent system analyzes the intent and chooses the right tool (**Semantic** for specific needs, **Random** for broad variety) to pull recipes.
-4. **AI Planning**: Multi-agent system creates an optimized meal plan (Analyst selects recipes, Chef scales and formats)
-5. **Instant Response**: Receive formatted weekly menu + aggregated shopping list in seconds
+1. The ingestion command reads recipes from Ghost.
+2. The Normalizer extracts structured recipe data and the Tagger creates bilingual tags.
+3. Recipe embeddings are stored in SQLite for semantic retrieval.
+4. The Analyst searches for recipes and builds a meal strategy.
+5. The PlanReviewer applies targeted user changes while preserving the rest of the plan.
+6. The Chef scales quantities and produces the final plan and shopping list.
 
----
+## Requirements
 
-## 🛠️ Prerequisites
+- Go 1.26 or later
+- A Ghost Content API key
+- A Groq API key
+- An embedding-provider API key
+- A Telegram bot token if you want to run the bot
 
-You need the following API keys:
-1.  **Ghost Content & Admin API Keys**: To fetch and publish recipes.
-2.  **Embedding API Key**: For vector search (e.g., Mixedbread AI).
-3.  **Groq API Key**: For high-speed LLM inference (free tier available).
+## Quick start
 
-## ⚙️ Configuration
+Clone the repository:
 
-Create a `.env` file in your project root with the following variables:
-
-### Required (Core Functionality)
-
-| Variable                | Description                  |
-| :---------------------- | :--------------------------- |
-| `GHOST_URL`             | Your Ghost blog base URL     |
-| `GHOST_CONTENT_API_KEY` | Ghost Content API Key        |
-| `EMBEDDING_API_KEY`     | Embedding API Key            |
-| `GROQ_API_KEY`          | Groq API Key                 |
-
-### Optional (Telegram Bot)
-
-| Variable                    | Description                         | Default |
-| :-------------------------- | :---------------------------------- | :------ |
-| `TELEGRAM_BOT_TOKEN`        | Token from @BotFather               | -       |
-| `TELEGRAM_ALLOWED_USER_IDS` | Comma-separated list of allowed IDs | -       |
-| `GHOST_ADMIN_API_KEY`       | Ghost Admin API Key (for Clipper)   | -       |
-
-### Optional (Customization)
-
-| Variable                    | Description                        | Default         |
-| :-------------------------- | :--------------------------------- | :-------------- |
-| `DATABASE_PATH`             | Path to SQLite database file       | `data/db/planner.db` |
-| `DEFAULT_ADULTS`            | Number of adults for scaling       | `2`             |
-| `DEFAULT_CHILDREN`          | Number of children for scaling     | `1`             |
-| `DEFAULT_CHILDREN_AGES`     | Comma-separated ages (e.g., `5,8`) | `5`             |
-| `DEFAULT_COOKING_FREQUENCY` | Cooking sessions per week          | `4`             |
-
-## ⚡ Quick Start
-
-### 1. Clone the repository
 ```bash
-git clone https://github.com/your-user/ai-meal-planner.git
+git clone https://github.com/sergioazevedo/ai-meal-planner.git
 cd ai-meal-planner
 ```
 
-### 2. Configure Environment
-Create a `.env` file in your project root:
+Create a `.env` file:
 
 ```bash
-# Required
-GHOST_URL="https://your-blog.com"
+GHOST_API_URL="https://your-blog.com"
 GHOST_CONTENT_API_KEY="your_ghost_content_key"
-EMBEDDING_API_KEY="your_embedding_api_key"
-GROQ_API_KEY="your_groq_api_key"
+GROQ_API_KEY="your_groq_key"
+EMBEDDING_API_KEY="your_embedding_key"
 
-# Optional: Telegram Bot
+# Optional Telegram interface
 TELEGRAM_BOT_TOKEN="your_bot_token"
 TELEGRAM_ALLOWED_USER_IDS="12345678,87654321"
+TELEGRAM_WEBHOOK_URL="https://your-public-host/webhook"
 ```
 
-### 3. Run via CLI (Optional) and Manage Database
+Apply migrations and ingest the recipes:
 
-**Step 1: Apply Database Migrations**
-Before running the application, ensure your database schema is up-to-date.
 ```bash
 make migrate-up
+make ingest
 ```
 
-**Step 2: Ingest Recipes**
-Fetch recipes from Ghost and build the local vector index. This command will automatically run any pending database migrations if you missed Step 1. Run this whenever you add new posts or after a code update that includes schema changes.
-```bash
-go run ./cmd/ai-meal-planner ingest
-```
-
-## 🤖 Telegram Bot (Optional)
-
-You can interact with your meal planner directly via Telegram.
-
-### 1. Create a Bot
-Message [@BotFather](https://t.me/BotFather) on Telegram to create a new bot and get your **API Token**.
-
-### 2. Local Development with Localtunnel
-Since Telegram uses webhooks, your local server must be accessible from the internet. We recommend `localtunnel` for quick setup (no signup required):
+Run the Telegram bot:
 
 ```bash
-# 1. Start your local tunnel in a separate terminal
-npx localtunnel --port 8080
-
-# 2. Copy the generated URL (e.g., https://fresh-apple-move.loca.lt)
-
-# 3. Export the required variables
-export TELEGRAM_BOT_TOKEN="your_bot_token"
-export TELEGRAM_ALLOW_USER_ID="your_numeric_id"
-export TELEGRAM_WEBHOOK_URL="https://fresh-apple-move.loca.lt/webhook"
-
-# 4. Run the bot
 go run ./cmd/telegram-bot
 ```
 
-## 🛠️ Development
+See [DEPLOY.md](DEPLOY.md) for production setup, systemd, nginx, TLS, and GitHub Actions deployment.
 
-We use a `Makefile` to simplify common tasks.
+## Configuration
 
-### Basic Commands
-- **Build all binaries**: `make build`
-- **Run unit tests**: `make test`
-    - **Unit Tests**: Found in `internal/<pkg>/*_test.go` (uses `llmtest` mocks).
-    - **Acceptance Tests**: Found in `acceptance_tests/` (verifies full E2E plumbing).
-- **Run local ingestion**: `make ingest`
+Core configuration:
 
-### Database Migrations
-- **Apply all pending migrations**: `make migrate-up`
-- **Revert the last applied migration**: `make migrate-down`
-- **Create a new migration file**: `make migrate-create NAME=<migration_name>`
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `GHOST_API_URL` | Ghost blog URL | Required |
+| `GHOST_CONTENT_API_KEY` | Read recipes from Ghost | Required |
+| `GHOST_ADMIN_API_KEY` | Publish clipped recipes | Content key |
+| `GROQ_API_KEY` | LLM requests | Required |
+| `EMBEDDING_API_KEY` | Recipe embeddings | Required |
+| `DATABASE_PATH` | SQLite database | `data/db/planner.db` |
+| `DEFAULT_ADULTS` | Adults used for scaling | `2` |
+| `DEFAULT_CHILDREN` | Children used for scaling | `1` |
+| `DEFAULT_CHILDREN_AGES` | Comma-separated child ages | `5` |
+| `DEFAULT_COOKING_FREQUENCY` | Cooking sessions per week | `5` |
 
-### 🧪 LLM Evaluations
-Since LLM outputs are non-deterministic, we have a specialized "Live Eval" suite that tests agent quality against real-world scenarios. *While caching reduces repeated costs, these tests still hit the real APIs and incur costs for new queries.*
+Each LLM role can be changed independently:
 
-- **Run all Evals**: `make eval`
-- **Run specific Agent Eval**: `go test -v ./internal/planner -run TestAnalyst_LiveEval`
+| Variable | Default model |
+| --- | --- |
+| `GROQ_ANALYST_MODEL` | `openai/gpt-oss-120b` |
+| `GROQ_REVIEWER_MODEL` | `openai/gpt-oss-120b` |
+| `GROQ_CHEF_MODEL` | `openai/gpt-oss-20b` |
+| `GROQ_NORMALIZER_MODEL` | `openai/gpt-oss-20b` |
+| `GROQ_TAGGER_MODEL` | `qwen/qwen3.6-27b` |
 
----
+These are fallback defaults, not permanent assumptions. Override a role when Groq changes model availability or when another model performs better in its eval. See [GROQ.md](GROQ.md) for details.
 
-## 📦 Deployment
+## Development
 
-This application compiles to a single static binary, making it perfect for low-cost servers like **AWS Lightsail**.
+Common commands:
 
-*   **Direct Binary**: Copy the file and run (Recommended).
-*   **Docker**: Run as a container.
-*   **Automation**: Use `cron` to keep recipes in sync.
-
-👉 **[Read the Full Deployment Guide](DEPLOY.md)**
-
-## 🏗️ Architecture
-
-### Autonomous Agent Pipeline
-
-The planner uses a specialized three-stage pipeline powered by a **Generic Agent Engine**:
-
-1.  **Analyst Agent**: Strategic reasoning. Autonomously "pulls" recipe candidates using tools to build the initial plan structure.
-2.  **PlanReviewer Agent**: Intelligent adjustment. Revises existing plans based on user feedback by searching for alternatives dynamically.
-3.  **Chef Agent**: Tactical execution. Scales ingredient quantities, consolidates the shopping list, and formats the final markdown.
-
-### System Diagram
-
-```mermaid
-graph TD
-    User((User)) <--> Bot[Telegram Bot]
-    Bot <--> Planner[Multi-Agent Planner]
-
-    subgraph Engine [Generic Agent Engine]
-        Loop[ExecuteAgentLoop: Generics-powered While-Loop]
-    end
-
-    subgraph Agents [Autonomous Roles]
-        Analyst[Analyst: Strategy]
-        Reviewer[PlanReviewer: Adjustment]
-        Chef[Chef: Execution]
-    end
-
-    Planner --> Analyst
-    Planner --> Reviewer
-    Planner --> Chef
-
-    Analyst & Reviewer -->|Provide Handlers| Loop
-    Loop -->|Tool Call| SearchTool[HandleRecipeSearch]
-    SearchTool --> RAG[RecipeService: Semantic Search]
+```bash
+make build       # Build the CLI and Telegram bot
+make test        # Run internal tests without live API calls
+make eval        # Run all live planner, recipe, and retrieval evaluations
+make ingest      # Import and index recipes from Ghost
+make retag-all   # Regenerate tags for all local recipes
 ```
 
-1.  **Ingestion Service**: Pulls content from Ghost -> Normalizes via LLM (with caching) -> Saves to SQLite.
-2.  **Storage**: Centralized SQLite database (`data/db/planner.db`) for all application data, ensuring data integrity and simplified management. *Managed by database migrations.*
-3.  **Multi-Agent Planner**: Uses a specialized handover pattern between agents:
-    - **Analyst**: Responsible for strategic reasoning, selecting recipes, and enforcing the batch-cooking cadence.
-    - **Chef**: Responsible for finalized formatting, scaling ingredient quantities, and consolidating the shopping list.
+Live evaluations require the relevant API keys and consume provider quota. In CI they fail when credentials are missing rather than silently skipping. Read [TESTING_STRATEGY.md](TESTING_STRATEGY.md) for scenarios, thresholds, and individual commands.
 
-## ✍️ Why a Blog (Ghost CMS)?
+## Architecture
 
-Unlike traditional recipe apps that lock you into a proprietary platform, this project uses a **Blog-First** approach:
+```mermaid
+flowchart LR
+    Ghost[Ghost CMS] --> Ingestion[Normalizer and Tagger]
+    Ingestion --> DB[(SQLite recipes and embeddings)]
+    Telegram[Telegram] --> Planner
+    Planner --> Analyst
+    Planner --> Reviewer[PlanReviewer]
+    Analyst --> Search[Recipe search]
+    Reviewer --> Search
+    Search --> DB
+    Analyst --> Chef
+    Reviewer --> Chef
+    Chef --> Telegram
+```
 
-*   **Ownership**: You own your content. Your recipes are published on your own blog, not hidden in a private database.
-*   **Human-Friendly**: You write recipes for humans (your readers). The AI then "reads" your blog to make it machine-friendly for the planner.
-*   **Zero-Maintenance UI**: Ghost provides a beautiful editor and interface for free. We don't need to build a "Recipe Entry" screen because Ghost is already the best at it.
-*   **Knowledge Base**: Your blog becomes a living, searchable archive of your family's culinary preferences.
+The LLM integration is behind small interfaces, while agent workflows own their prompts and validation. SQLite stores recipes, embeddings, plans, metrics, and audit snapshots.
 
-## 🔧 Troubleshooting
+## Documentation
 
-### "No recipes found"
-- Ensure you've run `make ingest` at least once to fetch recipes from Ghost
-- Verify your `GHOST_URL` and `GHOST_CONTENT_API_KEY` are correct
-- Check that your Ghost blog has published posts (recipes are read from published posts)
+- [Deployment guide](DEPLOY.md)
+- [Testing strategy](TESTING_STRATEGY.md)
+- [Groq integration and model configuration](GROQ.md)
+- [Embedding API](EMBEDDING_API.md)
+- [Agent roadmap](AI_AGENT_ROADMAP.md)
+- [Project backlog](TODO.md)
 
-### "Bot not responding to messages"
-- Check that the systemd service is running: `sudo systemctl status meal-planner-bot`
-- Verify your `TELEGRAM_BOT_TOKEN` is correct and the bot is not already running elsewhere
-- Confirm your Telegram webhook URL is publicly accessible and matches `TELEGRAM_WEBHOOK_URL`
-- Check nginx logs: `sudo tail -f /var/log/nginx/error.log`
+## Cost model
 
-### "Database schema errors after upgrade"
-- Run migrations: `make migrate-up`
-- Check that `DATABASE_PATH` directory exists and is writable
-- If issues persist, review migration logs in your deployment directory
+The application is designed to work within free-tier limits, but zero cost is a constraint rather than a guarantee. Live evaluations consume quota, providers can change rate limits, and models can be deprecated. Embedding caching, role-specific models, bounded retries, and explicit live evals reduce that risk.
 
-### "API rate limits or quota exceeded"
-- Check your usage in the Groq dashboard and your embedding provider's dashboard.
-- Consider spreading ingestion and planning requests throughout the day
+## License
 
----
-
-## 💰 Cost-Conscious Design
-
-This tool is built with a **Zero-Cost Goal** in mind for personal use:
-
-*   **Free-Tier AI**: Optimized for free-tier AI APIs. The dual-provider approach ensures you stay within rate limits while spending $0 on LLM tokens for daily planning. *Intelligent embedding caching further minimizes API calls.*
-*   **Resource Efficient**: Written in Go with a focus on minimal footprint. With an active memory usage of ~15MB, it is designed to run on extremely low-resource hardware, home servers, or the smallest cloud instances. Uses a **pure-Go SQLite driver**, requiring zero CGO and making cross-compilation trivial.
-*   **No Managed Databases**: By using SQLite, we avoid expensive managed database fees. *Schema changes are now managed gracefully by migrations.*
-*   **No Subscription Bloat**: You don't need a monthly subscription to a recipe service. Your only cost is the server you choose to host it on.
-
-## 🔮 Roadmap
-
-*   [x] Core CLI & RAG Pipeline
-*   [x] Telegram Bot Integration
-*   [x] Recipe Clipper / Importer
-*   [x] Batch Cooking & Household Scaling
-*   [x] Centralized SQLite Storage
-*   [ ] Add more agent-roles (Nutritionist, Grocer)
-*   [ ] Implement feedback loop for plan refinement
-
-## 🎯 What's Next?
-
-After deploying your planner:
-
-1. **Test the Recipe Clipper**: Send any recipe URL to your Telegram bot and watch it automatically publish to Ghost
-2. **Customize Your Profile**: Adjust household settings in `.env` (adults, children, ages, cooking frequency)
-3. **Monitor Performance**: Check `/metrics` in Telegram to see token usage and API latency
-4. **Explore Agent Behavior**: Read [AI_AGENT_ROADMAP.md](AI_AGENT_ROADMAP.md) to understand the multi-agent system's potential
-5. **Set Up Automation**: Configure a cron job to automatically ingest new recipes hourly (see [DEPLOY.md](DEPLOY.md))
-
-**Want to Contribute?** Check [TODO.md](TODO.md) for planned features and architectural decisions.
-
----
-
-## 📄 License
 MIT

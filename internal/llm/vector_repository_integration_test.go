@@ -23,6 +23,7 @@ const (
 	minimumRecallAt3 = 0.70
 	minimumMRRAt3    = 0.70
 	freeTierInterval = 1100 * time.Millisecond
+	retrievalTimeout = 3 * time.Minute
 )
 
 func TestGoldenRetrievalDataset(t *testing.T) {
@@ -43,6 +44,9 @@ func TestVectorSearchQualityIntegration(t *testing.T) {
 
 	embeddingAPIKey := os.Getenv("EMBEDDING_API_KEY")
 	if embeddingAPIKey == "" {
+		if os.Getenv("CI") != "" {
+			t.Fatal("EMBEDDING_API_KEY must be configured for the retrieval eval in CI")
+		}
 		t.Skip("skipping live retrieval evaluation: EMBEDDING_API_KEY is not set")
 	}
 
@@ -65,7 +69,8 @@ func TestVectorSearchQualityIntegration(t *testing.T) {
 	recipeRepo := recipe.NewRepository(db.SQL)
 	vectorRepo := llm.NewVectorRepository(db.SQL)
 	extractor := recipe.NewExtractor(nil, embeddingClient, vectorRepo)
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), retrievalTimeout)
+	defer cancel()
 
 	for _, rec := range recipes {
 		if err := recipeRepo.Save(ctx, rec); err != nil {
