@@ -89,8 +89,8 @@ func TestExtractor_ExtractRecipe(t *testing.T) {
 		if len(extractorResult.Recipe.Ingredients) != 2 {
 			t.Errorf("Expected 2 ingredients, got %d", len(extractorResult.Recipe.Ingredients))
 		}
-		if len(extractorResult.Recipe.Tags) != 2 {
-			t.Errorf("Expected 2 tags, got %d", len(extractorResult.Recipe.Tags))
+		if len(extractorResult.Recipe.Tags) != 0 {
+			t.Errorf("Expected extraction to leave tags to the tagger, got %v", extractorResult.Recipe.Tags)
 		}
 		if extractorResult.Recipe.PrepTime != "30 mins" {
 			t.Errorf("Expected PrepTime '30 mins', got '%s'", extractorResult.Recipe.PrepTime)
@@ -131,21 +131,14 @@ func TestExtractor_ExtractRecipe(t *testing.T) {
 	})
 }
 
-func TestBuildExtractorPromptRequiresPortugueseAndEnglishTags(t *testing.T) {
+func TestBuildExtractorPromptLeavesTagsToTagger(t *testing.T) {
 	prompt, err := buildExtractorPrompt(PostData{Title: "Test", HTML: "<p>Recipe</p>"})
 	if err != nil {
 		t.Fatalf("buildExtractorPrompt() error = %v", err)
 	}
 
-	for _, requirement := range []string{
-		"BOTH Portuguese and English",
-		"regardless of the source language",
-		"FLAT array of strings",
-		"NEVER return nested arrays or objects",
-	} {
-		if !strings.Contains(prompt, requirement) {
-			t.Errorf("extractor prompt does not contain %q", requirement)
-		}
+	if strings.Contains(strings.ToLower(prompt), "relevant tags") {
+		t.Fatal("extractor prompt should not ask for tags")
 	}
 }
 

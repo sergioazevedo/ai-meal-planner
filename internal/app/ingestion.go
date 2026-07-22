@@ -17,12 +17,13 @@ import (
 func ProcessAndSaveRecipe(
 	ctx context.Context,
 	extractor *recipe.Extractor,
+	tagger *recipe.Tagger,
 	recipeRepo *recipe.Repository,
 	metricsStore *metrics.Store,
 	post ghost.Post,
 	force bool,
 ) error {
-	rec, err := ensureRecipe(ctx, extractor, recipeRepo, metricsStore, post, force)
+	rec, err := ensureRecipe(ctx, extractor, tagger, recipeRepo, metricsStore, post, force)
 	if err != nil {
 		return err
 	}
@@ -40,6 +41,7 @@ func ProcessAndSaveRecipe(
 func ensureRecipe(
 	ctx context.Context,
 	extractor *recipe.Extractor,
+	tagger *recipe.Tagger,
 	recipeRepo *recipe.Repository,
 	metricsStore *metrics.Store,
 	post ghost.Post,
@@ -73,12 +75,21 @@ func ensureRecipe(
 		return value.Recipe{}, fmt.Errorf("failed to extract recipe: %w", err)
 	}
 
+	tagResult, err := tagger.Run(ctx, res.Recipe, tags)
+	if err != nil {
+		return value.Recipe{}, fmt.Errorf("failed to tag recipe: %w", err)
+	}
+	res.Recipe.Tags = tagResult.Tags
+
 	if err := recipeRepo.Save(ctx, res.Recipe); err != nil {
 		return value.Recipe{}, fmt.Errorf("failed to save recipe: %w", err)
 	}
 
 	if err := metricsStore.RecordMeta(res.Meta); err != nil {
 		return res.Recipe, fmt.Errorf("failed to record extraction metrics: %w", err)
+	}
+	if err := metricsStore.RecordMeta(tagResult.Meta); err != nil {
+		return res.Recipe, fmt.Errorf("failed to record tagger metrics: %w", err)
 	}
 
 	return res.Recipe, nil

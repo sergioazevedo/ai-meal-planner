@@ -84,6 +84,45 @@ func (r *Repository) Save(ctx context.Context, rec value.Recipe) error {
 	return nil
 }
 
+// UpdateTags replaces a recipe's generated tags without changing the Ghost
+// source timestamp or any other normalized field.
+func (r *Repository) UpdateTags(ctx context.Context, rec value.Recipe) error {
+	recipeJSON, err := json.Marshal(rec)
+	if err != nil {
+		return fmt.Errorf("failed to marshal retagged recipe: %w", err)
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin retag transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	queries := r.queries.WithTx(tx)
+	if err := queries.UpdateRecipeData(ctx, db.UpdateRecipeDataParams{
+		Data: string(recipeJSON),
+		ID:   rec.ID,
+	}); err != nil {
+		return fmt.Errorf("failed to update retagged recipe: %w", err)
+	}
+	if err := queries.DeleteRecipeTags(ctx, rec.ID); err != nil {
+		return fmt.Errorf("failed to delete old recipe tags: %w", err)
+	}
+	for _, tag := range rec.Tags {
+		if err := queries.InsertRecipeTag(ctx, db.InsertRecipeTagParams{
+			RecipeID: rec.ID,
+			Tag:      tag,
+		}); err != nil {
+			return fmt.Errorf("failed to insert recipe tag %q: %w", tag, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit retag transaction: %w", err)
+	}
+	return nil
+}
+
 // Get retrieves a recipe by its ID.
 func (r *Repository) Get(ctx context.Context, id string) (value.Recipe, error) {
 	dbRecipe, err := r.queries.GetRecipeByID(ctx, id)

@@ -68,6 +68,12 @@ func (m *MockTextGenerator) GenerateContent(ctx context.Context, conversation ll
 		}, nil
 	}
 
+	if strings.Contains(prompt, "# Recipe Tagger") {
+		return llm.ContentResponse{Message: llm.Message{Content: `{
+			"tags": [{"pt":"teste","en":"test"}]
+		}`}}, nil
+	}
+
 	if strings.Contains(prompt, "Strategic Meal Planning Analyst") {
 		return llm.ContentResponse{
 			Message: llm.Message{
@@ -130,7 +136,7 @@ func TestFullWorkflow(t *testing.T) {
 	recipeSearchService := recipe.NewSearchService(recipeRepo, vectorRepo, mockEmbeddingGenerator)
 	mealPlanner := planner.NewPlanner(recipeSearchService, planRepo, mockTextGenerator, mockTextGenerator, mockTextGenerator)
 	recipeClipper := clipper.NewClipper(ghostClient, mockTextGenerator)
-	application := app.NewApp(ghostClient, mockTextGenerator, mockEmbeddingGenerator, metricsStore, mealPlanner, recipeClipper, &config.Config{
+	application := app.NewApp(ghostClient, mockTextGenerator, mockTextGenerator, mockEmbeddingGenerator, metricsStore, mealPlanner, recipeClipper, &config.Config{
 		DefaultAdults:           2,
 		DefaultCookingFrequency: 7,
 	}, db, recipeRepo, vectorRepo, planRepo, auditRepo)
@@ -141,8 +147,8 @@ func TestFullWorkflow(t *testing.T) {
 		t.Fatalf("Ingestion failed: %v", err)
 	}
 
-	if mockTextGenerator.generateContentCalls != 1 {
-		t.Errorf("Expected 1 call to LLM for normalization, got %d", mockTextGenerator.generateContentCalls)
+	if mockTextGenerator.generateContentCalls != 2 {
+		t.Errorf("Expected extraction and tagging calls, got %d", mockTextGenerator.generateContentCalls)
 	}
 
 	// Verify the recipe is in the database

@@ -31,6 +31,7 @@ test:
 # Run only the live LLM evaluation tests
 eval:
 	go test -v ./internal/planner -run "_Eval"
+	go test -v ./internal/recipe -run "_LiveEval" -count=1
 
 # Database Migrations
 migrate-up:

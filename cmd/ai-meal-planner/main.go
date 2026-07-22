@@ -34,6 +34,7 @@ func main() {
 
 	analystModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
 	normalizerModel := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.1)
+	taggerModel := llm.NewGroqClient(cfg, llm.ModelTagger, 0.0)
 	reviewerModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
 
 	// Initialize the new SQLite database
@@ -59,7 +60,8 @@ func main() {
 	application := app.NewApp(
 		ghostClient,
 		normalizerModel, // Use 8B for extraction
-		embedClient,     // embedGen
+		taggerModel,
+		embedClient, // embedGen
 		metricsStore,
 		mealPlanner,
 		recipeClipper,
@@ -98,6 +100,20 @@ func main() {
 
 		if err := application.IngestRecipeByID(ctx, *id); err != nil {
 			log.Fatalf("Re-ingestion failed: %v", err)
+		}
+	case "retag":
+		retagCmd := flag.NewFlagSet("retag", flag.ExitOnError)
+		id := retagCmd.String("id", "", "The Ghost ID of the recipe to retag")
+		retagCmd.Parse(os.Args[2:])
+
+		if *id == "" {
+			fmt.Println("Error: -id is required")
+			retagCmd.Usage()
+			os.Exit(1)
+		}
+
+		if err := application.RetagRecipeByID(ctx, *id); err != nil {
+			log.Fatalf("Retagging failed: %v", err)
 		}
 	case "plan":
 		planCmd := flag.NewFlagSet("plan", flag.ExitOnError)
@@ -161,6 +177,8 @@ func printUsage() {
 	fmt.Println("Usage: ai-meal-planner <command> [arguments]")
 	fmt.Println("\nCommands:")
 	fmt.Println("  ingest             Fetch and normalize recipes from Ghost")
+	fmt.Println("  reingest           Re-normalize one recipe by Ghost ID")
+	fmt.Println("  retag              Regenerate tags for one recipe by Ghost ID")
 	fmt.Println("  migrate            Run database migrations")
 	fmt.Println("  metrics-cleanup    Remove old metric records")
 }

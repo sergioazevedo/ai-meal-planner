@@ -32,6 +32,7 @@ func main() {
 	// 2. Initialize Infrastructure (LLMs)
 	analystModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
 	normalizerModel := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.1)
+	taggerModel := llm.NewGroqClient(cfg, llm.ModelTagger, 0.0)
 
 	embedClient := llm.NewEmbeddingClient(cfg)
 	defer embedClient.Close()
@@ -68,7 +69,7 @@ func main() {
 	sessionRepo := telegram.NewSessionRepository(db.SQL)
 
 	// 7. Initialize Telegram Bot
-	bot, err := telegram.NewBot(cfg, mealPlanner, recipeClipper, metricsStore, normalizerModel, embedClient, planRepo, recipeRepo, vectorRepo, shoppingRepo, sessionRepo, auditRepo)
+	bot, err := telegram.NewBot(cfg, mealPlanner, recipeClipper, metricsStore, normalizerModel, taggerModel, embedClient, planRepo, recipeRepo, vectorRepo, shoppingRepo, sessionRepo, auditRepo)
 	if err != nil {
 		log.Fatalf("Failed to initialize Telegram Bot: %v", err)
 	}

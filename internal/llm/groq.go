@@ -20,6 +20,7 @@ const (
 	// Model identifiers
 	ModelAnalyst    = "meta-llama/llama-4-scout-17b-16e-instruct"
 	ModelNormalizer = "llama-3.1-8b-instant"
+	ModelTagger     = "llama-3.3-70b-versatile"
 )
 
 // GroqClient is a client for the Groq API.

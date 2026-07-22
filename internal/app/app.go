@@ -36,12 +36,14 @@ type App struct {
 	auditRepo  *audit.AuditRepository
 
 	extractor *recipe.Extractor // New Extractor instance
+	tagger    *recipe.Tagger
 }
 
 // NewApp creates and initializes a new App instance.
 func NewApp(
 	ghostClient ghost.Client,
 	textGen llm.TextGenerator,
+	tagGen llm.TextGenerator,
 	embedGen llm.EmbeddingGenerator,
 	metricsStore *metrics.Store,
 	mealPlanner *planner.Planner,
@@ -67,6 +69,7 @@ func NewApp(
 		planRepo:      planRepo,
 		auditRepo:     auditRepo,
 		extractor:     recipe.NewExtractor(textGen, embedGen, vectorRepo), // Initialize Extractor
+		tagger:        recipe.NewTagger(tagGen),
 	}
 }
 
@@ -97,6 +100,7 @@ func (a *App) IngestRecipes(ctx context.Context, force bool) error {
 		if err := ProcessAndSaveRecipe(
 			ctx,
 			a.extractor, // Pass the extractor
+			a.tagger,
 			a.recipeRepo,
 			a.metricsStore,
 			post,
@@ -142,6 +146,7 @@ func (a *App) IngestRecipeByID(ctx context.Context, id string) error {
 	if err := ProcessAndSaveRecipe(
 		ctx,
 		a.extractor,
+		a.tagger,
 		a.recipeRepo,
 		a.metricsStore,
 		*post,
@@ -152,6 +157,53 @@ func (a *App) IngestRecipeByID(ctx context.Context, id string) error {
 
 	fmt.Printf("Successfully re-ingested '%s'.\n", post.Title)
 	return nil
+}
+
+// RetagRecipeByID regenerates only a recipe's bilingual tags and its dependent embedding.
+func (a *App) RetagRecipeByID(ctx context.Context, id string) error {
+	rec, err := a.recipeRepo.Get(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to load recipe %s: %w", id, err)
+	}
+
+	post, err := a.ghostClient.FetchRecipeByID(id)
+	if err != nil {
+		return fmt.Errorf("failed to fetch recipe %s from ghost: %w", id, err)
+	}
+
+	result, err := a.tagger.Run(ctx, rec, ghostTagNames(post.Tags))
+	if err != nil {
+		return fmt.Errorf("failed to retag recipe %q: %w", rec.Title, err)
+	}
+	rec.Tags = result.Tags
+
+	if err := a.recipeRepo.UpdateTags(ctx, rec); err != nil {
+		return fmt.Errorf("failed to save retagged recipe %q: %w", rec.Title, err)
+	}
+	if err := a.metricsStore.RecordMeta(result.Meta); err != nil {
+		return fmt.Errorf("failed to record tagger metrics: %w", err)
+	}
+
+	_, embeddingMeta, err := a.extractor.ProcessAndSaveEmbedding(ctx, rec, true)
+	if err != nil {
+		return fmt.Errorf("failed to refresh embedding for %q: %w", rec.Title, err)
+	}
+	if err := a.metricsStore.RecordMeta(embeddingMeta); err != nil {
+		return fmt.Errorf("failed to record embedding metrics: %w", err)
+	}
+
+	fmt.Printf("Successfully retagged '%s'.\n", rec.Title)
+	return nil
+}
+
+func ghostTagNames(tags []ghost.Tag) []string {
+	names := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		if name := strings.TrimSpace(tag.Name); name != "" {
+			names = append(names, name)
+		}
+	}
+	return names
 }
 
 // GenerateMealPlan creates a meal plan based on user request and prints it.
