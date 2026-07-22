@@ -174,6 +174,11 @@ func TestPlanReviewer_TerminalTool(t *testing.T) {
 										"recipe_title": "Chicken Roast",
 										"note":         "Revised",
 									},
+									map[string]any{
+										"day":          "Invented Day",
+										"recipe_title": "Chicken Roast",
+										"note":         "Must be ignored",
+									},
 								},
 							},
 						},
@@ -205,5 +210,8 @@ func TestPlanReviewer_TerminalTool(t *testing.T) {
 	}
 	if revised.Plan[0].Note != "Revised" {
 		t.Errorf("Expected 'Revised', got '%s'", revised.Plan[0].Note)
+	}
+	if revised.Plan[0].RecipeID != "r1" {
+		t.Errorf("Expected recipe ID 'r1', got %q", revised.Plan[0].RecipeID)
 	}
 }

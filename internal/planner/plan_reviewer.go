@@ -110,6 +110,14 @@ func (r *PlanReviewer) Run(
 
 	// 1. Setup Tool Handlers
 	initialLookup := make(map[string]value.Recipe) // Used for mapping titles back to IDs
+	for _, day := range currentPlan.Plan {
+		initialLookup[day.RecipeTitle] = value.Recipe{
+			ID:         day.RecipeID,
+			Title:      day.RecipeTitle,
+			SideDishes: day.SideDishes,
+			PrepTime:   day.PrepTime,
+		}
+	}
 
 	rawResponse := struct {
 		Plan []DayPlan `json:"plan"`
@@ -183,11 +191,29 @@ func (r *PlanReviewer) Run(
 
 	// 5. Build final result and map IDs
 	result := &MealPlan{}
-	result.Plan = []DayPlan{}
+	revisedByDay := make(map[string]DayPlan, len(rawResponse.Plan))
 	for _, day := range rawResponse.Plan {
-		// Try to find the recipe ID from our lookup
+		revisedByDay[day.Day] = day
+	}
+	for _, original := range currentPlan.Plan {
+		day, ok := revisedByDay[original.Day]
+		if !ok {
+			return PlanReviewerResult{}, fmt.Errorf("revised plan is missing %s", original.Day)
+		}
 		if recipe, ok := recipeLookup[day.RecipeTitle]; ok {
 			day.RecipeID = recipe.ID
+			if day.PrepTime == "" {
+				day.PrepTime = recipe.PrepTime
+			}
+			if len(day.SideDishes) == 0 {
+				day.SideDishes = recipe.SideDishes
+			}
+		} else {
+			return PlanReviewerResult{}, fmt.Errorf(
+				"revised plan references unknown recipe %q for %s",
+				day.RecipeTitle,
+				original.Day,
+			)
 		}
 		result.Plan = append(result.Plan, day)
 	}
