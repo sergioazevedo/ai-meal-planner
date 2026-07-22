@@ -65,17 +65,17 @@ jobs:
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
-        run: go test -v ./internal/planner -run LiveEval
+        run: go test -v ./internal/planner -run LiveEval -count=1 -timeout=10m
 
       - name: Run Live Tag Extraction Eval
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: go test -v ./internal/recipe -run TestTagger_LiveEval -count=1
+        run: go test -v ./internal/recipe -run TestTagger_LiveEval -count=1 -timeout=2m
 
       - name: Run Live Retrieval Eval
         env:
           EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
-        run: go test -v ./internal/llm -run TestVectorSearchQualityIntegration -count=1
+        run: go test -v ./internal/llm -run TestVectorSearchQualityIntegration -count=1 -timeout=4m
 
   deploy-production:
     name: Deploy to Production

@@ -1,12 +1,10 @@
 package planner
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
 
-	"ai-meal-planner/internal/config"
 	"ai-meal-planner/internal/llm"
 	"ai-meal-planner/internal/value"
 )
@@ -17,11 +15,8 @@ func TestPlanReviewer_LiveEval(t *testing.T) {
 		t.Skip("Skipping live eval in short mode")
 	}
 
-	ctx := context.Background()
-	cfg, err := config.NewFromEnv()
-	if err != nil {
-		t.Skip("Skipping: No API keys found in environment")
-	}
+	ctx := liveEvalContext(t)
+	cfg := liveEvalConfig(t)
 
 	// 1. Setup the Agent and dependencies
 	// Note: We use ModelAnalyst here if ModelReviewer isn't explicitly defined in groq.go,
