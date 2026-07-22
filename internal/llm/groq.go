@@ -21,7 +21,7 @@ const (
 	groqAPIURL = "https://api.groq.com/openai/v1/chat/completions"
 
 	// Model identifiers
-	ModelAnalyst    = "openai/gpt-oss-120b"
+	ModelAnalyst    = "meta-llama/llama-4-scout-17b-16e-instruct"
 	ModelNormalizer = "llama-3.1-8b-instant"
 	ModelTagger     = "llama-3.3-70b-versatile"
 )
