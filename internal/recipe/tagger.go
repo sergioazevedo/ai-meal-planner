@@ -21,7 +21,7 @@ var taggerPrompt string
 const maxTaggerAttempts = 2
 
 type TagPair struct {
-	Portuguese string `json:"pt"`
+	Portuguese string `json:"pt-BR"`
 	English    string `json:"en"`
 }
 
@@ -78,7 +78,7 @@ func (t *Tagger) Run(ctx context.Context, rec value.Recipe, sourceTags []string)
 		conversation = conversation.Add(llm.Message{
 			Role: "user",
 			Content: "The tag response was invalid: " + err.Error() +
-				". Return the corrected raw JSON object with complete pt/en translation pairs only.",
+				". Return the corrected raw JSON object with complete pt-BR/en translation pairs only.",
 		})
 	}
 
@@ -130,7 +130,7 @@ func parseTaggerResponse(content string) ([]string, error) {
 		pt := strings.ToLower(strings.TrimSpace(pair.Portuguese))
 		en := strings.ToLower(strings.TrimSpace(pair.English))
 		if pt == "" || en == "" {
-			return nil, fmt.Errorf("tag pair %d must contain both pt and en", i)
+			return nil, fmt.Errorf("tag pair %d must contain both pt-BR and en", i)
 		}
 		for _, tag := range []string{pt, en} {
 			if _, exists := seen[tag]; exists {

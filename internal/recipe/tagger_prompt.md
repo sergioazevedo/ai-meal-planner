@@ -10,8 +10,8 @@ Source tags: {{ .SourceTagsJSON }}
 
 ## Rules
 
-- Return each tag concept as an explicit Brazilian Portuguese (`pt`) and English (`en`) translation pair.
-- The `pt` value MUST be Brazilian Portuguese and the `en` value MUST be English. Never swap the fields and never use Spanish.
+- Return each tag concept as an explicit Brazilian Portuguese (`pt-BR`) and English (`en`) translation pair.
+- The `pt-BR` value MUST be Brazilian Portuguese and the `en` value MUST be English. Never swap the fields and never use Spanish.
 - Both values in a pair MUST express the same concept. For example, `salmão` pairs with `salmon`, not `fish`.
 - Include the main ingredients and useful source-tag concepts.
 - Preserve useful source-tag concepts, but translate them into both languages.
@@ -20,15 +20,15 @@ Source tags: {{ .SourceTagsJSON }}
 - Use lowercase, concise tags.
 - Return raw JSON only, without markdown.
 
-Correct: `{"pt":"fritadeira sem óleo","en":"air fryer"}`
-Forbidden: `{"pt":"asador de ar","en":"air fryer"}` (Spanish)
-Forbidden: `{"pt":"low carb","en":"baixo carboidrato"}` (languages swapped)
+Correct: `{"pt-BR":"fritadeira sem óleo","en":"air fryer"}`
+Forbidden: `{"pt-BR":"asador de ar","en":"air fryer"}` (Spanish)
+Forbidden: `{"pt-BR":"low carb","en":"baixo carboidrato"}` (languages swapped)
 
 ## Output
 
 {
   "tags": [
-    {"pt": "salmão", "en": "salmon"},
-    {"pt": "brócolis", "en": "broccoli"}
+    {"pt-BR": "salmão", "en": "salmon"},
+    {"pt-BR": "brócolis", "en": "broccoli"}
   ]
 }

@@ -15,9 +15,9 @@ import (
 func TestTaggerRunReturnsCompleteBilingualPairs(t *testing.T) {
 	textGen := &llmtest.MockTextGenerator{Response: `{
 		"tags": [
-			{"pt": " Salmão ", "en": " Salmon "},
-			{"pt": "Brócolis", "en": "Broccoli"},
-			{"pt": "peixe", "en": "fish"}
+			{"pt-BR": " Salmão ", "en": " Salmon "},
+			{"pt-BR": "Brócolis", "en": "Broccoli"},
+			{"pt-BR": "peixe", "en": "fish"}
 		]
 	}`}
 	tagger := NewTagger(textGen)
@@ -38,8 +38,8 @@ func TestTaggerRunReturnsCompleteBilingualPairs(t *testing.T) {
 
 func TestTaggerRunRepairsIncompletePair(t *testing.T) {
 	textGen := &llmtest.MockTextGenerator{ResponseChain: []llm.ContentResponse{
-		{Message: llm.Message{Role: "assistant", Content: `{"tags":[{"pt":"salmão","en":""}]}`}},
-		{Message: llm.Message{Role: "assistant", Content: `{"tags":[{"pt":"salmão","en":"salmon"}]}`}},
+		{Message: llm.Message{Role: "assistant", Content: `{"tags":[{"pt-BR":"salmão","en":""}]}`}},
+		{Message: llm.Message{Role: "assistant", Content: `{"tags":[{"pt-BR":"salmão","en":"salmon"}]}`}},
 	}}
 
 	result, err := NewTagger(textGen).Run(context.Background(), salmonRecipe(), nil)
@@ -102,7 +102,7 @@ func assertOrderedTagPair(t *testing.T, tags []string, portuguese, english strin
 			return
 		}
 	}
-	t.Errorf("QUALITY FAIL: missing ordered pt/en pair %q/%q in %#v", portuguese, english, tags)
+	t.Errorf("QUALITY FAIL: missing ordered pt-BR/en pair %q/%q in %#v", portuguese, english, tags)
 }
 
 func salmonRecipe() value.Recipe {

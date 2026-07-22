@@ -53,7 +53,7 @@ func TestProcessAndSaveRecipe(t *testing.T) {
 	}}
 	embGen := &llmtest.MockEmbeddingGenerator{Values: []float32{0.1, 0.2}}
 	extractor := recipe.NewExtractor(textGen, embGen, vectorRepo)
-	tagger := recipe.NewTagger(&llmtest.MockTextGenerator{Response: `{"tags":[{"pt":"teste","en":"test"}]}`})
+	tagger := recipe.NewTagger(&llmtest.MockTextGenerator{Response: `{"tags":[{"pt-BR":"teste","en":"test"}]}`})
 
 	post := ghost.Post{
 		ID:        "1",

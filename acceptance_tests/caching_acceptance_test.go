@@ -70,7 +70,7 @@ func (m *MockTextGenerator) GenerateContent(ctx context.Context, conversation ll
 
 	if strings.Contains(prompt, "# Recipe Tagger") {
 		return llm.ContentResponse{Message: llm.Message{Content: `{
-			"tags": [{"pt":"teste","en":"test"}]
+			"tags": [{"pt-BR":"teste","en":"test"}]
 		}`}}, nil
 	}
 

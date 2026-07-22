@@ -70,9 +70,9 @@ func TestRetagRecipeByIDOnlyRegeneratesTagsAndEmbedding(t *testing.T) {
 		extractor:    recipe.NewExtractor(nil, embGen, vectorRepo),
 		tagger: recipe.NewTagger(&llmtest.MockTextGenerator{Response: `{
 			"tags":[
-				{"pt":"salmão","en":"salmon"},
-				{"pt":"brócolis","en":"broccoli"},
-				{"pt":"fritadeira sem óleo","en":"air fryer"}
+				{"pt-BR":"salmão","en":"salmon"},
+				{"pt-BR":"brócolis","en":"broccoli"},
+				{"pt-BR":"fritadeira sem óleo","en":"air fryer"}
 			]
 		}`}),
 	}
@@ -131,7 +131,7 @@ func TestRetagAllRecipesUpdatesOnlyNormalizedRecipes(t *testing.T) {
 		metricsStore: metrics.NewStore(db.SQL),
 		extractor:    recipe.NewExtractor(nil, embGen, vectorRepo),
 		tagger: recipe.NewTagger(&llmtest.MockTextGenerator{Response: `{
-			"tags":[{"pt":"receita","en":"recipe"}]
+			"tags":[{"pt-BR":"receita","en":"recipe"}]
 		}`}),
 	}
 
@@ -229,7 +229,7 @@ func TestIngestRecipes_Cleanup(t *testing.T) {
 		vectorRepo:   vectorRepo,
 		metricsStore: metricsStore,
 		extractor:    recipe.NewExtractor(textGen, embGen, vectorRepo),
-		tagger:       recipe.NewTagger(&llmtest.MockTextGenerator{Response: `{"tags":[{"pt":"receita","en":"recipe"}]}`}),
+		tagger:       recipe.NewTagger(&llmtest.MockTextGenerator{Response: `{"tags":[{"pt-BR":"receita","en":"recipe"}]}`}),
 	}
 
 	// 4. Run IngestRecipes
