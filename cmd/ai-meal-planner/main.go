@@ -32,10 +32,11 @@ func main() {
 	embedClient := llm.NewEmbeddingClient(cfg)
 	defer embedClient.Close()
 
-	analystModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
-	normalizerModel := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.1)
-	taggerModel := llm.NewGroqClient(cfg, llm.ModelTagger, 0.0)
-	reviewerModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
+	analystModel := llm.NewGroqClient(cfg, cfg.AnalystModel, 0.1)
+	reviewerModel := llm.NewGroqClient(cfg, cfg.ReviewerModel, 0.1)
+	chefModel := llm.NewGroqClient(cfg, cfg.ChefModel, 0.1)
+	normalizerModel := llm.NewGroqClient(cfg, cfg.NormalizerModel, 0.1)
+	taggerModel := llm.NewGroqClient(cfg, cfg.TaggerModel, 0.0)
 
 	// Initialize the new SQLite database
 	db, err := database.NewDB(cfg.DatabasePath)
@@ -54,7 +55,7 @@ func main() {
 	defer metricsStore.Close()
 
 	recipeSearchService := recipe.NewSearchService(recipeRepo, vectorRepo, embedClient)
-	mealPlanner := planner.NewPlanner(recipeSearchService, planRepo, analystModel, analystModel, reviewerModel)
+	mealPlanner := planner.NewPlanner(recipeSearchService, planRepo, analystModel, chefModel, reviewerModel)
 	recipeClipper := clipper.NewClipper(ghostClient, normalizerModel)
 
 	application := app.NewApp(

@@ -20,7 +20,7 @@ func TestAnalyst_LiveEval(t *testing.T) {
 	cfg := liveEvalConfig(t)
 
 	// Use Groq for fast, cheap evals
-	groqClient := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
+	groqClient := llm.NewGroqClient(cfg, liveEvalModel("GROQ_ANALYST_MODEL", llm.ModelAnalyst), 0.1)
 
 	// Provide a mix of spicy and non-spicy recipes
 	mockRecipes := []value.Recipe{

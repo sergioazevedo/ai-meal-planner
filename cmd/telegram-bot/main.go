@@ -30,9 +30,10 @@ func main() {
 	}
 
 	// 2. Initialize Infrastructure (LLMs)
-	analystModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
-	normalizerModel := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.1)
-	taggerModel := llm.NewGroqClient(cfg, llm.ModelTagger, 0.0)
+	analystModel := llm.NewGroqClient(cfg, cfg.AnalystModel, 0.1)
+	chefModel := llm.NewGroqClient(cfg, cfg.ChefModel, 0.1)
+	normalizerModel := llm.NewGroqClient(cfg, cfg.NormalizerModel, 0.1)
+	taggerModel := llm.NewGroqClient(cfg, cfg.TaggerModel, 0.0)
 
 	embedClient := llm.NewEmbeddingClient(cfg)
 	defer embedClient.Close()
@@ -59,10 +60,10 @@ func main() {
 
 	// 5. Initialize Services
 	// Create reviewer model (use same high-reasoning model as Analyst for plan revision)
-	reviewerModel := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
+	reviewerModel := llm.NewGroqClient(cfg, cfg.ReviewerModel, 0.1)
 
 	recipeSearchService := recipe.NewSearchService(recipeRepo, vectorRepo, embedClient)
-	mealPlanner := planner.NewPlanner(recipeSearchService, planRepo, analystModel, analystModel, reviewerModel)
+	mealPlanner := planner.NewPlanner(recipeSearchService, planRepo, analystModel, chefModel, reviewerModel)
 	recipeClipper := clipper.NewClipper(ghostClient, normalizerModel)
 
 	// 6. Initialize Session Repository for conversation state tracking

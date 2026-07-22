@@ -32,3 +32,10 @@ func liveEvalConfig(t *testing.T) *config.Config {
 
 	return &config.Config{GroqAPIKey: apiKey}
 }
+
+func liveEvalModel(envKey, fallback string) string {
+	if model := os.Getenv(envKey); model != "" {
+		return model
+	}
+	return fallback
+}

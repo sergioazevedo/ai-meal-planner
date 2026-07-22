@@ -70,7 +70,11 @@ func TestTagger_LiveEval(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	client := llm.NewGroqClient(cfg, llm.ModelTagger, 0.0)
+	model := os.Getenv("GROQ_TAGGER_MODEL")
+	if model == "" {
+		model = llm.ModelTagger
+	}
+	client := llm.NewGroqClient(cfg, model, 0.0)
 	result, err := NewTagger(client).Run(ctx, salmonRecipe(), []string{"air fryer", "jantar"})
 	if err != nil {
 		t.Fatalf("live tagger failed: %v", err)

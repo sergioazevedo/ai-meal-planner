@@ -11,6 +11,8 @@ on:
       - 'sqlc.yaml'
       - 'internal/llm/testdata/**'
       - 'internal/recipe/*.md'
+      - 'internal/planner/*.md'
+      - 'Makefile'
       - '.github/workflows/pipeline.yml'
   pull_request:
     branches: ["main"]
@@ -22,6 +24,8 @@ on:
       - 'sqlc.yaml'
       - 'internal/llm/testdata/**'
       - 'internal/recipe/*.md'
+      - 'internal/planner/*.md'
+      - 'Makefile'
       - '.github/workflows/pipeline.yml'
 
 jobs:
@@ -45,9 +49,24 @@ jobs:
         run: go test -short -v ./...
 
   ai-evals:
-    name: Run Live AI Evals (Slow)
+    name: Run Live AI Evals (${{ matrix.candidate }})
     needs: unit-tests # Only run evals if basic code logic passes
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - candidate: gpt-oss
+            analyst: openai/gpt-oss-120b
+            reviewer: openai/gpt-oss-120b
+            chef: openai/gpt-oss-20b
+            tagger: openai/gpt-oss-20b
+          - candidate: qwen
+            analyst: qwen/qwen3.6-27b
+            reviewer: qwen/qwen3.6-27b
+            chef: openai/gpt-oss-20b
+            tagger: qwen/qwen3.6-27b
 
     steps:
       - name: Checkout Code
@@ -65,14 +84,19 @@ jobs:
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
+          GROQ_ANALYST_MODEL: ${{ matrix.analyst }}
+          GROQ_REVIEWER_MODEL: ${{ matrix.reviewer }}
+          GROQ_CHEF_MODEL: ${{ matrix.chef }}
         run: go test -v ./internal/planner -run LiveEval -count=1 -timeout=10m
 
       - name: Run Live Tag Extraction Eval
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_TAGGER_MODEL: ${{ matrix.tagger }}
         run: go test -v ./internal/recipe -run TestTagger_LiveEval -count=1 -timeout=2m
 
       - name: Run Live Retrieval Eval
+        if: matrix.candidate == 'gpt-oss'
         env:
           EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
         run: go test -v ./internal/llm -run TestVectorSearchQualityIntegration -count=1 -timeout=4m
@@ -111,6 +135,11 @@ jobs:
           GHOST_ADMIN_API_KEY="${{ secrets.GHOST_ADMIN_API_KEY }}"
           EMBEDDING_API_KEY="${{ secrets.EMBEDDING_API_KEY }}"
           GROQ_API_KEY="${{ secrets.GROQ_API_KEY }}"
+          GROQ_ANALYST_MODEL="${{ vars.GROQ_ANALYST_MODEL }}"
+          GROQ_REVIEWER_MODEL="${{ vars.GROQ_REVIEWER_MODEL }}"
+          GROQ_CHEF_MODEL="${{ vars.GROQ_CHEF_MODEL }}"
+          GROQ_NORMALIZER_MODEL="${{ vars.GROQ_NORMALIZER_MODEL }}"
+          GROQ_TAGGER_MODEL="${{ vars.GROQ_TAGGER_MODEL }}"
           TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}"
           TELEGRAM_ALLOW_USER_ID="${{ secrets.TELEGRAM_ALLOW_USER_ID }}"
           TELEGRAM_WEBHOOK_URL="${{ secrets.TELEGRAM_WEBHOOK_URL }}"

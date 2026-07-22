@@ -20,7 +20,7 @@ func TestChef_LiveEval(t *testing.T) {
 	ctx := liveEvalContext(t)
 	cfg := liveEvalConfig(t)
 
-	groqClient := llm.NewGroqClient(cfg, llm.ModelNormalizer, 0.1)
+	groqClient := llm.NewGroqClient(cfg, liveEvalModel("GROQ_CHEF_MODEL", llm.ModelChef), 0.1)
 	p := &Planner{
 		chefGenerator: groqClient,
 	}

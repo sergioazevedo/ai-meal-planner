@@ -34,6 +34,33 @@ func TestNewFromEnv(t *testing.T) {
 		if cfg.GroqAPIKey != "groq_key" {
 			t.Errorf("Expected GroqAPIKey to be 'groq_key', got '%s'", cfg.GroqAPIKey)
 		}
+		if cfg.AnalystModel != DefaultAnalystModel || cfg.ReviewerModel != DefaultReviewerModel ||
+			cfg.ChefModel != DefaultChefModel || cfg.NormalizerModel != DefaultNormalizerModel ||
+			cfg.TaggerModel != DefaultTaggerModel {
+			t.Fatalf("model defaults were not applied: %#v", cfg)
+		}
+	})
+
+	t.Run("ModelOverrides", func(t *testing.T) {
+		setEnv("GHOST_API_URL", "http://ghost.test")
+		setEnv("GHOST_CONTENT_API_KEY", "ghost_key")
+		setEnv("EMBEDDING_API_KEY", "embed_key")
+		setEnv("GROQ_API_KEY", "groq_key")
+		setEnv("GROQ_ANALYST_MODEL", "analyst")
+		setEnv("GROQ_REVIEWER_MODEL", "reviewer")
+		setEnv("GROQ_CHEF_MODEL", "chef")
+		setEnv("GROQ_NORMALIZER_MODEL", "normalizer")
+		setEnv("GROQ_TAGGER_MODEL", "tagger")
+
+		cfg, err := NewFromEnv()
+		if err != nil {
+			t.Fatalf("NewFromEnv() error = %v", err)
+		}
+		if cfg.AnalystModel != "analyst" || cfg.ReviewerModel != "reviewer" ||
+			cfg.ChefModel != "chef" || cfg.NormalizerModel != "normalizer" ||
+			cfg.TaggerModel != "tagger" {
+			t.Fatalf("model overrides were not applied: %#v", cfg)
+		}
 	})
 
 	t.Run("MissingGhostURL", func(t *testing.T) {

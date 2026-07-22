@@ -18,7 +18,7 @@ func TestPlanReviewer_BugReproduction_LiveEval(t *testing.T) {
 	cfg := liveEvalConfig(t)
 
 	// 1. Setup the Agent and dependencies
-	groqClient := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
+	groqClient := llm.NewGroqClient(cfg, liveEvalModel("GROQ_REVIEWER_MODEL", llm.ModelReviewer), 0.1)
 
 	// Mock searcher with specific candidates to test Context and History
 	mockSearcher := &mockSearcher{

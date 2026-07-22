@@ -19,9 +19,7 @@ func TestPlanReviewer_LiveEval(t *testing.T) {
 	cfg := liveEvalConfig(t)
 
 	// 1. Setup the Agent and dependencies
-	// Note: We use ModelAnalyst here if ModelReviewer isn't explicitly defined in groq.go,
-	// as it represents the "High Reasoning" model needed for this complex task.
-	groqClient := llm.NewGroqClient(cfg, llm.ModelAnalyst, 0.1)
+	groqClient := llm.NewGroqClient(cfg, liveEvalModel("GROQ_REVIEWER_MODEL", llm.ModelReviewer), 0.1)
 
 	// Create a simple mock searcher that returns vegetarian options when called
 	mockSearcher := &mockSearcher{
