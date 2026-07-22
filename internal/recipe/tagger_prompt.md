@@ -11,13 +11,18 @@ Source tags: {{ .SourceTagsJSON }}
 ## Rules
 
 - Return each tag concept as an explicit Brazilian Portuguese (`pt`) and English (`en`) translation pair.
+- The `pt` value MUST be Brazilian Portuguese and the `en` value MUST be English. Never swap the fields and never use Spanish.
 - Both values in a pair MUST express the same concept. For example, `salmão` pairs with `salmon`, not `fish`.
-- Include the main ingredients, useful meal categories, and relevant dietary categories.
+- Include the main ingredients and useful source-tag concepts.
 - Preserve useful source-tag concepts, but translate them into both languages.
-- Never label a recipe vegetarian or vegan when it contains fish, meat, poultry, seafood, or another incompatible ingredient.
+- Do not infer dietary labels such as vegetarian, vegan, low carb, or gluten free. Include one only when it is explicitly present in the source tags and compatible with the ingredients.
 - Do not invent ingredients or dietary properties.
 - Use lowercase, concise tags.
 - Return raw JSON only, without markdown.
+
+Correct: `{"pt":"fritadeira sem óleo","en":"air fryer"}`
+Forbidden: `{"pt":"asador de ar","en":"air fryer"}` (Spanish)
+Forbidden: `{"pt":"low carb","en":"baixo carboidrato"}` (languages swapped)
 
 ## Output
 

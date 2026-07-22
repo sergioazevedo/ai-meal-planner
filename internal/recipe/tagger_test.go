@@ -73,18 +73,36 @@ func TestTagger_LiveEval(t *testing.T) {
 		t.Fatalf("live tagger failed: %v", err)
 	}
 
-	for _, required := range []string{"salmão", "salmon", "brócolis", "broccoli"} {
-		if !slices.Contains(result.Tags, required) {
-			t.Errorf("QUALITY FAIL: missing bilingual regression tag %q in %#v", required, result.Tags)
-		}
+	for _, pair := range [][2]string{
+		{"salmão", "salmon"},
+		{"brócolis", "broccoli"},
+		{"peixe", "fish"},
+		{"fritadeira sem óleo", "air fryer"},
+		{"jantar", "dinner"},
+	} {
+		assertOrderedTagPair(t, result.Tags, pair[0], pair[1])
 	}
-	for _, forbidden := range []string{"vegetariano", "vegetarian", "vegano", "vegan"} {
+	for _, forbidden := range []string{
+		"vegetariano", "vegetarian", "vegano", "vegan",
+		"baixo carboidrato", "low carb", "sem glúten", "gluten free",
+		"asador de ar",
+	} {
 		if slices.Contains(result.Tags, forbidden) {
-			t.Errorf("QUALITY FAIL: fish recipe received dietary tag %q in %#v", forbidden, result.Tags)
+			t.Errorf("QUALITY FAIL: tagger returned forbidden tag %q in %#v", forbidden, result.Tags)
 		}
 	}
 
 	t.Logf("tagger eval passed with tags: %v", result.Tags)
+}
+
+func assertOrderedTagPair(t *testing.T, tags []string, portuguese, english string) {
+	t.Helper()
+	for i := 0; i+1 < len(tags); i++ {
+		if tags[i] == portuguese && tags[i+1] == english {
+			return
+		}
+	}
+	t.Errorf("QUALITY FAIL: missing ordered pt/en pair %q/%q in %#v", portuguese, english, tags)
 }
 
 func salmonRecipe() value.Recipe {
