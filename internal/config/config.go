@@ -7,11 +7,11 @@ import (
 )
 
 const (
-	DefaultAnalystModel    = "meta-llama/llama-4-scout-17b-16e-instruct"
+	DefaultAnalystModel    = "openai/gpt-oss-120b"
 	DefaultReviewerModel   = DefaultAnalystModel
-	DefaultChefModel       = DefaultAnalystModel
-	DefaultNormalizerModel = "llama-3.1-8b-instant"
-	DefaultTaggerModel     = "llama-3.3-70b-versatile"
+	DefaultChefModel       = "openai/gpt-oss-20b"
+	DefaultNormalizerModel = DefaultChefModel
+	DefaultTaggerModel     = "qwen/qwen3.6-27b"
 )
 
 // Config holds the configuration for the application.

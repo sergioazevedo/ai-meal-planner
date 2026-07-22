@@ -136,10 +136,10 @@ func TestGroqRetryDelay(t *testing.T) {
 
 func TestReasoningEffortForModel(t *testing.T) {
 	tests := map[string]string{
-		"openai/gpt-oss-120b": "low",
-		"openai/gpt-oss-20b":  "low",
-		"qwen/qwen3.6-27b":    "none",
-		ModelNormalizer:       "",
+		"openai/gpt-oss-120b":  "low",
+		"openai/gpt-oss-20b":   "low",
+		"qwen/qwen3.6-27b":     "none",
+		"llama-3.1-8b-instant": "",
 	}
 	for model, want := range tests {
 		if got := reasoningEffortForModel(model); got != want {

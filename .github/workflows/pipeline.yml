@@ -49,26 +49,9 @@ jobs:
         run: go test -short -v ./...
 
   ai-evals:
-    name: Run Live AI Evals (${{ matrix.candidate }})
+    name: Run Live AI Evals (Slow)
     needs: unit-tests # Only run evals if basic code logic passes
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      max-parallel: 1
-      matrix:
-        include:
-          - candidate: gpt-oss
-            analyst: openai/gpt-oss-120b
-            reviewer: openai/gpt-oss-120b
-            chef: openai/gpt-oss-20b
-            normalizer: openai/gpt-oss-20b
-            tagger: openai/gpt-oss-20b
-          - candidate: qwen
-            analyst: qwen/qwen3.6-27b
-            reviewer: qwen/qwen3.6-27b
-            chef: openai/gpt-oss-20b
-            normalizer: openai/gpt-oss-20b
-            tagger: qwen/qwen3.6-27b
 
     steps:
       - name: Checkout Code
@@ -86,21 +69,16 @@ jobs:
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
-          GROQ_ANALYST_MODEL: ${{ matrix.analyst }}
-          GROQ_REVIEWER_MODEL: ${{ matrix.reviewer }}
-          GROQ_CHEF_MODEL: ${{ matrix.chef }}
         run: go test -v ./internal/planner -run LiveEval -count=1 -timeout=10m
 
       - name: Run Live Recipe Evals
         if: always()
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          GROQ_TAGGER_MODEL: ${{ matrix.tagger }}
-          GROQ_NORMALIZER_MODEL: ${{ matrix.normalizer }}
         run: go test -v ./internal/recipe -run LiveEval -count=1 -timeout=3m
 
       - name: Run Live Retrieval Eval
-        if: always() && matrix.candidate == 'gpt-oss'
+        if: always()
         env:
           EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
         run: go test -v ./internal/llm -run TestVectorSearchQualityIntegration -count=1 -timeout=4m
